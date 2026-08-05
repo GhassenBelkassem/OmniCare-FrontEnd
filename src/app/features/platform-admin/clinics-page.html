@@ -1,0 +1,31 @@
+<div class="page-stack">
+  <oc-page-header title="Clinics" description="Register clinic organizations and invite their administrators.">
+    <oc-button ocPrimaryAction variant="primary" leadingIcon="plus" (click)="createOpen.set(!createOpen())">Add clinic</oc-button>
+  </oc-page-header>
+  @if (successMessage()) { <div class="success-message" role="status">{{ successMessage() }}</div> }
+  @if (errorMessage()) { <div class="request-error" role="alert">{{ errorMessage() }}</div> }
+  @if (createOpen()) {
+    <section class="panel" aria-labelledby="create-clinic-title"><h2 id="create-clinic-title">Register a clinic</h2>
+      <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="field"><label for="clinic-name">Clinic name</label><input id="clinic-name" formControlName="name" /></div>
+        <div class="field"><label for="clinic-inpdp">INPDP number</label><input id="clinic-inpdp" formControlName="inpdpNumber" /></div>
+        <div class="field"><label for="clinic-email">Contact email</label><input id="clinic-email" type="email" formControlName="contactEmail" /></div>
+        <div class="field"><label for="clinic-phone">Contact phone</label><input id="clinic-phone" type="tel" formControlName="contactPhone" placeholder="+216XXXXXXXX" /></div>
+        <div class="field"><label for="clinic-governorate">Governorate</label><input id="clinic-governorate" formControlName="governorate" /></div>
+        <div class="field span-2"><label for="clinic-address">Address</label><textarea id="clinic-address" formControlName="address"></textarea></div>
+        <div class="actions span-2"><oc-button variant="primary" type="submit" [loading]="submitting()">Create clinic</oc-button><oc-button variant="quiet" (click)="createOpen.set(false)">Cancel</oc-button></div>
+      </form>
+    </section>
+  }
+  <div class="toolbar"><label class="oc-sr-only" for="clinic-search">Search clinics</label><input id="clinic-search" type="search" [formControl]="search" placeholder="Search name, INPDP, or governorate" (keyup.enter)="load()" /><oc-button (click)="load()">Search</oc-button></div>
+  <oc-data-table-shell [state]="tableState()" density="compact">
+    <h2 ocTableTitle>Registered clinics</h2>
+    <oc-empty-state icon="medicine-box" title="No clinics found" description="Register a clinic or adjust the search." />
+    <table><thead><tr><th>Clinic</th><th>INPDP</th><th>Status</th><th>Governorate</th><th>Administrators</th></tr></thead><tbody>
+      @for (clinic of page()?.items ?? []; track clinic.id) {
+        <tr><td><a [routerLink]="[clinic.id]">{{ clinic.name }}</a><div class="meta">{{ clinic.contactEmail }}</div></td><td>{{ clinic.inpdpNumber }}</td><td><oc-status-badge [status]="clinic.status === 'ACTIVE' ? 'confirmed' : 'blocked'" /></td><td>{{ clinic.governorate }}</td><td>{{ clinic.administratorCount }}</td></tr>
+      }
+    </tbody></table>
+    <div ocTableFooter class="pagination"><span>{{ page()?.totalElements ?? 0 }} clinics</span><span>Page {{ (page()?.page ?? 0) + 1 }} of {{ page()?.totalPages || 1 }}</span></div>
+  </oc-data-table-shell>
+</div>

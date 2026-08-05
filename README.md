@@ -2,6 +2,25 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.20.
 
+## Phase 0 verification
+
+```bash
+npm run test:ci
+npm run build:ci
+# Runs both commands in that order
+npm run check
+```
+
+Public runtime configuration is loaded from `public/config/runtime-config.js`.
+Set `apiBaseUrl` there for each deployment; never put tokens, credentials, or
+other secrets in that file. Authentication tokens for the first dashboard MVP
+are kept in memory only.
+
+The dashboard is built as a browser application for the MVP. SSR is deferred
+because the v1 in-memory bearer session intentionally does not survive a page
+reload. Angular's persistent disk cache is disabled after a reproducible native
+cache crash on the current toolchain; CI builds remain deterministic.
+
 ## Development server
 
 To start a local development server, run:

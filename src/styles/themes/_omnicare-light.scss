@@ -1,0 +1,44 @@
+@use '../settings/brand-source' as brand;
+@use '../settings/colors' as color;
+
+:root {
+  color-scheme: light;
+  --oc-color-brand-primary: #{brand.$oc-brand-primary};
+  --oc-color-brand-primary-hover: #{brand.$oc-brand-primary-hover};
+  --oc-color-brand-primary-active: #{brand.$oc-brand-primary-active};
+  --oc-color-brand-secondary: #{brand.$oc-brand-secondary};
+  --oc-color-brand-accent: #{brand.$oc-brand-accent};
+  --oc-color-surface-app: #{color.$oc-slate-100};
+  --oc-color-surface-sidebar: #{color.$oc-slate-900};
+  --oc-color-surface-page: #{color.$oc-slate-25};
+  --oc-color-surface-card: #{color.$oc-white};
+  --oc-color-surface-subtle: #{color.$oc-slate-50};
+  --oc-color-surface-hover: #{color.$oc-slate-100};
+  --oc-color-surface-selected: #{color.$oc-green-surface};
+  --oc-color-surface-disabled: #{color.$oc-slate-100};
+  --oc-color-surface-overlay: #{color.$oc-overlay};
+  --oc-color-text-primary: #{color.$oc-slate-900};
+  --oc-color-text-secondary: #{color.$oc-slate-700};
+  --oc-color-text-muted: #{color.$oc-slate-500};
+  --oc-color-text-inverse: #{color.$oc-white};
+  --oc-color-text-disabled: #{color.$oc-slate-300};
+  --oc-color-text-link: #{brand.$oc-brand-primary};
+  --oc-color-border-subtle: #{color.$oc-slate-100};
+  --oc-color-border-default: #{color.$oc-slate-200};
+  --oc-color-border-strong: #{color.$oc-slate-300};
+  --oc-color-border-focus: #{color.$oc-blue};
+  --oc-color-information: #{color.$oc-blue};
+  --oc-color-information-surface: #{color.$oc-blue-surface};
+  --oc-color-success: #{color.$oc-green};
+  --oc-color-success-surface: #{color.$oc-green-surface};
+  --oc-color-warning: #{color.$oc-amber};
+  --oc-color-warning-surface: #{color.$oc-amber-surface};
+  --oc-color-critical: #{color.$oc-red};
+  --oc-color-critical-surface: #{color.$oc-red-surface};
+  --oc-color-neutral: #{color.$oc-neutral};
+  --oc-color-neutral-surface: #{color.$oc-neutral-surface};
+  --oc-color-inverse-border: #{color.$oc-inverse-border};
+  --oc-color-inverse-subtle: #{color.$oc-inverse-subtle};
+  --oc-color-inverse-selected: #{color.$oc-inverse-selected};
+  --oc-color-inverse-divider: #{color.$oc-inverse-divider};
+}

@@ -1,0 +1,49 @@
+<div class="page-stack">
+  <oc-page-header title="Professionals" description="Create doctors, monitor onboarding, and manage account access.">
+    <oc-button ocPrimaryAction variant="primary" leadingIcon="plus" (click)="createOpen.set(!createOpen())">Add doctor</oc-button>
+  </oc-page-header>
+
+  @if (successMessage()) { <div class="success-message" role="status">{{ successMessage() }}</div> }
+  @if (errorMessage()) { <div class="request-error" role="alert">{{ errorMessage() }}</div> }
+
+  @if (createOpen()) {
+    <section class="panel" aria-labelledby="create-doctor-title">
+      <h2 id="create-doctor-title">Invite an independent doctor</h2>
+      <p>The doctor chooses their own password from a one-time email link.</p>
+      <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="field"><label for="doctor-email">Email</label><input id="doctor-email" type="email" formControlName="email" autocomplete="off" /></div>
+        <div class="field"><label for="doctor-phone">Phone (optional)</label><input id="doctor-phone" type="tel" inputmode="tel" formControlName="phone" placeholder="+216 20 123 456 or 20 123 456" /></div>
+        <div class="field"><label for="doctor-license">Professional license</label><input id="doctor-license" formControlName="professionalLicenseNumber" /></div>
+        <div class="field"><label for="doctor-specialty">Specialty</label><input id="doctor-specialty" formControlName="specialty" /></div>
+        <div class="field"><label for="doctor-governorate">Governorate</label><input id="doctor-governorate" formControlName="governorate" /></div>
+        <div class="actions span-2"><oc-button variant="primary" type="submit" [loading]="submitting()">Create and invite</oc-button><oc-button variant="quiet" (click)="createOpen.set(false)">Cancel</oc-button></div>
+      </form>
+    </section>
+  }
+
+  <div class="toolbar">
+    <label class="oc-sr-only" for="professional-search">Search professionals</label>
+    <input id="professional-search" type="search" [formControl]="search" placeholder="Search email, license, specialty, or governorate" (keyup.enter)="load()" />
+    <oc-button variant="secondary" (click)="load()">Search</oc-button>
+  </div>
+
+  <oc-data-table-shell [state]="tableState()" density="compact">
+    <h2 ocTableTitle>Doctor and clinic-admin accounts</h2>
+    <oc-empty-state icon="team" title="No professionals found" description="Create a doctor or adjust the search." />
+    <table>
+      <thead><tr><th>Account</th><th>Role</th><th>Status</th><th>Specialty</th><th>Governorate</th><th>Last active</th></tr></thead>
+      <tbody>
+        @for (item of page()?.items ?? []; track item.userId) {
+          <tr>
+            <td><a [routerLink]="[item.userId]">{{ item.email }}</a><div class="meta">{{ item.professionalLicenseNumber || 'No medical license' }}</div></td>
+            <td>{{ item.role === 'CLINIC_ADMIN' ? 'Clinic admin' : 'Doctor' }}</td>
+            <td><oc-status-badge [status]="statusTone(item.status)" /></td>
+            <td>{{ item.specialty || '—' }}</td><td>{{ item.governorate || '—' }}</td>
+            <td>{{ item.lastActiveAt ? (item.lastActiveAt | date: 'medium') : 'Never' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <div ocTableFooter class="pagination"><span>{{ page()?.totalElements ?? 0 }} accounts</span><span>Page {{ (page()?.page ?? 0) + 1 }} of {{ page()?.totalPages || 1 }}</span></div>
+  </oc-data-table-shell>
+</div>

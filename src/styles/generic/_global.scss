@@ -1,0 +1,27 @@
+html {
+  background: var(--oc-color-surface-app);
+}
+
+body {
+  min-width: 320px;
+  background: var(--oc-color-surface-app);
+  color: var(--oc-color-text-primary);
+  font-family: var(--oc-font-family);
+  font-size: var(--oc-font-size-body);
+  line-height: var(--oc-line-height-body);
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--oc-color-text-link);
+}
+
+:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--oc-color-surface-selected);
+  color: var(--oc-color-text-primary);
+}

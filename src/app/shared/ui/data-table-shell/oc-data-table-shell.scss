@@ -1,0 +1,43 @@
+.oc-table-shell {
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.oc-table-shell__header,
+.oc-table-shell__footer {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-4);
+  padding: var(--oc-space-3) var(--oc-space-5);
+}
+
+.oc-table-shell__header {
+  border-block-end: 1px solid var(--oc-color-border-subtle);
+}
+
+.oc-table-shell__footer {
+  border-block-start: 1px solid var(--oc-color-border-subtle);
+}
+
+.oc-table-shell__tools {
+  display: flex;
+  gap: var(--oc-space-2);
+}
+
+.oc-table-shell__overflow {
+  overflow-x: auto;
+}
+
+.oc-table-shell__overflow:focus-visible {
+  outline-offset: -3px;
+}
+
+.oc-table-shell__state {
+  min-height: 280px;
+  padding: var(--oc-space-8);
+}

@@ -1,4 +1,3 @@
-
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
 
 ## TypeScript Best Practices
@@ -53,3 +52,11 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Design services around a single responsibility
 - Use the `providedIn: 'root'` option for singleton services
 - Use the `inject()` function instead of constructor injection
+
+## OmniCare UI foundation
+
+- Read `docs/OMNICARE_WEB_DESIGN_SYSTEM.md` before generating or changing product UI.
+- Read the current NG-ZORRO `llms-full.txt` and component API before using an undocumented library API.
+- Consume the existing `--oc-` semantic tokens and shared OmniCare components.
+- Do not create one-off visual styles when an existing token or product pattern applies.
+- Do not install another UI or icon library without an approved architectural decision.

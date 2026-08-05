@@ -1,0 +1,11 @@
+@mixin oc-focus-ring {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+}
+
+@mixin oc-card {
+  background: var(--oc-color-surface-card);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+  box-shadow: var(--oc-shadow-card);
+}

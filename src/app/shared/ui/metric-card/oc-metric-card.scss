@@ -1,0 +1,52 @@
+.oc-metric-card {
+  display: grid;
+  min-height: 168px;
+  padding: var(--oc-space-5);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.oc-metric-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.oc-metric-card__icon {
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-selected);
+  color: var(--oc-color-brand-primary);
+  font-size: 20px;
+}
+
+.oc-metric-card__trend {
+  color: var(--oc-color-success);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.oc-metric-card__label {
+  margin: var(--oc-space-4) 0 0;
+  color: var(--oc-color-text-muted);
+  font-size: 13px;
+}
+
+.oc-metric-card__value {
+  margin: var(--oc-space-1) 0 0;
+  font-size: 28px;
+  font-weight: var(--oc-font-weight-strong);
+  line-height: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+.oc-metric-card__support {
+  margin: var(--oc-space-1) 0 0;
+  color: var(--oc-color-text-muted);
+  font-size: 12px;
+}

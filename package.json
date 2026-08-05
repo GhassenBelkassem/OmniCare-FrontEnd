@@ -5,9 +5,11 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:ci": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:omniCareDash": "node dist/omniCareDash/server/server.mjs"
+    "test:ci": "ng test --watch=false",
+    "check": "npm run test:ci && npm run build:ci"
   },
   "private": true,
   "packageManager": "npm@11.11.0",
@@ -21,6 +23,8 @@
     "@angular/router": "^21.2.0",
     "@angular/ssr": "^21.2.20",
     "express": "^5.1.0",
+    "less": "^4.8.1",
+    "ng-zorro-antd": "^21.3.3",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

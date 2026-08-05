@@ -1,0 +1,22 @@
+:host {
+  display: inline-flex;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--oc-space-2);
+  min-height: 40px;
+  border-radius: var(--oc-radius-md);
+  font-weight: var(--oc-font-weight-semibold);
+  box-shadow: none;
+}
+
+button.ant-btn-sm {
+  min-height: 32px;
+}
+
+button.oc-button--quiet {
+  color: var(--oc-color-text-secondary);
+}

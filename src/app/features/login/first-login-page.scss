@@ -1,0 +1,11 @@
+:host { display: block; min-height: 100dvh; }
+.first-login { min-height: 100dvh; display: grid; place-items: center; padding: var(--oc-space-6); background: var(--oc-color-surface-app); }
+.first-login__card { width: min(100%, 34rem); padding: var(--oc-space-10); border: 1px solid var(--oc-color-border-default); border-radius: var(--oc-radius-lg); background: var(--oc-color-surface-card); box-shadow: var(--oc-shadow-card); }
+.eyebrow { color: var(--oc-color-brand-primary); font-weight: var(--oc-font-weight-strong); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; }
+form { display: grid; gap: var(--oc-space-3); margin-top: var(--oc-space-6); }
+label { font-weight: var(--oc-font-weight-semibold); }
+input { min-height: 44px; padding: 0 var(--oc-space-3); border: 1px solid var(--oc-color-border-strong); border-radius: var(--oc-radius-md); }
+small { color: var(--oc-color-text-muted); }
+.message { padding: var(--oc-space-3); border-radius: var(--oc-radius-md); margin: var(--oc-space-4) 0; }
+.message--error { color: var(--oc-color-critical); background: var(--oc-color-critical-surface); border: 1px solid var(--oc-color-critical); }
+a { color: var(--oc-color-text-link); font-weight: var(--oc-font-weight-semibold); }

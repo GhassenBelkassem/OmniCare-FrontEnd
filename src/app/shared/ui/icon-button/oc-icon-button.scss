@@ -1,0 +1,18 @@
+:host {
+  display: inline-flex;
+}
+
+button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: var(--oc-space-2);
+  border-radius: var(--oc-radius-md);
+  color: var(--oc-color-text-secondary);
+  box-shadow: none;
+}
+
+nz-icon {
+  font-size: 18px;
+}

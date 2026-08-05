@@ -1,0 +1,37 @@
+// Controlled duplication of provisional brand values from _brand-source.scss.
+// NG-ZORRO's compile-time Less theme cannot consume runtime CSS custom properties.
+@root-entry-name: default;
+
+// Keep the production baseline lean: include NG-ZORRO's core plus only the
+// components currently imported by OmniCare. Add a component stylesheet here
+// when its Angular module is introduced.
+@import '../../../node_modules/ng-zorro-antd/style/entry.less';
+@import '../../../node_modules/ng-zorro-antd/alert/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/button/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/checkbox/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/date-picker/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/drawer/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/empty/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/icon/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/input/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/pagination/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/radio/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/select/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/skeleton/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/spin/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/table/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/tooltip/style/index.less';
+
+@primary-color: #176b5b;
+@link-color: #176b5b;
+@success-color: #247a52;
+@warning-color: #9a650e;
+@error-color: #b83a3a;
+@border-radius-base: 10px;
+@font-size-base: 14px;
+@text-color: #17231f;
+@text-color-secondary: #64766f;
+@border-color-base: #d4dfda;
+@background-color-light: #f2f6f4;
+@component-background: #ffffff;
+@body-background: #e7eeeb;

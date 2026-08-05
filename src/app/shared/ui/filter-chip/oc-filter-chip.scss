@@ -1,0 +1,35 @@
+.oc-filter-chip {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-1) var(--oc-space-1) var(--oc-space-1) var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+}
+
+strong {
+  color: var(--oc-color-text-primary);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: var(--oc-radius-pill);
+  background: transparent;
+  color: var(--oc-color-text-muted);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--oc-color-surface-hover);
+  color: var(--oc-color-text-primary);
+}

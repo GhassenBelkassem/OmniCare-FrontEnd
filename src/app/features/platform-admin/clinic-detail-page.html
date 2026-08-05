@@ -1,0 +1,24 @@
+<div class="page-stack">
+  <a class="back-link" routerLink="/admin/clinics">← Back to clinics</a>
+  @if (clinic(); as item) {
+    <oc-page-header [title]="item.name" [description]="item.governorate + ' · INPDP ' + item.inpdpNumber">
+      <oc-button ocPrimaryAction variant="primary" leadingIcon="plus" (click)="inviteOpen.set(!inviteOpen())">Invite clinic admin</oc-button>
+    </oc-page-header>
+    @if (successMessage()) { <div class="success-message" role="status">{{ successMessage() }}</div> }
+    @if (errorMessage()) { <div class="request-error" role="alert">{{ errorMessage() }}</div> }
+    <section class="panel"><h2>Clinic details</h2><dl class="definition-grid">
+      <div><dt>Status</dt><dd><oc-status-badge [status]="item.status === 'ACTIVE' ? 'confirmed' : 'blocked'" /></dd></div><div><dt>Contact</dt><dd>{{ item.contactEmail }}</dd></div><div><dt>Phone</dt><dd>{{ item.contactPhone }}</dd></div><div><dt>Address</dt><dd>{{ item.address }}</dd></div><div><dt>Registered</dt><dd>{{ item.createdAt | date: 'mediumDate' }}</dd></div>
+    </dl></section>
+    @if (inviteOpen()) {
+      <section class="panel" aria-labelledby="invite-admin-title"><h2 id="invite-admin-title">Invite a clinic administrator</h2><p>The membership remains invited until the recipient verifies their email and creates a password.</p>
+        <form class="form-grid" [formGroup]="form" (ngSubmit)="invite()"><div class="field"><label for="admin-email">Email</label><input id="admin-email" type="email" formControlName="email" /></div><div class="field"><label for="admin-phone">Phone (optional)</label><input id="admin-phone" type="tel" formControlName="phone" placeholder="+216XXXXXXXX" /></div><div class="actions span-2"><oc-button variant="primary" type="submit" [loading]="submitting()">Create and invite</oc-button><oc-button variant="quiet" (click)="inviteOpen.set(false)">Cancel</oc-button></div></form>
+      </section>
+    }
+    <section class="panel"><h2>Administrators</h2>
+      @if (memberships().length === 0) { <p>No administrators have been invited.</p> }
+      <table><thead><tr><th>Email</th><th>Status</th><th>Invited</th><th>Activated</th></tr></thead><tbody>
+        @for (membership of memberships(); track membership.id) { <tr><td><a [routerLink]="['/admin/professionals', membership.userId]">{{ membership.email }}</a></td><td><oc-status-badge [status]="statusTone(membership.status === 'ENDED' ? 'ENDED' : membership.status)" /></td><td>{{ membership.invitedAt | date: 'medium' }}</td><td>{{ membership.activatedAt ? (membership.activatedAt | date: 'medium') : 'Pending' }}</td></tr> }
+      </tbody></table>
+    </section>
+  } @else if (loading()) { <p>Loading clinic…</p> } @else { <div class="request-error" role="alert">{{ errorMessage() }}</div> }
+</div>

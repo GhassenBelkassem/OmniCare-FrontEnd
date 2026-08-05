@@ -1,0 +1,49 @@
+<div class="page-stack">
+  <a class="back-link" routerLink="/admin/professionals">← Back to professionals</a>
+  @if (professional(); as item) {
+    <oc-page-header [title]="item.email" [description]="item.role === 'CLINIC_ADMIN' ? 'Clinic administrator account' : 'Independent doctor account'">
+      @if (item.status === 'INVITED') { <oc-button ocPrimaryAction variant="primary" [loading]="busy()" (click)="resend()">Resend invitation</oc-button> }
+    </oc-page-header>
+    @if (successMessage()) { <div class="success-message" role="status">{{ successMessage() }}</div> }
+    @if (errorMessage()) { <div class="request-error" role="alert">{{ errorMessage() }}</div> }
+
+    <section class="panel"><h2>Account overview</h2>
+      <dl class="definition-grid">
+        <div><dt>Status</dt><dd><oc-status-badge [status]="statusTone(item.status)" /></dd></div>
+        <div><dt>Role</dt><dd>{{ item.role }}</dd></div><div><dt>Phone</dt><dd>{{ item.phone || 'Not supplied' }}</dd></div>
+        <div><dt>License</dt><dd>{{ item.professionalLicenseNumber || 'Not applicable' }}</dd></div>
+        <div><dt>Specialty</dt><dd>{{ item.specialty || 'Not applicable' }}</dd></div><div><dt>Governorate</dt><dd>{{ item.governorate || '—' }}</dd></div>
+        <div><dt>First login</dt><dd>{{ item.firstLoginAt ? (item.firstLoginAt | date: 'medium') : 'Never' }}</dd></div>
+        <div><dt>Last activity</dt><dd>{{ item.lastActiveAt ? (item.lastActiveAt | date: 'medium') : 'Never' }}</dd></div>
+        <div><dt>Invitation</dt><dd>{{ item.invitationStatus || '—' }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="access-actions"><h2 id="access-actions">Account access</h2>
+      <div class="actions">
+        @if (item.status === 'SUSPENDED' || item.status === 'DEACTIVATED') { <oc-button variant="primary" (click)="pendingStatus.set('ACTIVE')">Activate</oc-button> }
+        @if (item.status === 'ACTIVE') { <oc-button variant="secondary" (click)="pendingStatus.set('SUSPENDED')">Suspend</oc-button> }
+        @if (item.status !== 'DEACTIVATED') { <oc-button variant="destructive" (click)="pendingStatus.set('DEACTIVATED')">Deactivate</oc-button> }
+      </div>
+      @if (pendingStatus(); as target) {
+        <div class="request-error" role="alertdialog" aria-labelledby="status-confirm-title">
+          <strong id="status-confirm-title">Confirm {{ target.toLowerCase() }}</strong>
+          <p>Suspension or deactivation revokes every active access and refresh session immediately.</p>
+          <div class="actions"><oc-button variant="destructive" [loading]="busy()" (click)="changeStatus()">Confirm</oc-button><oc-button variant="quiet" (click)="pendingStatus.set(null)">Cancel</oc-button></div>
+        </div>
+      }
+    </section>
+
+    <section class="panel"><h2>Sessions</h2>
+      @if (sessions().length === 0) { <p>No sessions have been created for this account.</p> }
+      @for (session of sessions(); track session.sessionId) {
+        <div class="actions"><div><strong>{{ session.deviceLabel }}</strong><div class="meta">{{ session.platform }} · expires {{ session.expiresAt | date: 'medium' }} · {{ session.revokedAt ? 'Revoked' : 'Active' }}</div></div>
+          @if (!session.revokedAt) { <oc-button variant="destructive" size="small" (click)="pendingSessionRevocation.set(session.sessionId)">Revoke</oc-button> }
+        </div>
+        @if (pendingSessionRevocation() === session.sessionId) {
+          <div class="request-error" role="alertdialog"><p>Revoke this session now?</p><div class="actions"><oc-button variant="destructive" [loading]="busy()" (click)="revokeSession()">Confirm revoke</oc-button><oc-button variant="quiet" (click)="pendingSessionRevocation.set(null)">Cancel</oc-button></div></div>
+        }
+      }
+    </section>
+  } @else if (loading()) { <p>Loading professional…</p> } @else { <div class="request-error" role="alert">{{ errorMessage() }}</div> }
+</div>

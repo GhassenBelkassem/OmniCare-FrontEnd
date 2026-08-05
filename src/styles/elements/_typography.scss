@@ -1,0 +1,45 @@
+h1,
+h2,
+h3,
+p {
+  margin-block-start: 0;
+}
+
+.oc-type-page-title {
+  font-size: 24px;
+  font-weight: var(--oc-font-weight-strong);
+  line-height: 32px;
+}
+
+.oc-type-section-heading {
+  font-size: 20px;
+  font-weight: var(--oc-font-weight-strong);
+  line-height: 28px;
+}
+
+.oc-type-card-heading {
+  font-size: 16px;
+  font-weight: var(--oc-font-weight-semibold);
+  line-height: 24px;
+}
+
+.oc-type-compact {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.oc-type-caption {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.oc-type-metric,
+.oc-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.oc-type-metric {
+  font-size: 32px;
+  font-weight: var(--oc-font-weight-strong);
+  line-height: 40px;
+}

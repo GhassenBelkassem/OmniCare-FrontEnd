@@ -1,0 +1,4 @@
+:host { display: block; min-height: 100dvh; background: var(--oc-color-surface-app); }
+.admin-shell { min-height: 100dvh; display: grid; grid-template-columns: auto minmax(0, 1fr); }
+.admin-shell__content { min-width: 0; padding: var(--oc-space-8); background: var(--oc-color-surface-page); }
+@media (max-width: 767px) { .admin-shell { display: block; } .admin-shell__content { padding: var(--oc-space-4); } }

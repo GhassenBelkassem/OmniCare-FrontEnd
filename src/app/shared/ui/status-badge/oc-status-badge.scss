@@ -1,0 +1,38 @@
+.oc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oc-space-2);
+  width: fit-content;
+  padding: var(--oc-space-1) var(--oc-space-3);
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-neutral-surface);
+  color: var(--oc-color-neutral);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.oc-status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--oc-radius-pill);
+  background: currentColor;
+}
+
+.oc-status--success {
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-success);
+}
+.oc-status--warning {
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-warning);
+}
+.oc-status--critical {
+  background: var(--oc-color-critical-surface);
+  color: var(--oc-color-critical);
+}
+.oc-status--information {
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-information);
+}

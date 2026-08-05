@@ -1,0 +1,18 @@
+.oc-field {
+  display: grid;
+  gap: var(--oc-space-2);
+}
+
+.oc-field > label,
+.oc-field__label {
+  color: var(--oc-color-text-secondary);
+  font-size: 13px;
+  font-weight: var(--oc-font-weight-medium);
+  line-height: 18px;
+}
+
+.oc-field__hint {
+  color: var(--oc-color-text-muted);
+  font-size: 12px;
+  line-height: 16px;
+}

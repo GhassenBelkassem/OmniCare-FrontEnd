@@ -1,0 +1,38 @@
+.oc-segmented {
+  display: inline-flex;
+  gap: var(--oc-space-1);
+  padding: var(--oc-space-1);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-surface-subtle);
+}
+
+button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-1) var(--oc-space-3);
+  border: 0;
+  border-radius: var(--oc-radius-pill);
+  background: transparent;
+  color: var(--oc-color-text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: var(--oc-font-weight-medium);
+}
+
+button:hover:not(:disabled) {
+  background: var(--oc-color-surface-hover);
+}
+
+button.oc-segmented__button--selected {
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-brand-primary);
+  box-shadow: var(--oc-shadow-card);
+}
+
+button:disabled {
+  color: var(--oc-color-text-disabled);
+  cursor: not-allowed;
+}

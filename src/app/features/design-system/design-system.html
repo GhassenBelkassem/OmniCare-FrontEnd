@@ -1,0 +1,465 @@
+<a class="oc-skip-link" href="#main-content">Skip to main content</a>
+
+<div class="showcase-shell" [class.showcase-shell--collapsed]="sidebarCollapsed()">
+  <oc-sidebar
+    [items]="navigation"
+    activeId="appointments"
+    [profile]="sidebarProfile"
+    [(collapsed)]="sidebarCollapsed"
+    [(expandedGroups)]="expandedSidebarGroups"
+    [(mobileOpen)]="mobileNavOpen"
+  />
+
+  <div class="showcase-shell__main">
+    <header class="showcase-topbar">
+      <button
+        class="showcase-topbar__menu"
+        type="button"
+        aria-label="Open navigation"
+        (click)="mobileNavOpen.set(true)"
+      >
+        <nz-icon nzType="menu-unfold" aria-hidden="true" />
+      </button>
+      <div class="showcase-topbar__context">
+        <span class="showcase-topbar__clinic">Northbridge Clinic</span>
+        <span class="showcase-topbar__environment">Design system</span>
+      </div>
+      <div class="showcase-topbar__actions">
+        <oc-icon-button label="View notifications" icon="bell" appearance="quiet" />
+        <oc-icon-button label="Open help and settings" icon="setting" appearance="quiet" />
+      </div>
+    </header>
+
+    <main id="main-content" class="showcase-workspace">
+      <oc-page-header
+        title="Clinic operations foundation"
+        description="A development showcase of OmniCare’s reusable visual language and interaction patterns. All people and records shown are fictional."
+      >
+        <span ocBreadcrumbs>Design system&nbsp; / &nbsp;Foundation v1</span>
+        <div ocSecondaryActions>
+          <oc-button variant="secondary" leadingIcon="file-text">View guidance</oc-button>
+        </div>
+        <div ocPrimaryAction>
+          <oc-button variant="primary" leadingIcon="plus">Create example</oc-button>
+        </div>
+      </oc-page-header>
+
+      <section class="showcase-section" aria-labelledby="operational-overview-title">
+        <div class="showcase-section__heading">
+          <div>
+            <p class="showcase-eyebrow">Product pattern</p>
+            <h2 id="operational-overview-title">Operational overview</h2>
+          </div>
+          <p>Metric cards support rapid scanning without becoming the default page container.</p>
+        </div>
+        <div class="metric-grid">
+          <oc-metric-card
+            icon="calendar"
+            label="Appointments today"
+            value="48"
+            supportingText="Across 6 departments"
+            trend="+6% this week"
+          />
+          <oc-metric-card
+            icon="team"
+            label="Clinicians on shift"
+            value="23"
+            supportingText="4 teams active"
+          />
+          <oc-metric-card
+            icon="medicine-box"
+            label="Rooms available"
+            value="12 / 18"
+            supportingText="Next turnover at 11:45"
+          />
+          <oc-metric-card
+            icon="exclamation-circle"
+            label="Requires attention"
+            value="4"
+            supportingText="2 high-priority requests"
+          />
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="filters-title">
+        <div class="showcase-section__heading">
+          <div>
+            <p class="showcase-eyebrow">Product pattern</p>
+            <h2 id="filters-title">Search and filtering</h2>
+          </div>
+          <p>Search remains scoped; applied filters stay visible and removable.</p>
+        </div>
+        <oc-filter-toolbar
+          searchLabel="Search fictional appointments"
+          searchPlaceholder="Search patient, clinician or reference"
+          [activeFilterCount]="activeFilters().length"
+          [(query)]="query"
+          [(viewMode)]="viewMode"
+          (advancedFilter)="filterOpen.set(true)"
+          (clearAll)="clearFilters()"
+        >
+          @for (filter of activeFilters(); track filter.id) {
+            <oc-filter-chip
+              [label]="filter.label"
+              [value]="filter.value"
+              (removed)="removeFilter(filter.id)"
+            />
+          }
+        </oc-filter-toolbar>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="table-title">
+        <div class="showcase-section__heading">
+          <div>
+            <p class="showcase-eyebrow">Product pattern</p>
+            <h2 id="table-title">Operational table</h2>
+          </div>
+          <p>Tables prioritize comparison, predictable actions and horizontal resilience.</p>
+        </div>
+        <oc-data-table-shell
+          [density]="density() === 'compact' ? 'compact' : 'comfortable'"
+          [state]="tableState()"
+        >
+          <div ocTableTitle>
+            <h3>Today’s appointment flow</h3>
+            <p>Wednesday, 5 August · Fictional data</p>
+          </div>
+          <div ocTableTools>
+            <oc-segmented-control
+              label="Table density"
+              [options]="densityOptions"
+              [(selected)]="density"
+            />
+            <oc-icon-button label="Customize appointment columns" icon="table" appearance="quiet" />
+          </div>
+
+          <nz-table
+            #appointmentTable
+            [nzData]="appointments"
+            [nzShowPagination]="false"
+            [nzScroll]="{ x: '920px' }"
+            nzSize="middle"
+          >
+            <thead>
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Patient & reference</th>
+                <th scope="col">Service</th>
+                <th scope="col">Clinician</th>
+                <th scope="col">Location</th>
+                <th scope="col">Status</th>
+                <th scope="col" nzRight><span class="oc-sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of appointmentTable.data; track row.id; let selected = $first) {
+                <tr
+                  [class.showcase-table__row--selected]="selected"
+                  [attr.aria-selected]="selected"
+                >
+                  <td class="oc-tabular">
+                    <strong>{{ row.time }}</strong>
+                  </td>
+                  <td>
+                    <strong>{{ row.patient }}</strong
+                    ><small>{{ row.id }}</small>
+                  </td>
+                  <td>{{ row.service }}</td>
+                  <td>{{ row.clinician }}</td>
+                  <td>{{ row.location }}</td>
+                  <td><oc-status-badge [status]="row.status" /></td>
+                  <td nzRight>
+                    <oc-icon-button
+                      [label]="'Open actions for ' + row.patient"
+                      icon="more"
+                      appearance="quiet"
+                    />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </nz-table>
+
+          <div ocTableFooter class="showcase-table__footer">
+            <span>Showing 1–5 of 48 appointments</span>
+            <nz-pagination
+              [nzPageIndex]="1"
+              [nzTotal]="48"
+              [nzPageSize]="5"
+              [nzShowSizeChanger]="false"
+            />
+          </div>
+        </oc-data-table-shell>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="foundations-title">
+        <div class="showcase-section__heading">
+          <div>
+            <p class="showcase-eyebrow">Foundations</p>
+            <h2 id="foundations-title">Tokens and typography</h2>
+          </div>
+          <p>Semantic decisions are centralized so future features remain coherent.</p>
+        </div>
+        <div class="showcase-grid showcase-grid--two">
+          <article class="showcase-card">
+            <h3>Semantic color</h3>
+            <div class="swatch-grid">
+              <div>
+                <span class="swatch swatch--brand"></span><strong>Brand primary</strong
+                ><small>Actions and identity</small>
+              </div>
+              <div>
+                <span class="swatch swatch--surface"></span><strong>Page surface</strong
+                ><small>Primary workspace</small>
+              </div>
+              <div>
+                <span class="swatch swatch--success"></span><strong>Success</strong
+                ><small>Positive outcomes</small>
+              </div>
+              <div>
+                <span class="swatch swatch--warning"></span><strong>Warning</strong
+                ><small>Needs review</small>
+              </div>
+              <div>
+                <span class="swatch swatch--critical"></span><strong>Critical</strong
+                ><small>Urgent attention</small>
+              </div>
+              <div>
+                <span class="swatch swatch--information"></span><strong>Information</strong
+                ><small>Guidance and progress</small>
+              </div>
+            </div>
+          </article>
+          <article class="showcase-card">
+            <h3>Typography</h3>
+            <div class="type-samples">
+              <p class="oc-type-page-title">Page title · 24 / 32</p>
+              <p class="oc-type-section-heading">Section heading · 20 / 28</p>
+              <p class="oc-type-card-heading">Card heading · 16 / 24</p>
+              <p>Body copy supports dense operational information.</p>
+              <p class="oc-type-compact">Compact body · 13 / 18</p>
+              <p class="oc-type-caption">Caption · 12 / 16</p>
+              <p class="oc-type-metric">1,248</p>
+            </div>
+          </article>
+          <article class="showcase-card">
+            <h3>Spacing scale</h3>
+            <div class="spacing-samples" aria-label="Spacing token examples">
+              <span class="space space--1"><i></i><small>4</small></span>
+              <span class="space space--2"><i></i><small>8</small></span>
+              <span class="space space--3"><i></i><small>12</small></span>
+              <span class="space space--4"><i></i><small>16</small></span>
+              <span class="space space--6"><i></i><small>24</small></span>
+              <span class="space space--8"><i></i><small>32</small></span>
+            </div>
+          </article>
+          <article class="showcase-card">
+            <h3>Radii and elevation</h3>
+            <div class="radius-samples">
+              <span class="radius radius--sm">Small</span
+              ><span class="radius radius--md">Medium</span>
+              <span class="radius radius--lg">Large</span
+              ><span class="radius radius--panel">Panel</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="controls-title">
+        <div class="showcase-section__heading">
+          <div>
+            <p class="showcase-eyebrow">Components</p>
+            <h2 id="controls-title">Controls and states</h2>
+          </div>
+          <p>OmniCare patterns preserve the mature behavior of NG-ZORRO controls.</p>
+        </div>
+        <div class="showcase-grid showcase-grid--two">
+          <article class="showcase-card">
+            <h3>Buttons</h3>
+            <div class="control-row">
+              <oc-button variant="primary" leadingIcon="plus">Primary</oc-button>
+              <oc-button variant="secondary">Secondary</oc-button>
+              <oc-button variant="quiet">Quiet</oc-button>
+              <oc-button variant="destructive" leadingIcon="delete">Destructive</oc-button>
+              <oc-button [disabled]="true">Disabled</oc-button>
+              <oc-button [loading]="loadingButton()" (click)="demonstrateLoading()">{{
+                loadingButton() ? 'Saving' : 'Show loading'
+              }}</oc-button>
+              <oc-icon-button label="Example settings action" icon="setting" />
+            </div>
+          </article>
+          <article class="showcase-card">
+            <h3>Status language</h3>
+            <div class="control-row">
+              <oc-status-badge status="draft" /><oc-status-badge status="pending" />
+              <oc-status-badge status="in-progress" /><oc-status-badge status="confirmed" />
+              <oc-status-badge status="completed" /><oc-status-badge status="cancelled" />
+              <oc-status-badge status="blocked" /><oc-status-badge status="requires-attention" />
+              <oc-status-badge status="critical" /><oc-status-badge status="expired" />
+            </div>
+          </article>
+          <article class="showcase-card">
+            <h3>Inputs and selection</h3>
+            <div class="form-grid">
+              <div class="oc-field">
+                <label for="showcase-name">Search term</label
+                ><input id="showcase-name" nz-input placeholder="Patient or reference" />
+              </div>
+              <div class="oc-field">
+                <label id="department-example-label">Department</label
+                ><nz-select
+                  aria-labelledby="department-example-label"
+                  nzPlaceHolder="Select department"
+                  ><nz-option nzValue="cardiology" nzLabel="Cardiology" /><nz-option
+                    nzValue="radiology"
+                    nzLabel="Radiology"
+                /></nz-select>
+              </div>
+              <div class="oc-field">
+                <label id="team-example-label">Care teams</label
+                ><nz-select
+                  aria-labelledby="team-example-label"
+                  nzMode="multiple"
+                  nzPlaceHolder="Select teams"
+                  ><nz-option nzValue="north" nzLabel="North wing" /><nz-option
+                    nzValue="day"
+                    nzLabel="Day clinic"
+                /></nz-select>
+              </div>
+              <div class="oc-field">
+                <label for="showcase-date-range">Date range</label
+                ><nz-range-picker nzId="showcase-date-range" />
+              </div>
+              <label nz-checkbox [formControl]="urgentControl">Only urgent items</label>
+              <nz-radio-group aria-label="Example visibility"
+                ><label nz-radio nzValue="team">Team</label
+                ><label nz-radio nzValue="mine">Mine</label></nz-radio-group
+              >
+            </div>
+          </article>
+          <article class="showcase-card">
+            <h3>Segmented control and skeleton</h3>
+            <div class="oc-stack">
+              <oc-segmented-control
+                label="Example view density"
+                [options]="densityOptions"
+                [(selected)]="density"
+              />
+              <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 3 }" />
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="states-title">
+        <div class="showcase-section__heading">
+          <div>
+            <p class="showcase-eyebrow">Resilience</p>
+            <h2 id="states-title">Empty and table states</h2>
+          </div>
+          <div class="control-row">
+            <oc-button size="small" (click)="tableState.set('default')">Default</oc-button>
+            <oc-button size="small" (click)="tableState.set('loading')">Loading</oc-button>
+            <oc-button size="small" (click)="tableState.set('empty')">Empty</oc-button>
+            <oc-button size="small" (click)="tableState.set('error')">Error</oc-button>
+          </div>
+        </div>
+        <article class="showcase-card">
+          <oc-empty-state
+            icon="calendar"
+            title="No appointments in this view"
+            description="Adjust the date range or clear filters to review another period."
+          >
+            <oc-button variant="primary">Clear filters</oc-button
+            ><oc-button variant="quiet">View schedule</oc-button>
+          </oc-empty-state>
+        </article>
+      </section>
+    </main>
+  </div>
+</div>
+
+<oc-advanced-filter-drawer
+  [(open)]="filterOpen"
+  [activeFilterCount]="activeFilters().length"
+  (reset)="resetFilters()"
+  (apply)="applyFilters()"
+  (closed)="restoreFilterFocus()"
+>
+  <form class="advanced-filter-form" aria-label="Advanced appointment filters">
+    <fieldset>
+      <legend>Schedule</legend>
+      <div class="oc-field">
+        <label for="advanced-date-range">Date range</label
+        ><nz-range-picker nzId="advanced-date-range" [formControl]="dateRangeControl" />
+      </div>
+      <div class="oc-field">
+        <label id="advanced-department-label">Department</label
+        ><nz-select
+          aria-labelledby="advanced-department-label"
+          nzMode="multiple"
+          nzPlaceHolder="All departments"
+          [formControl]="departmentControl"
+          ><nz-option nzValue="cardiology" nzLabel="Cardiology" /><nz-option
+            nzValue="radiology"
+            nzLabel="Radiology" /><nz-option nzValue="neurology" nzLabel="Neurology"
+        /></nz-select>
+      </div>
+      <div class="oc-field">
+        <label id="advanced-type-label">Appointment type</label
+        ><nz-select aria-labelledby="advanced-type-label" [formControl]="typeControl"
+          ><nz-option nzValue="all" nzLabel="All types" /><nz-option
+            nzValue="consult"
+            nzLabel="Consultation" /><nz-option nzValue="follow-up" nzLabel="Follow-up"
+        /></nz-select>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Workflow</legend>
+      <div class="oc-field">
+        <label id="advanced-status-label">Status</label
+        ><nz-select
+          aria-labelledby="advanced-status-label"
+          nzMode="multiple"
+          nzPlaceHolder="All statuses"
+          [formControl]="statusControl"
+          ><nz-option nzValue="confirmed" nzLabel="Confirmed" /><nz-option
+            nzValue="pending"
+            nzLabel="Pending" /><nz-option nzValue="completed" nzLabel="Completed"
+        /></nz-select>
+      </div>
+      <div class="oc-field">
+        <span class="oc-field__label">Priority</span
+        ><nz-radio-group aria-label="Priority" [formControl]="priorityControl"
+          ><label nz-radio nzValue="all">All</label><label nz-radio nzValue="routine">Routine</label
+          ><label nz-radio nzValue="urgent">Urgent</label></nz-radio-group
+        >
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Assignment</legend>
+      <div class="oc-field">
+        <label id="advanced-doctor-label">Assigned doctor</label
+        ><nz-select
+          aria-labelledby="advanced-doctor-label"
+          nzPlaceHolder="Any doctor"
+          [formControl]="doctorControl"
+          ><nz-option nzValue="hart" nzLabel="Dr. Emilia Hart" /><nz-option
+            nzValue="patel"
+            nzLabel="Dr. Samir Patel"
+        /></nz-select>
+      </div>
+      <div class="oc-field">
+        <label id="advanced-room-label">Room or resource</label
+        ><nz-select
+          aria-labelledby="advanced-room-label"
+          nzPlaceHolder="Any room"
+          [formControl]="roomControl"
+          ><nz-option nzValue="c12" nzLabel="Room C-12" /><nz-option
+            nzValue="b04"
+            nzLabel="Room B-04"
+        /></nz-select>
+      </div>
+    </fieldset>
+  </form>
+</oc-advanced-filter-drawer>

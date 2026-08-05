@@ -1,0 +1,27 @@
+.oc-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.oc-skip-link {
+  position: fixed;
+  inset-block-start: var(--oc-space-3);
+  inset-inline-start: var(--oc-space-3);
+  z-index: var(--oc-z-toast);
+  transform: translateY(-160%);
+  padding: var(--oc-space-2) var(--oc-space-4);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+}
+
+.oc-skip-link:focus {
+  transform: translateY(0);
+}

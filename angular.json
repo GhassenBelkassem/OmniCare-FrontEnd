@@ -2,7 +2,11 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "cli": {
-    "packageManager": "npm"
+    "packageManager": "npm",
+    "analytics": "883e7e43-e6eb-41e8-8cf3-a18491a902ab",
+    "cache": {
+      "enabled": false
+    }
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -29,16 +33,9 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.scss"
-            ],
-            "server": "src/main.server.ts",
-            "outputMode": "server",
+            "styles": ["src/styles/vendor/ng-zorro-theme.less", "src/styles.scss"],
             "security": {
               "allowedHosts": []
-            },
-            "ssr": {
-              "entry": "src/server.ts"
             }
           },
           "configurations": {
@@ -46,12 +43,12 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "750kB",
                   "maximumError": "1MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
+                  "maximumWarning": "7kB",
                   "maximumError": "8kB"
                 }
               ],

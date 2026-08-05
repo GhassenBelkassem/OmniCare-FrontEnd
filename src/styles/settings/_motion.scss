@@ -1,0 +1,17 @@
+:root {
+  --oc-motion-fast: 120ms;
+  --oc-motion-default: 180ms;
+  --oc-motion-slow: 240ms;
+  --oc-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+}
