@@ -1,6 +1,8 @@
 import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 
+import { landingRedirect } from './core/auth/auth.guards';
+
 const productionRoutes: Routes = [
   {
     path: '',
@@ -40,7 +42,7 @@ const productionRoutes: Routes = [
         loadChildren: () =>
           import('./features/clinic/clinic.routes').then((routes) => routes.CLINIC_ROUTES),
       },
-      { path: '', pathMatch: 'full', redirectTo: 'login' },
+      { path: '', pathMatch: 'full', redirectTo: landingRedirect },
       { path: '**', redirectTo: 'login' },
     ],
   },

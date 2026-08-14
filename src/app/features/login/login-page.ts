@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
@@ -21,6 +21,13 @@ export class LoginPage {
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
+
+  constructor() {
+    effect(() => {
+      const user = this.auth.user();
+      if (user !== null) void this.router.navigateByUrl(this.auth.routeFor(user.role));
+    });
+  }
 
   submit(): void {
     if (this.form.invalid || this.submitting()) {

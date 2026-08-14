@@ -1,4 +1,38 @@
-export type DashboardRole = 'ADMIN' | 'DOCTOR' | 'CLINIC_ADMIN';
+export type DashboardRole =
+  | 'PATIENT'
+  | 'DOCTOR'
+  | 'NURSE'
+  | 'KINE'
+  | 'CLINIC_MEDECIN'
+  | 'CLINIC_INFIRMIERE'
+  | 'CLINIC_KINE'
+  | 'CLINIC_ASSISTANT'
+  | 'CLINIC_ADMIN'
+  | 'ADMIN';
+
+export const DASHBOARD_ROLES: readonly DashboardRole[] = [
+  'PATIENT',
+  'DOCTOR',
+  'NURSE',
+  'KINE',
+  'CLINIC_MEDECIN',
+  'CLINIC_INFIRMIERE',
+  'CLINIC_KINE',
+  'CLINIC_ASSISTANT',
+  'CLINIC_ADMIN',
+  'ADMIN',
+];
+
+export function isDashboardRole(value: unknown): value is DashboardRole {
+  return typeof value === 'string' && DASHBOARD_ROLES.includes(value as DashboardRole);
+}
+
+export function dashboardRouteFor(role: DashboardRole): string {
+  if (role === 'ADMIN') return '/admin';
+  if (role === 'DOCTOR') return '/doctor';
+  if (role.startsWith('CLINIC_')) return '/clinic';
+  return '/forbidden';
+}
 
 export interface AuthenticatedUser {
   readonly id: string;

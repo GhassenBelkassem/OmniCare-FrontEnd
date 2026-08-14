@@ -1,10 +1,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, map, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
 
 import { RUNTIME_CONFIG } from '../config/runtime-config';
-import { ApiErrorBody, DashboardRole, EmailPasswordLoginResponse } from './auth.models';
+import { ApiErrorBody, DashboardRole, EmailPasswordLoginResponse, LoginSession, dashboardRouteFor } from './auth.models';
 import { AuthTokenStore } from './auth-token.store';
 
 @Injectable({ providedIn: 'root' })
@@ -16,6 +16,8 @@ export class AuthService {
 
   readonly user = this.tokens.user;
   readonly authenticated = this.tokens.authenticated;
+
+  private refreshInFlight: Observable<LoginSession> | null = null;
 
   login(email: string, password: string): Observable<DashboardRole> {
     return this.http
@@ -40,6 +42,29 @@ export class AuthService {
       );
   }
 
+  refreshSession(): Observable<LoginSession> {
+    const refreshToken = this.tokens.refreshToken();
+    if (refreshToken === null) {
+      return throwError(() => new Error('No refresh session is available.'));
+    }
+
+    if (this.refreshInFlight !== null) return this.refreshInFlight;
+
+    const refresh$ = this.http
+      .post<LoginSession>(`${this.config.apiBaseUrl}/auth/refresh`, { refreshToken })
+      .pipe(
+        tap((session) => this.tokens.setSession(session)),
+        catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
+        finalize(() => {
+          this.refreshInFlight = null;
+        }),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+
+    this.refreshInFlight = refresh$;
+    return refresh$;
+  }
+
   logout(): void {
     this.http.post<void>(`${this.config.apiBaseUrl}/auth/logout`, {}).subscribe({
       complete: () => this.finishLogout(),
@@ -48,9 +73,7 @@ export class AuthService {
   }
 
   routeFor(role: DashboardRole): string {
-    if (role === 'ADMIN') return '/admin';
-    if (role === 'DOCTOR') return '/doctor';
-    return '/clinic';
+    return dashboardRouteFor(role);
   }
 
   private finishLogout(): void {

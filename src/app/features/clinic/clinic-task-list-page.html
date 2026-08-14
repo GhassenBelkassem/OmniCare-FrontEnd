@@ -1,0 +1,154 @@
+<div class="tasks-page">
+  <oc-page-header [title]="pageTitle" [description]="description">
+    <span ocBreadcrumbs>Clinic workspace&nbsp; / &nbsp;Tasks&nbsp; / &nbsp;{{ pageTitle }}</span>
+    <div ocSecondaryActions>
+      <oc-button variant="quiet" [loading]="store.refreshing()" (click)="refresh()"
+        >Refresh</oc-button
+      >
+    </div>
+  </oc-page-header>
+
+  @if (store.commandError(); as commandError) {
+    <p class="tasks-message tasks-message--error" role="alert">{{ commandError }}</p>
+  }
+  @if (store.commandNotice(); as commandNotice) {
+    <p class="tasks-message tasks-message--success" role="status">{{ commandNotice }}</p>
+  }
+
+  <oc-data-table-shell [state]="tableState()" density="compact">
+    <div ocTableTitle class="tasks-table-title">
+      <h2>{{ isQueue ? 'Available position work' : 'Individually owned work' }}</h2>
+      @if (store.generatedAt(); as generatedAt) {
+        <p>Updated {{ generatedAt | date: 'dd MMM, HH:mm' }}</p>
+      }
+    </div>
+
+    <div ocTableEmpty>
+      @if (tableState() === 'empty') {
+        <oc-empty-state
+          icon="audit"
+          [title]="isQueue ? 'No tasks in your position queue' : 'You have no active tasks'"
+          [description]="
+            isQueue
+              ? 'New work routed to an eligible position will appear here.'
+              : 'Acknowledge position work to add it to My Tasks.'
+          "
+        />
+      }
+    </div>
+
+    @if (store.errorMessage(); as errorMessage) {
+      <div class="tasks-error" role="alert">
+        <div>
+          <h2>We couldn't load tasks</h2>
+          <p>{{ errorMessage }}</p>
+        </div>
+        <oc-button variant="secondary" (click)="refresh()">Try again</oc-button>
+      </div>
+    }
+
+    @if (tableState() === 'default' && store.error() === null) {
+      <table class="tasks-table">
+        <caption class="oc-sr-only">
+          {{
+            pageTitle
+          }}. Open a task with its View task link.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Task</th>
+            <th scope="col">Request</th>
+            <th scope="col">Status</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Deadline</th>
+            <th scope="col">Created</th>
+            <th scope="col"><span class="oc-sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (task of store.items(); track task.taskId) {
+            <tr>
+              <td>
+                <strong>{{ taskTypeLabel(task.taskType) }}</strong
+                ><small>{{ taskReference(task.taskId) }}</small>
+              </td>
+              <td>
+                <a [routerLink]="['/clinic/requests', task.caseId]">{{
+                  caseReference(task.caseId)
+                }}</a
+                ><small>{{ task.caseContext.situation }}</small>
+              </td>
+              <td>
+                <oc-status-badge
+                  [status]="statusTone(task.status)"
+                  [customLabel]="statusLabel(task.status)"
+                />
+              </td>
+              <td>
+                <span
+                  class="task-priority"
+                  [class.task-priority--urgent]="
+                    task.priority === 'HIGH' || task.priority === 'CRITICAL'
+                  "
+                  >{{ priorityLabel(task.priority) }}</span
+                >
+              </td>
+              <td class="oc-tabular">
+                @if (task.status === 'ASSIGNED' && task.acknowledgementDueAt) {
+                  <span>ACK due</span
+                  ><time [attr.datetime]="task.acknowledgementDueAt">{{
+                    task.acknowledgementDueAt | date: 'dd MMM, HH:mm'
+                  }}</time>
+                } @else if (task.dueAt) {
+                  <span>Task due</span
+                  ><time [attr.datetime]="task.dueAt">{{
+                    task.dueAt | date: 'dd MMM, HH:mm'
+                  }}</time>
+                } @else {
+                  <span>Not set</span>
+                }
+              </td>
+              <td class="oc-tabular">
+                <time [attr.datetime]="task.createdAt">{{
+                  task.createdAt | date: 'dd MMM, HH:mm'
+                }}</time>
+              </td>
+              <td class="tasks-table__actions">
+                @if (isQueue && task.status === 'ASSIGNED' && task.assignedMembershipId === null) {
+                  <oc-button
+                    size="small"
+                    [loading]="store.command() === 'ACKNOWLEDGE'"
+                    [disabled]="store.command() !== null"
+                    (click)="acknowledge(task)"
+                    >Acknowledge</oc-button
+                  >
+                }
+                <a [routerLink]="['/clinic/tasks', task.taskId]">View task</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div ocTableFooter class="tasks-footer" aria-live="polite">
+      <span>Page {{ page() + 1 }} · {{ store.items().length }} shown</span>
+      <div class="tasks-pager" aria-label="Task pages">
+        <oc-button
+          variant="quiet"
+          size="small"
+          [disabled]="page() === 0 || store.loading()"
+          (click)="previousPage()"
+          >Previous</oc-button
+        >
+        <oc-button
+          variant="quiet"
+          size="small"
+          [disabled]="!store.hasNext() || store.loading()"
+          (click)="nextPage()"
+          >Next</oc-button
+        >
+      </div>
+    </div>
+  </oc-data-table-shell>
+</div>

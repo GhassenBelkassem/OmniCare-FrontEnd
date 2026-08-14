@@ -9,6 +9,7 @@ import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
     <section
       class="oc-table-shell"
       [class.oc-table-shell--compact]="density() === 'compact'"
+      [class.oc-table-shell--flat]="flat()"
       aria-label="Operational data table"
     >
       <div class="oc-table-shell__header">
@@ -29,7 +30,7 @@ import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
           />
         </div>
       } @else if (state() === 'empty') {
-        <div class="oc-table-shell__state"><ng-content select="oc-empty-state" /></div>
+        <div class="oc-table-shell__state"><ng-content select="oc-empty-state,[ocTableEmpty]" /></div>
       } @else {
         <div class="oc-table-shell__overflow" tabindex="0" aria-label="Scrollable table region">
           <ng-content />
@@ -44,4 +45,5 @@ import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
 export class OcDataTableShell {
   readonly state = input<'default' | 'loading' | 'empty' | 'error'>('default');
   readonly density = input<'compact' | 'comfortable'>('comfortable');
+  readonly flat = input(false);
 }
