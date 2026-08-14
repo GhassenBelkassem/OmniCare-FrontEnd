@@ -217,7 +217,7 @@ export class ClinicContextStore {
         this.writeStoredClinicId(clinicId);
         this.loadingState.set(false);
         this.initializedState.set(true);
-        if (route) this.navigate('/clinic/overview');
+        if (route) this.navigate(this.defaultClinicRoute());
       },
       error: (error: unknown) => this.failRequest(error, sequence),
     });
@@ -257,7 +257,13 @@ export class ClinicContextStore {
       this.failAccess('CLINIC_NO_ACTIVE_MEMBERSHIP');
       return;
     }
-    this.navigate(this.bootstrapState() !== null ? '/clinic/overview' : '/clinic/select');
+    this.navigate(this.bootstrapState() !== null ? this.defaultClinicRoute() : '/clinic/select');
+  }
+
+  private defaultClinicRoute(): string {
+    return this.bootstrapState()?.capabilities.includes('CLINIC_CASE_INTAKE_READ') === true
+      ? '/clinic/requests'
+      : '/clinic/access-unavailable';
   }
 
   private failRequest(error: unknown, sequence: number): void {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
@@ -17,6 +17,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
       type="button"
       [attr.aria-label]="label()"
       [attr.aria-busy]="loading()"
+      (click)="clicked.emit($event)"
     >
       <nz-icon [nzType]="icon()" aria-hidden="true" />
     </button>
@@ -31,4 +32,5 @@ export class OcIconButton {
   readonly appearance = input<'default' | 'quiet'>('default');
   readonly disabled = input(false);
   readonly loading = input(false);
+  readonly clicked = output<MouseEvent>();
 }

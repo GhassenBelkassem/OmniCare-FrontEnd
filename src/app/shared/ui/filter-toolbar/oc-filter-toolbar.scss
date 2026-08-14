@@ -8,6 +8,17 @@
   background: var(--oc-color-surface-card);
 }
 
+.oc-filter-toolbar--flat {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.oc-filter-toolbar--flat .oc-filter-toolbar__chips {
+  padding-block-start: var(--oc-space-2);
+}
+
 .oc-filter-toolbar__primary,
 .oc-filter-toolbar__views,
 .oc-filter-toolbar__chips {

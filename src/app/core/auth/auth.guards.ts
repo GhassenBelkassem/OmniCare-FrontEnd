@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, RedirectFunction, Router } from '@angular/router';
 
-import { DashboardRole } from './auth.models';
+import { DashboardRole, dashboardRouteFor } from './auth.models';
 import { AuthTokenStore } from './auth-token.store';
 
 export const authenticatedGuard: CanActivateFn = () => {
@@ -16,3 +16,8 @@ export function roleGuard(role: DashboardRole): CanActivateFn {
     return tokens.user()?.role === role ? true : inject(Router).createUrlTree(['/forbidden']);
   };
 }
+
+export const landingRedirect: RedirectFunction = () => {
+  const user = inject(AuthTokenStore).user();
+  return user === null ? '/login' : dashboardRouteFor(user.role);
+};

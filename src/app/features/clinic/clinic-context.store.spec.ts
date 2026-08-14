@@ -42,7 +42,12 @@ function bootstrapBody(clinicId: string, clinicName: string): ClinicBootstrapRes
       professionalRole: 'CLINIC_ASSISTANT',
       version: 1,
     },
-    capabilities: ['CLINIC_OVERVIEW_READ', 'CLINIC_PROFILE_READ', 'CLINIC_MEMBERSHIP_SELF_READ'],
+    capabilities: [
+      'CLINIC_OVERVIEW_READ',
+      'CLINIC_PROFILE_READ',
+      'CLINIC_MEMBERSHIP_SELF_READ',
+      'CLINIC_CASE_INTAKE_READ',
+    ],
     featureFlags: {
       CLINIC_REQUESTS_ENABLED: false,
       CLINIC_HOSPITALIZATION_ENABLED: false,
@@ -174,14 +179,14 @@ describe('ClinicContextStore', () => {
     expect(navigations).toEqual(['/clinic/access-unavailable']);
   });
 
-  it('selects the only active membership automatically and routes to the overview', () => {
+  it('selects the only active membership automatically and routes an assistant to requests', () => {
     initializeWith([membership('clinic-a', 'Clinique A')]);
     http.expectOne('/api/v1/clinics/clinic-a/bootstrap').flush(bootstrapBody('clinic-a', 'Clinique A'));
 
     expect(store.selectedClinicId()).toBe('clinic-a');
     expect(store.bootstrap()?.clinic.clinicId).toBe('clinic-a');
     expect(sessionStorage.getItem(SELECTED_CLINIC_STORAGE_KEY)).toBe('clinic-a');
-    expect(navigations).toEqual(['/clinic/overview']);
+    expect(navigations).toEqual(['/clinic/requests']);
   });
 
   it('routes to the selector when several memberships exist without a valid hint', () => {
@@ -199,7 +204,7 @@ describe('ClinicContextStore', () => {
     http.expectOne('/api/v1/clinics/clinic-b/bootstrap').flush(bootstrapBody('clinic-b', 'Clinique B'));
 
     expect(store.selectedClinicId()).toBe('clinic-b');
-    expect(navigations).toEqual(['/clinic/overview']);
+    expect(navigations).toEqual(['/clinic/requests']);
   });
 
   it('removes a stale session hint that is not an active membership', () => {
@@ -218,7 +223,7 @@ describe('ClinicContextStore', () => {
     http.expectOne('/api/v1/clinics/clinic-b/bootstrap').flush(bootstrapBody('clinic-b', 'Clinique B'));
 
     expect(store.bootstrap()?.clinic.clinicId).toBe('clinic-b');
-    expect(navigations).toEqual(['/clinic/overview']);
+    expect(navigations).toEqual(['/clinic/requests']);
   });
 
   it('never lets a stale bootstrap response from a previous clinic win', () => {
@@ -272,18 +277,36 @@ describe('ClinicContextStore', () => {
     expect(navigations).toContain('/clinic/access-unavailable');
   });
 
-  it('clears authentication and clinic state on the legacy 401 response', () => {
+  it('refreshes the access token instead of logging out on an expired access token', () => {
     sessionStorage.setItem(SELECTED_CLINIC_STORAGE_KEY, 'clinic-a');
     store.initialize();
     http
       .expectOne('/api/v1/me/access')
       .flush({ code: 'UNAUTHENTICATED', message: 'Session expired.' }, { status: 401, statusText: 'Unauthorized' });
 
-    expect(tokens.authenticated()).toBe(false);
-    expect(store.initialized()).toBe(false);
+    const refresh = http.expectOne('/api/v1/auth/refresh');
+    expect(refresh.request.body).toEqual({ refreshToken: 'clinic-refresh-token' });
+    refresh.flush({
+      accessToken: 'refreshed-clinic-access-token',
+      tokenType: 'Bearer',
+      expiresAt: '2026-08-07T12:30:00Z',
+      refreshToken: 'rotated-clinic-refresh-token',
+      refreshExpiresAt: '2026-08-08T00:30:00Z',
+      user: { id: 'clinic-user-1', role: 'CLINIC_ADMIN', mustChangePassword: false },
+    });
+
+    http
+      .expectOne('/api/v1/me/access')
+      .flush({ contractVersion: '1.0', accessFamily: 'CLINIC', resolvedAt: RESOLVED_AT });
+    flushClinics([membership('clinic-a', 'Clinique A')]);
+    http.expectOne('/api/v1/clinics/clinic-a/bootstrap').flush(bootstrapBody('clinic-a', 'Clinique A'));
+
+    expect(tokens.authenticated()).toBe(true);
+    expect(tokens.accessToken()).toBe('refreshed-clinic-access-token');
+    expect(store.initialized()).toBe(true);
     expect(store.accessError()).toBeNull();
-    expect(sessionStorage.getItem(SELECTED_CLINIC_STORAGE_KEY)).toBeNull();
-    expect(navigations).toEqual(['/login']);
+    expect(sessionStorage.getItem(SELECTED_CLINIC_STORAGE_KEY)).toBe('clinic-a');
+    expect(navigations).toEqual(['/clinic/requests']);
   });
 
   it('rebuilds memberships and bootstrap on a direct overview initialization', () => {

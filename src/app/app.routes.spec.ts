@@ -32,7 +32,7 @@ describe('application routes', () => {
       '**',
     ]);
     expect(children.find((route) => route.path === 'platform-admin')?.redirectTo).toBe('admin');
-    expect(children.find((route) => route.path === '')?.redirectTo).toBe('login');
+    expect(children.find((route) => route.path === '')?.redirectTo).toEqual(expect.any(Function));
     expect(children.find((route) => route.path === '**')?.redirectTo).toBe('login');
   });
 });
