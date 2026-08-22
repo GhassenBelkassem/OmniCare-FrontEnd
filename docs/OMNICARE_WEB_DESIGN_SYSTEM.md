@@ -33,7 +33,7 @@ Components consume `--oc-` semantic variables. Primitive color values stay in ap
 
 No official OmniCare logo, font, palette or design-reference image was present in this project. `_brand-source.scss` therefore marks these provisional values with a TODO:
 
-- Primary: `#176b5b`
+- Primary: `#1FBF9A`
 - Primary hover: `#12594c`
 - Primary active: `#0d473d`
 - Secondary: `#294b63`
