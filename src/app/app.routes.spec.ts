@@ -28,6 +28,7 @@ describe('application routes', () => {
       'platform-admin',
       'doctor',
       'clinic',
+      'patient',
       '',
       '**',
     ]);

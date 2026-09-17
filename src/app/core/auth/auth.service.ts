@@ -4,8 +4,17 @@ import { Router } from '@angular/router';
 import { Observable, catchError, map, tap, throwError } from 'rxjs';
 
 import { RUNTIME_CONFIG } from '../config/runtime-config';
-import { ApiErrorBody, DashboardRole, EmailPasswordLoginResponse } from './auth.models';
+import {
+  ApiErrorBody,
+  DashboardRole,
+  EmailPasswordLoginResponse,
+  LoginSession,
+} from './auth.models';
 import { AuthTokenStore } from './auth-token.store';
+
+export type LoginStep =
+  | { readonly kind: 'authenticated'; readonly role: DashboardRole }
+  | { readonly kind: 'requires-otp'; readonly phone: string };
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -17,23 +26,36 @@ export class AuthService {
   readonly user = this.tokens.user;
   readonly authenticated = this.tokens.authenticated;
 
-  login(email: string, password: string): Observable<DashboardRole> {
+  login(email: string, password: string): Observable<LoginStep> {
     return this.http
       .post<EmailPasswordLoginResponse>(`${this.config.apiBaseUrl}/auth/login`, {
         identifier: email,
         password,
-        platform: 'WEB',
-        deviceLabel: 'OmniCare dashboard',
-        sharedDevice: false,
-        rememberDevice: false,
+        ...devicePayload(),
       })
       .pipe(
         map((response) => {
-          if (response.status !== 'AUTHENTICATED' || response.session === null) {
-            throw new Error('This account requires an unsupported authentication step.');
+          if (response.status === 'REQUIRES_PHONE_OTP') {
+            return { kind: 'requires-otp' as const, phone: response.phone ?? '' };
           }
-          return response.session;
+          if (response.session == null) {
+            throw new Error('The server returned an invalid login response.');
+          }
+          this.tokens.setSession(response.session);
+          return { kind: 'authenticated' as const, role: response.session.user.role };
         }),
+        catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
+      );
+  }
+
+  verifyPhoneOtp(phone: string, otp: string): Observable<DashboardRole> {
+    return this.http
+      .post<LoginSession>(`${this.config.apiBaseUrl}/auth/login/phone/verify`, {
+        phone,
+        otp,
+        ...devicePayload(),
+      })
+      .pipe(
         tap((session) => this.tokens.setSession(session)),
         map((session) => session.user.role),
         catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
@@ -50,6 +72,7 @@ export class AuthService {
   routeFor(role: DashboardRole): string {
     if (role === 'ADMIN') return '/admin';
     if (role === 'DOCTOR') return '/doctor';
+    if (role === 'PATIENT') return '/patient';
     return '/clinic';
   }
 
@@ -57,6 +80,32 @@ export class AuthService {
     this.tokens.clear();
     void this.router.navigateByUrl('/login');
   }
+}
+
+function devicePayload(): {
+  deviceFingerprint: string;
+  platform: 'WEB';
+  deviceLabel: string;
+  sharedDevice: boolean;
+  rememberDevice: boolean;
+} {
+  return {
+    deviceFingerprint: dashboardDeviceFingerprint(),
+    platform: 'WEB',
+    deviceLabel: 'OmniCare dashboard',
+    sharedDevice: false,
+    rememberDevice: true,
+  };
+}
+
+function dashboardDeviceFingerprint(): string {
+  const key = 'omnicare.dashboard.deviceFingerprint';
+  const existing = globalThis.localStorage?.getItem(key);
+  if (existing) return existing;
+
+  const created = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+  globalThis.localStorage?.setItem(key, created);
+  return created;
 }
 
 function normalizeAuthError(error: unknown): Error {

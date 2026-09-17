@@ -1,0 +1,910 @@
+<div class="patient-layout">
+  @if (locked()) {
+    <section class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+      <form class="gate-card" (ngSubmit)="changePassword()">
+        <span class="gate-card__mark" aria-hidden="true">O</span>
+        <h1 id="gate-title">Mot de passe temporaire</h1>
+        <p>
+          Votre mot de passe est temporaire. Choisissez-en un nouveau (12 caracteres minimum) pour
+          acceder a votre espace.
+        </p>
+
+        <label>
+          <span>Mot de passe actuel</span>
+          <input
+            type="password"
+            [ngModel]="passwordCurrent()"
+            name="gateCurrent"
+            autocomplete="current-password"
+            (ngModelChange)="passwordCurrent.set($event)"
+          />
+        </label>
+        <label>
+          <span>Nouveau mot de passe</span>
+          <input
+            type="password"
+            [ngModel]="passwordNew()"
+            name="gateNew"
+            autocomplete="new-password"
+            (ngModelChange)="passwordNew.set($event)"
+          />
+        </label>
+        <label>
+          <span>Confirmer le nouveau mot de passe</span>
+          <input
+            type="password"
+            [ngModel]="passwordConfirm()"
+            name="gateConfirm"
+            autocomplete="new-password"
+            (ngModelChange)="passwordConfirm.set($event)"
+          />
+        </label>
+
+        @if (passwordError(); as error) {
+          <div class="request-error" role="alert">
+            <span>{{ error }}</span>
+          </div>
+        }
+        @if (passwordMessage(); as message) {
+          <div class="action-message" role="status">{{ message }}</div>
+        }
+
+        <oc-button variant="primary" type="submit" [loading]="passwordSaving()"
+          >Mettre a jour le mot de passe</oc-button
+        >
+      </form>
+    </section>
+  } @else {
+    <oc-sidebar
+      [items]="navigation"
+      [activeId]="activeTab()"
+      [(collapsed)]="sidebarCollapsed"
+      [profile]="sidebarProfile()"
+    ></oc-sidebar>
+
+    <div class="patient-shell">
+      <header class="topbar">
+        <div class="brand" aria-label="OmniCare patient workspace">
+          <span class="brand-mark">O</span>
+          <span class="brand-name">OmniCare</span>
+        </div>
+
+        <div class="patient-id">
+          <button type="button" class="topbar-button" (click)="setTab('doctors')">
+            Prendre rendez-vous
+          </button>
+          <span class="avatar" aria-label="{{ greeting() }}">{{ avatarInitials() }}</span>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Patient workspace">
+        <button
+          type="button"
+          class="tab"
+          [class.active]="activeTab() === 'home'"
+          (click)="setTab('home')"
+        >
+          Accueil
+        </button>
+        <button
+          type="button"
+          class="tab"
+          [class.active]="activeTab() === 'doctors'"
+          (click)="setTab('doctors')"
+        >
+          Medecins
+        </button>
+        <button
+          type="button"
+          class="tab"
+          [class.active]="activeTab() === 'appointments'"
+          (click)="setTab('appointments')"
+        >
+          Rendez-vous
+        </button>
+        <button
+          type="button"
+          class="tab"
+          [class.active]="activeTab() === 'urgent'"
+          (click)="setTab('urgent')"
+        >
+          Urgence
+        </button>
+        <button
+          type="button"
+          class="tab"
+          [class.active]="activeTab() === 'profile'"
+          (click)="setTab('profile')"
+        >
+          Profil
+        </button>
+      </nav>
+
+      <main class="workspace">
+        @if (activeTab() === 'home') {
+          <section class="page-head">
+            <h1>Bonjour, {{ greeting() }}</h1>
+            <p>{{ todaySubtitle() }}</p>
+          </section>
+
+          <section
+            class="emergency-banner"
+            [class.emergency-banner--pending]="urgentPending()"
+            role="status"
+          >
+            <div class="emergency-banner__signal" aria-hidden="true"></div>
+            <div>
+              <strong>{{ urgentStatus().title }}</strong>
+              <p>{{ urgentStatus().message }}</p>
+            </div>
+            <span>{{ urgentStatus().action }}</span>
+          </section>
+
+          <section class="stats" aria-label="Resume">
+            @for (stat of stats(); track stat.label) {
+              <article class="stat" [class.stat--muted]="stat.muted">
+                <strong>{{ stat.value }}</strong>
+                <span>{{ stat.label }}</span>
+              </article>
+            }
+          </section>
+
+          <section class="timeline-card" aria-labelledby="today-title">
+            <h2 id="today-title">Aujourd'hui</h2>
+            <div class="timeline">
+              @for (item of todayAppointments(); track item.id) {
+                <article class="slot" [class.slot--urgent]="appointmentTone(item) === 'urgent'">
+                  <time>{{ item.timeLabel }}</time>
+                  <div
+                    class="appointment"
+                    [class.appointment--urgent]="appointmentTone(item) === 'urgent'"
+                  >
+                    <div>
+                      <h3>{{ item.doctorName }}</h3>
+                      <p>
+                        <span
+                          class="badge"
+                          [class]="'badge badge--' + appointmentBadgeClass(item)"
+                          >{{ appointmentBadge(item) }}</span
+                        >{{ item.notes }}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              } @empty {
+                <div class="empty-note">Aucun rendez-vous aujourd'hui.</div>
+              }
+            </div>
+          </section>
+
+          <aside class="side">
+            <section class="card">
+              <h2>Cette semaine</h2>
+              <div class="week-strip">
+                @for (day of weekDays(); track day.date) {
+                  <div class="day" [class.day--today]="day.today">
+                    <span>{{ day.label }}</span>
+                    <strong>{{ day.dayNumber }}</strong>
+                    <i [class]="'dot dot--' + day.load" aria-hidden="true"></i>
+                  </div>
+                }
+              </div>
+              <p>Les pastilles indiquent les rendez-vous reserves sur la semaine.</p>
+            </section>
+
+            <section class="card">
+              <h2>Statut</h2>
+              <div class="status-card" [class.status-card--pending]="urgentPending()">
+                <span>{{ urgentPending() ? 'Urgence' : 'Actif' }}</span>
+                <strong>{{ urgentStatus().title }}</strong>
+                <p>{{ urgentStatus().message }}</p>
+              </div>
+              <div class="location-card" role="status">
+                <span>Position patient</span>
+                <strong>Tunis - 36.8065, 10.1815</strong>
+              </div>
+            </section>
+          </aside>
+        }
+
+        @if (activeTab() === 'doctors') {
+          <section class="page-head">
+            <h1>Medecins</h1>
+            <p>Cherchez un medecin pour prendre rendez-vous ou trouvez une urgence.</p>
+          </section>
+
+          @if (bookingMessage(); as message) {
+            <div class="action-message" role="status">{{ message }}</div>
+          }
+
+          <div class="doctor-mode" role="group" aria-label="Mode de recherche">
+            <button
+              type="button"
+              class="doctor-mode__item"
+              [class.doctor-mode__item--active]="doctorMode() === 'directory'"
+              (click)="setDoctorMode('directory')"
+            >
+              Trouver un medecin
+            </button>
+            <button
+              type="button"
+              class="doctor-mode__item"
+              [class.doctor-mode__item--active]="doctorMode() === 'urgent'"
+              (click)="setDoctorMode('urgent')"
+            >
+              Urgence
+            </button>
+          </div>
+
+          @if (doctorMode() === 'directory') {
+            @if (directoryError(); as error) {
+              <div class="request-error" role="alert">
+                <span>{{ error }}</span>
+              </div>
+            }
+          } @else {
+            @if (doctorsError(); as error) {
+              <div class="request-error" role="alert">
+                <span>{{ error }}</span>
+              </div>
+            }
+          }
+
+          <section class="doctor-filters" aria-label="Filtres medecins">
+            <label>
+              <span>Recherche</span>
+              <input
+                type="search"
+                placeholder="Nom ou specialite"
+                [value]="doctorQuery()"
+                (input)="updateDoctorQuery($event)"
+              />
+            </label>
+            <label>
+              <span>Specialite</span>
+              <select [ngModel]="doctorSpecialty()" (ngModelChange)="doctorSpecialty.set($event)">
+                <option value="">Toutes</option>
+                @for (specialty of specialties(); track specialty) {
+                  <option [value]="specialty">{{ specialty }}</option>
+                }
+              </select>
+            </label>
+            <div class="doctor-count" role="status">
+              <strong>{{ filteredDoctors().length }}</strong>
+              <span>medecin(s)</span>
+            </div>
+          </section>
+
+          @if (doctorMode() === 'directory') {
+            @if (directoryLoading()) {
+              <div class="loading-note">Chargement des medecins...</div>
+            }
+          } @else {
+            @if (doctorsLoading()) {
+              <div class="loading-note">Chargement des medecins disponibles...</div>
+            }
+          }
+
+          <section class="doctor-list">
+            @for (doctor of filteredDoctors(); track doctor.id) {
+              <article
+                class="doctor-card"
+                [class.doctor-card--booking]="bookingDoctor()?.id === doctor.id"
+              >
+                <div class="doctor-card__info">
+                  <span class="doctor-avatar" aria-hidden="true">{{ doctorInitials(doctor) }}</span>
+                  <div>
+                    <h3>{{ doctor.name }}</h3>
+                    <p>{{ doctor.specialty ?? 'Medecin' }}</p>
+                  </div>
+                </div>
+                <span class="badge badge--cabinet">Disponible</span>
+                @if (doctorMode() === 'directory' && doctor.availableForUrgent) {
+                  <span class="badge badge--urgent">Urgence</span>
+                }
+                @if (doctorDistanceLabel(doctor); as distance) {
+                  <span class="doctor-distance">{{ distance }}</span>
+                }
+                <div class="appointment-actions">
+                  <oc-button variant="secondary" (click)="startBooking(doctor)"
+                    >Voir les creneaux</oc-button
+                  >
+                </div>
+              </article>
+            } @empty {
+              @if (doctorMode() === 'directory' ? !directoryLoading() : !doctorsLoading()) {
+                @if (doctorMode() === 'directory') {
+                  <div class="empty-note">Aucun medecin ne correspond a votre recherche.</div>
+                } @else {
+                  <div class="empty-note">
+                    Aucun medecin disponible pour l urgence pres de chez vous.
+                  </div>
+                }
+              }
+            }
+          </section>
+
+          @if (bookingDoctor(); as doctor) {
+            <section class="panel booking-panel" aria-labelledby="booking-title">
+              <div class="panel-top">
+                <div>
+                  <h2 id="booking-title">Reservation avec {{ doctor.name }}</h2>
+                  <p>Choisissez une date puis un creneau disponible.</p>
+                </div>
+                <oc-button variant="quiet" (click)="closeBooking()">Fermer</oc-button>
+              </div>
+
+              <div class="date-strip" role="group" aria-label="Choisir une date">
+                @for (date of bookingDates(); track date) {
+                  <button
+                    type="button"
+                    class="date-chip"
+                    [class.date-chip--active]="bookingDate() === date"
+                    (click)="selectBookingDate(date)"
+                  >
+                    <span>{{ shortDateLabel(date) }}</span>
+                    <strong>{{ dateDay(date) }}</strong>
+                  </button>
+                }
+              </div>
+
+              @if (slotsLoading()) {
+                <div class="loading-note">Chargement des creneaux...</div>
+              }
+              @if (slotsError(); as error) {
+                <div class="request-error" role="alert">
+                  <span>{{ error }}</span>
+                </div>
+              }
+
+              <div class="slot-grid" role="group" aria-label="Choisir un creneau">
+                @for (slot of visibleBookingSlots(); track slot.start) {
+                  <button
+                    type="button"
+                    class="slot-chip slot-chip--button"
+                    [class.slot-chip--active]="bookingSlot()?.start === slot.start"
+                    (click)="selectBookingSlot(slot)"
+                  >
+                    {{ slotTimeLabel(slot.start) }}
+                  </button>
+                } @empty {
+                  @if (!slotsLoading() && !slotsError()) {
+                    <div class="empty-note">Aucun creneau disponible pour ce jour.</div>
+                  }
+                }
+              </div>
+
+              <label class="booking-notes">
+                <span>Motif (optionnel)</span>
+                <input
+                  type="text"
+                  placeholder="Ex: Consultation generale"
+                  [ngModel]="bookingNotes()"
+                  (ngModelChange)="bookingNotes.set($event)"
+                />
+              </label>
+
+              @if (bookingError(); as error) {
+                <div class="request-error" role="alert">
+                  <span>{{ error }}</span>
+                </div>
+              }
+
+              <div class="form-actions">
+                <oc-button variant="primary" [loading]="bookingSaving()" (click)="bookAppointment()"
+                  >Confirmer le rendez-vous</oc-button
+                >
+              </div>
+            </section>
+          }
+        }
+
+        @if (activeTab() === 'appointments') {
+          <section class="page-head">
+            <h1>Mes rendez-vous</h1>
+            <p>Vos rendez-vous passes et a venir.</p>
+          </section>
+
+          @if (appointmentsError(); as error) {
+            <div class="request-error" role="alert">
+              <span>{{ error }}</span>
+            </div>
+          }
+
+          <section class="appointment-filters" aria-label="Filtres rendez-vous">
+            <label>
+              <span>Periode</span>
+              <select
+                [ngModel]="appointmentPeriod()"
+                (ngModelChange)="appointmentPeriod.set($event)"
+              >
+                <option value="upcoming">A venir</option>
+                <option value="past">Passes</option>
+                <option value="all">Tous</option>
+              </select>
+            </label>
+            <div class="appointment-count" role="status">
+              <strong>{{ filteredAppointments().length }}</strong>
+              <span>rendez-vous</span>
+            </div>
+          </section>
+
+          @if (appointmentsLoading()) {
+            <div class="loading-note">Chargement des rendez-vous...</div>
+          }
+
+          <section class="history-list">
+            @for (item of filteredAppointments(); track item.id) {
+              <article
+                class="appointment"
+                [class.appointment--urgent]="appointmentTone(item) === 'urgent'"
+                [class.appointment--done]="appointmentTone(item) === 'done'"
+                [class.appointment--cancelled]="appointmentTone(item) === 'cancelled'"
+              >
+                <div>
+                  <h3>{{ item.doctorName }}</h3>
+                  <p>
+                    <span class="badge" [class]="'badge badge--' + appointmentBadgeClass(item)">{{
+                      appointmentBadge(item)
+                    }}</span
+                    >{{ dateLabel(item.date) }} - {{ item.timeLabel }} - {{ item.notes }}
+                    @if (item.quotedPriceTnd !== null) {
+                      <span class="appointment-price"> · {{ priceLabel(item.quotedPriceTnd) }}</span>
+                    }
+                  </p>
+                </div>
+                <div class="appointment-actions">
+                  @if (item.status === 'CONFIRMED') {
+                    <oc-button variant="destructive" (click)="cancelAppointment(item.id)"
+                      >Annuler</oc-button
+                    >
+                  }
+                </div>
+              </article>
+            } @empty {
+              @if (!appointmentsLoading()) {
+                <div class="empty-note">Aucun rendez-vous dans cette periode.</div>
+              }
+            }
+          </section>
+        }
+
+        @if (activeTab() === 'urgent') {
+          <section class="page-head">
+            <h1>Demander une intervention urgente</h1>
+            <p>
+              Tous les medecins disponibles pres de chez vous seront contactes automatiquement.
+            </p>
+          </section>
+
+          @if (lastUrgentRequest(); as request) {
+            <section class="urgent-confirmation" role="status">
+              <div class="urgent-confirmation__signal" aria-hidden="true"></div>
+              <div>
+                <strong>Demande envoyee ({{ request.id }})</strong>
+                <p>
+                  {{ request.offers.length }} medecin(s) contacte(s) ·
+                  {{ visitPreferenceLabel(request.visitPreference) }}
+                </p>
+                <p>{{ urgentStatus().title }} - {{ urgentStatus().action }}</p>
+              </div>
+              <div class="urgent-confirmation__actions">
+                @if (request.status === 'MATCHED') {
+                  <oc-button variant="primary" (click)="openUrgentTracking(request.id)"
+                    >Voir le suivi</oc-button
+                  >
+                }
+                <oc-button variant="secondary" (click)="resetUrgentForm()"
+                  >Nouvelle demande</oc-button
+                >
+              </div>
+            </section>
+
+            @if (request.status === 'PENDING') {
+              <section class="panel accepted-panel" aria-labelledby="accepted-title">
+                <div class="panel-top">
+                  <div>
+                    <h2 id="accepted-title">Medecins ayant accepte</h2>
+                    <p>Choisissez le medecin qui viendra vous prendre en charge.</p>
+                  </div>
+                </div>
+
+                @if (acceptedOffersLoading()) {
+                  <div class="loading-note">Chargement des reponses des medecins...</div>
+                } @else if (acceptedOffersError(); as error) {
+                  <div class="request-error" role="alert">
+                    <span>{{ error }}</span>
+                  </div>
+                } @else {
+                  <div class="accepted-list">
+                    @for (offer of acceptedOffers(); track offer.offerId) {
+                      <article class="accepted-row">
+                        <div>
+                          <h3>{{ offer.doctorName }}</h3>
+                          <p>{{ offer.distanceKm.toLocaleString('fr-FR') }} km de chez vous</p>
+                        </div>
+                        <oc-button
+                          variant="primary"
+                          [loading]="offerSelectingId() === offer.offerId"
+                          [disabled]="offerSelectingId() !== null"
+                          (click)="selectOffer(offer.offerId)"
+                          >Choisir ce medecin</oc-button
+                        >
+                      </article>
+                    } @empty {
+                      <p class="empty-note">
+                        Aucun medecin n'a encore accepte votre demande.
+                      </p>
+                    }
+                  </div>
+                }
+              </section>
+            }
+          }
+
+          <section class="panel urgent-panel">
+            <div class="panel-top">
+              <div>
+                <h2>Nouvelle demande</h2>
+                <p>La position sert a trouver les medecins proches de chez vous.</p>
+              </div>
+            </div>
+
+            <div class="urgent-form">
+              <span class="urgent-form__section">Ou la visite aura lieu</span>
+              <label>
+                <span>Latitude</span>
+                <input
+                  type="number"
+                  step="any"
+                  [ngModel]="urgentLat()"
+                  (ngModelChange)="urgentLat.set($event)"
+                />
+              </label>
+              <label>
+                <span>Longitude</span>
+                <input
+                  type="number"
+                  step="any"
+                  [ngModel]="urgentLng()"
+                  (ngModelChange)="urgentLng.set($event)"
+                />
+              </label>
+              <label>
+                <span>Type de visite</span>
+                <select
+                  [ngModel]="urgentPreference()"
+                  (ngModelChange)="updateUrgentPreference($event)"
+                >
+                  <option value="HOME_VISIT">A domicile</option>
+                  <option value="CABINET_VISIT">Au cabinet</option>
+                  <option value="EITHER">Indifferent</option>
+                </select>
+              </label>
+              <label class="span-2">
+                <span>Motif / raison de la visite</span>
+                <input
+                  type="text"
+                  placeholder="Ex: Fievre elevee, douleur abdominale..."
+                  [ngModel]="urgentNotes()"
+                  name="urgentNotes"
+                  (ngModelChange)="urgentNotes.set($event)"
+                />
+              </label>
+            </div>
+
+            <fieldset class="symptoms-fieldset">
+              <legend><span>Symptomes (optionnel)</span></legend>
+              <div class="symptoms-parts" role="group" aria-label="Parties du corps concernees">
+                @for (option of bodyPartOptions(); track option.value) {
+                  <label class="symptoms-part">
+                    <input
+                      type="checkbox"
+                      [checked]="urgentBodyParts().includes(option.value)"
+                      (change)="toggleBodyPart(option.value)"
+                    />
+                    <span>{{ option.label }}</span>
+                  </label>
+                }
+              </div>
+              <label class="symptoms-pain">
+                <span>Niveau de douleur (0 - 10)</span>
+                <div class="symptoms-pain__row">
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="1"
+                    [value]="urgentPainLevel() ?? 0"
+                    name="painLevel"
+                    aria-label="Niveau de douleur"
+                    (input)="setPainLevel($event)"
+                  />
+                  <output>{{ urgentPainLevel() ?? '—' }}</output>
+                </div>
+              </label>
+              <label>
+                <span>Details supplementaires</span>
+                <textarea
+                  rows="2"
+                  placeholder="Ex: Douleur qui irradie dans le bras gauche..."
+                  [ngModel]="urgentSymptomsNotes()"
+                  name="symptomsNotes"
+                  (ngModelChange)="urgentSymptomsNotes.set($event)"
+                ></textarea>
+              </label>
+            </fieldset>
+
+            <div class="form-actions">
+              <oc-button
+                variant="secondary"
+                [loading]="locationDetecting()"
+                (click)="detectLocation()"
+                >Detecter ma position</oc-button
+              >
+              <oc-button
+                variant="secondary"
+                leadingIcon="search"
+                [loading]="urgentSearchLoading()"
+                (click)="searchUrgentDoctors()"
+                >Rechercher les medecins disponibles</oc-button
+              >
+            </div>
+
+            @if (urgentSearchError(); as error) {
+              <div class="request-error" role="alert">
+                <span>{{ error }}</span>
+              </div>
+            }
+
+            <fieldset class="urgent-targets">
+              <legend><span>Medecins disponibles</span></legend>
+              @if (urgentSearchLoading()) {
+                <div class="loading-note">Recherche des medecins disponibles...</div>
+              } @else if (!urgentSearched()) {
+                <p class="empty-note">
+                  Entrez vos criteres puis recherchez les medecins qui seront contactes.
+                </p>
+              } @else if (urgentSearchResults().length === 0) {
+                <p class="empty-note">
+                  Aucun medecin disponible pres de cette position. La demande urgente ne peut pas
+                  etre envoyee.
+                </p>
+              } @else {
+                <p class="urgent-hint">
+                  <strong
+                    >{{ urgentSearchResults().length }} medecin(s) disponible(s) pres de chez
+                    vous.</strong
+                  >
+                  Mises a jour en temps reel. Tous seront contactes automatiquement.
+                </p>
+                @for (doctor of urgentSearchResults(); track doctor.id) {
+                  <div class="target-row">
+                    <span>
+                      <strong>{{ doctor.name }}</strong>
+                      <small
+                        >{{ doctor.specialty ?? 'Medecin' }} ·
+                        {{ doctorDistanceLabel(doctor) }}</small
+                      >
+                    </span>
+                  </div>
+                }
+              }
+            </fieldset>
+
+            @if (urgentError(); as error) {
+              <div class="request-error" role="alert">
+                <span>{{ error }}</span>
+              </div>
+            }
+
+            <div class="form-actions">
+              <oc-button
+                variant="primary"
+                leadingIcon="exclamation-circle"
+                [loading]="urgentSending()"
+                [disabled]="urgentSearched() && urgentSearchResults().length === 0"
+                (click)="sendUrgent()"
+                >Envoyer la demande</oc-button
+              >
+            </div>
+          </section>
+        }
+
+        @if (activeTab() === 'profile') {
+          <section class="page-head">
+            <h1>Profil</h1>
+            <p>Vos informations personnelles et la securite du compte.</p>
+          </section>
+
+          @if (profileLoading()) {
+            <div class="loading-note">Chargement du profil...</div>
+          } @else if (profile(); as profile) {
+            @if (profileSaved(); as saved) {
+              <div class="action-message" role="status">{{ saved }}</div>
+            }
+            @if (profileError(); as error) {
+              <div class="request-error" role="alert">
+                <span>{{ error }}</span>
+              </div>
+            }
+
+            <section class="panel profile-panel">
+              <div class="panel-top">
+                <div>
+                  <h2>Informations personnelles</h2>
+                  <p>Ces informations sont partagees avec les medecins lors de vos echanges.</p>
+                </div>
+              </div>
+
+              <form class="profile-form" (ngSubmit)="saveProfile()">
+                <label>
+                  <span>Prenom</span>
+                  <input
+                    type="text"
+                    [ngModel]="profileDraft().firstName"
+                    name="firstName"
+                    (ngModelChange)="updateDraft('firstName', $event)"
+                  />
+                </label>
+                <label>
+                  <span>Nom</span>
+                  <input
+                    type="text"
+                    [ngModel]="profileDraft().lastName"
+                    name="lastName"
+                    (ngModelChange)="updateDraft('lastName', $event)"
+                  />
+                </label>
+                <label>
+                  <span>Date de naissance</span>
+                  <input
+                    type="date"
+                    [ngModel]="profileDraft().dateOfBirth"
+                    name="dateOfBirth"
+                    (ngModelChange)="updateDraft('dateOfBirth', $event)"
+                  />
+                </label>
+                <label>
+                  <span>Genre</span>
+                  <select
+                    [ngModel]="profileDraft().gender"
+                    name="gender"
+                    (ngModelChange)="updateDraft('gender', $event)"
+                  >
+                    <option value="">Non renseigne</option>
+                    <option value="M">Homme</option>
+                    <option value="F">Femme</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Langue preferee</span>
+                  <select
+                    [ngModel]="profileDraft().preferredLanguage"
+                    name="preferredLanguage"
+                    (ngModelChange)="updateDraft('preferredLanguage', $event)"
+                  >
+                    <option value="fr">Francais</option>
+                    <option value="ar">Arabe</option>
+                    <option value="en">Anglais</option>
+                  </select>
+                </label>
+
+                <div class="notification-toggles span-2">
+                  <h3>Notifications</h3>
+                  <label class="toggle-row">
+                    <input
+                      type="checkbox"
+                      [checked]="profileDraft().notificationMedications"
+                      (change)="updateDraftFlag('notificationMedications', $event)"
+                    />
+                    <span>Rappels de prise de medicaments</span>
+                  </label>
+                  <label class="toggle-row">
+                    <input
+                      type="checkbox"
+                      [checked]="profileDraft().notificationAppointments"
+                      (change)="updateDraftFlag('notificationAppointments', $event)"
+                    />
+                    <span>Rappels de rendez-vous</span>
+                  </label>
+                  <label class="toggle-row">
+                    <input
+                      type="checkbox"
+                      [checked]="profileDraft().notificationPassport"
+                      (change)="updateDraftFlag('notificationPassport', $event)"
+                    />
+                    <span>Alertes passeport de sante</span>
+                  </label>
+                </div>
+
+                <div class="profile-summary span-2">
+                  <h3>Dossier</h3>
+                  <dl>
+                    <div>
+                      <dt>Identifiant patient</dt>
+                      <dd>{{ profile.patientId }}</dd>
+                    </div>
+                    <div>
+                      <dt>Groupe sanguin</dt>
+                      <dd>{{ profile.bloodType ?? 'Non renseigne' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Taille / poids</dt>
+                      <dd>{{ profile.heightCm ?? '-' }} cm / {{ profile.weightKg ?? '-' }} kg</dd>
+                    </div>
+                    <div>
+                      <dt>IMC</dt>
+                      <dd>{{ profile.bmi ?? '-' }}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div class="security-section span-2">
+                  <h2>Changer le mot de passe</h2>
+                  <div class="profile-form profile-form--nested">
+                    <label>
+                      <span>Mot de passe actuel</span>
+                      <input
+                        type="password"
+                        [ngModel]="passwordCurrent()"
+                        name="passwordCurrent"
+                        autocomplete="current-password"
+                        (ngModelChange)="passwordCurrent.set($event)"
+                      />
+                    </label>
+                    <label>
+                      <span>Nouveau mot de passe</span>
+                      <input
+                        type="password"
+                        [ngModel]="passwordNew()"
+                        name="passwordNew"
+                        autocomplete="new-password"
+                        (ngModelChange)="passwordNew.set($event)"
+                      />
+                    </label>
+                    <label>
+                      <span>Confirmer</span>
+                      <input
+                        type="password"
+                        [ngModel]="passwordConfirm()"
+                        name="passwordConfirm"
+                        autocomplete="new-password"
+                        (ngModelChange)="passwordConfirm.set($event)"
+                      />
+                    </label>
+                  </div>
+                  <div class="form-actions">
+                    <oc-button
+                      variant="primary"
+                      [loading]="passwordSaving()"
+                      (click)="changePassword()"
+                      >Mettre a jour le mot de passe</oc-button
+                    >
+                  </div>
+                </div>
+
+                <div class="form-actions span-2">
+                  <oc-button variant="secondary" type="button" (click)="loadProfile()"
+                    >Reinitialiser</oc-button
+                  >
+                  <oc-button variant="primary" type="submit" [loading]="profileSaving()"
+                    >Enregistrer le profil</oc-button
+                  >
+                </div>
+              </form>
+            </section>
+          } @else if (profileError(); as error) {
+            <div class="request-error" role="alert">
+              <span>{{ error }}</span>
+            </div>
+            <div class="form-actions">
+              <oc-button variant="secondary" (click)="loadProfile()">Reessayer</oc-button>
+            </div>
+          }
+        }
+      </main>
+    </div>
+  }
+</div>

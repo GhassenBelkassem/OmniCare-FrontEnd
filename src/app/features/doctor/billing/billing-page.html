@@ -1,0 +1,149 @@
+<div class="billing-page">
+  <oc-page-header
+    title="Facturation"
+    description="Suivi des paiements et revenus"
+  />
+
+  <div class="billing-page__metrics">
+    <oc-metric-card
+      label="Gagné aujourd'hui"
+      [value]="totalEarned() + ' DT'"
+      icon="wallet"
+      trend="+12%"
+    />
+    <oc-metric-card
+      label="Consultations"
+      [value]="totalConsultations()"
+      icon="team"
+    />
+    <oc-metric-card
+      label="Impayés"
+      [value]="unpaidCount()"
+      icon="warning"
+      supportingText="En attente de paiement"
+    />
+    <oc-metric-card
+      label="Taux de paiement"
+      [value]="paymentRate()"
+      icon="check-circle"
+      trend="stable"
+    />
+  </div>
+
+  <oc-filter-toolbar
+    searchPlaceholder="Rechercher par patient..."
+    [query]="searchQuery()"
+    (searchChange)="onSearchChange($event)"
+  />
+
+  <div class="billing-page__filters">
+    <oc-button
+      [variant]="statusFilter() === 'all' ? 'primary' : 'secondary'"
+      size="small"
+      (click)="onStatusFilterChange('all')"
+    >Tous</oc-button>
+    <oc-button
+      [variant]="statusFilter() === 'paid' ? 'primary' : 'secondary'"
+      size="small"
+      (click)="onStatusFilterChange('paid')"
+    >Payés</oc-button>
+    <oc-button
+      [variant]="statusFilter() === 'unpaid' ? 'primary' : 'secondary'"
+      size="small"
+      (click)="onStatusFilterChange('unpaid')"
+    >Impayés</oc-button>
+  </div>
+
+  <oc-data-table-shell [state]="tableState()">
+    <table class="billing-page__table">
+      <thead>
+        <tr>
+          <th class="billing-page__th">Patient</th>
+          <th class="billing-page__th">Date</th>
+          <th class="billing-page__th billing-page__th--right">Montant</th>
+          <th class="billing-page__th">Statut</th>
+          <th class="billing-page__th">Méthode</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (payment of filteredPayments(); track trackByPaymentId($index, payment)) {
+          <tr
+            class="billing-page__row"
+            (click)="onPaymentClick(payment)"
+            role="button"
+            tabindex="0"
+          >
+            <td class="billing-page__cell billing-page__cell--patient">
+              {{ payment.patientName }}
+            </td>
+            <td class="billing-page__cell">{{ payment.date }}</td>
+            <td class="billing-page__cell billing-page__cell--right">
+              {{ payment.amount }} DT
+            </td>
+            <td class="billing-page__cell">
+              <oc-status-badge
+                [status]="payment.status === 'paid' ? 'completed' : 'pending'"
+              />
+            </td>
+            <td class="billing-page__cell">{{ payment.method }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="5">
+              <oc-empty-state
+                title="Aucun paiement trouvé"
+                description="Aucun enregistrement ne correspond à vos filtres."
+                icon="search"
+              />
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <span ocTableFooter class="billing-page__count">
+      {{ filteredPayments().length }} paiement(s)
+    </span>
+  </oc-data-table-shell>
+
+  @if (selectedPayment(); as payment) {
+    <div class="billing-page__overlay" (click)="onReceiptClose()" role="presentation">
+      <oc-card
+        class="billing-page__receipt"
+        title="Reçu de paiement"
+        subtitle="Détails du règlement"
+      >
+        <div class="billing-page__receipt-body">
+          <div class="billing-page__receipt-row">
+            <span class="billing-page__receipt-label">Patient</span>
+            <span class="billing-page__receipt-value">{{ payment.patientName }}</span>
+          </div>
+          <div class="billing-page__receipt-row">
+            <span class="billing-page__receipt-label">Date</span>
+            <span class="billing-page__receipt-value">{{ payment.date }}</span>
+          </div>
+          <div class="billing-page__receipt-row">
+            <span class="billing-page__receipt-label">Montant</span>
+            <span class="billing-page__receipt-value billing-page__receipt-value--amount">
+              {{ payment.amount }} DT
+            </span>
+          </div>
+          <div class="billing-page__receipt-row">
+            <span class="billing-page__receipt-label">Statut</span>
+            <oc-status-badge
+              [status]="payment.status === 'paid' ? 'completed' : 'pending'"
+            />
+          </div>
+          <div class="billing-page__receipt-row">
+            <span class="billing-page__receipt-label">Méthode</span>
+            <span class="billing-page__receipt-value">{{ payment.method }}</span>
+          </div>
+          <div class="billing-page__receipt-row">
+            <span class="billing-page__receipt-label">Référence</span>
+            <span class="billing-page__receipt-value">{{ payment.id | uppercase }}</span>
+          </div>
+        </div>
+        <oc-button variant="secondary" (click)="onReceiptClose()">Fermer</oc-button>
+      </oc-card>
+    </div>
+  }
+</div>

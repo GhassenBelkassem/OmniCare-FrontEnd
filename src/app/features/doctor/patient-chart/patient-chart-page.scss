@@ -1,0 +1,366 @@
+.patient-chart {
+  padding: var(--oc-spacing-lg);
+  max-width: var(--oc-max-width-2xl);
+  margin: 0 auto;
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+  }
+
+  &__spinner {
+    width: var(--oc-size-spinner);
+    height: var(--oc-size-spinner);
+    border: 3px solid var(--oc-color-border-default);
+    border-top-color: var(--oc-color-primary);
+    border-radius: var(--oc-radius-full);
+    animation: spin 0.8s linear infinite;
+  }
+
+  &__layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: var(--oc-spacing-xl);
+    align-items: start;
+
+    @media (max-width: var(--oc-breakpoint-lg)) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__sidebar {
+    position: sticky;
+    top: var(--oc-spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-spacing-lg);
+
+    @media (max-width: var(--oc-breakpoint-lg)) {
+      position: static;
+    }
+  }
+
+  &__summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--oc-spacing-md);
+    text-align: center;
+  }
+
+  &__info-list {
+    width: 100%;
+    margin-top: var(--oc-spacing-md);
+  }
+
+  &__info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--oc-spacing-sm) 0;
+    border-bottom: 1px solid var(--oc-color-border-default);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    dt {
+      font-size: var(--oc-font-size-sm);
+      color: var(--oc-color-text-secondary);
+      font-weight: var(--oc-font-weight-regular);
+    }
+
+    dd {
+      font-size: var(--oc-font-size-sm);
+      color: var(--oc-color-text-primary);
+      font-weight: var(--oc-font-weight-medium);
+      text-align: right;
+      margin: 0;
+    }
+  }
+
+  &__vitals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--oc-spacing-md);
+  }
+
+  &__vital {
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-spacing-xs);
+  }
+
+  &__vital-label {
+    font-size: var(--oc-font-size-xs);
+    color: var(--oc-color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__vital-value {
+    font-size: var(--oc-font-size-md);
+    font-weight: var(--oc-font-weight-semibold);
+    color: var(--oc-color-text-primary);
+  }
+
+  &__main {
+    min-width: 0;
+  }
+
+  &__tab-content {
+    margin-top: var(--oc-spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-spacing-lg);
+
+    &--timeline {
+      padding-left: var(--oc-spacing-lg);
+    }
+  }
+
+  &__condition,
+  &__allergy,
+  &__medication {
+    padding: var(--oc-spacing-md) 0;
+    border-bottom: 1px solid var(--oc-color-border-default);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__condition-header,
+  &__allergy-header,
+  &__medication-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--oc-spacing-xs);
+  }
+
+  &__condition-name,
+  &__allergy-name,
+  &__medication-name {
+    font-size: var(--oc-font-size-sm);
+    font-weight: var(--oc-font-weight-medium);
+    color: var(--oc-color-text-primary);
+  }
+
+  &__condition-date {
+    font-size: var(--oc-font-size-xs);
+    color: var(--oc-color-text-secondary);
+  }
+
+  &__allergy-severity {
+    font-size: var(--oc-font-size-xs);
+    font-weight: var(--oc-font-weight-semibold);
+    padding: var(--oc-spacing-xs) var(--oc-spacing-sm);
+    border-radius: var(--oc-radius-full);
+
+    &--severe {
+      background-color: var(--oc-color-danger-subtle);
+      color: var(--oc-color-danger);
+    }
+
+    &--moderate {
+      background-color: var(--oc-color-warning-subtle);
+      color: var(--oc-color-warning);
+    }
+
+    &--mild {
+      background-color: var(--oc-color-neutral-subtle);
+      color: var(--oc-color-text-secondary);
+    }
+  }
+
+  &__allergy-reaction {
+    font-size: var(--oc-font-size-xs);
+    color: var(--oc-color-text-secondary);
+  }
+
+  &__medication-dosage {
+    font-size: var(--oc-font-size-xs);
+    font-weight: var(--oc-font-weight-semibold);
+    color: var(--oc-color-primary);
+    background-color: var(--oc-color-primary-subtle);
+    padding: var(--oc-spacing-xs) var(--oc-spacing-sm);
+    border-radius: var(--oc-radius-full);
+  }
+
+  &__medication-details {
+    display: flex;
+    align-items: center;
+    gap: var(--oc-spacing-sm);
+    font-size: var(--oc-font-size-xs);
+    color: var(--oc-color-text-secondary);
+  }
+
+  &__medication-separator {
+    color: var(--oc-color-border-default);
+  }
+
+  &__vitals-table {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--oc-font-size-sm);
+
+    th {
+      text-align: left;
+      padding: var(--oc-spacing-sm) var(--oc-spacing-md);
+      border-bottom: 2px solid var(--oc-color-border-default);
+      color: var(--oc-color-text-secondary);
+      font-size: var(--oc-font-size-xs);
+      font-weight: var(--oc-font-weight-semibold);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: var(--oc-spacing-sm) var(--oc-spacing-md);
+      border-bottom: 1px solid var(--oc-color-border-default);
+      color: var(--oc-color-text-primary);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
+  &__consultation {
+    padding: var(--oc-spacing-md) 0;
+  }
+
+  &__consultation-header {
+    display: flex;
+    align-items: center;
+    gap: var(--oc-spacing-md);
+    margin-bottom: var(--oc-spacing-md);
+    padding-bottom: var(--oc-spacing-md);
+    border-bottom: 1px solid var(--oc-color-border-default);
+  }
+
+  &__consultation-date {
+    font-size: var(--oc-font-size-sm);
+    font-weight: var(--oc-font-weight-semibold);
+    color: var(--oc-color-primary);
+    background-color: var(--oc-color-primary-subtle);
+    padding: var(--oc-spacing-xs) var(--oc-spacing-sm);
+    border-radius: var(--oc-radius-sm);
+  }
+
+  &__consultation-reason {
+    font-size: var(--oc-font-size-md);
+    font-weight: var(--oc-font-weight-medium);
+    color: var(--oc-color-text-primary);
+  }
+
+  &__consultation-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-spacing-md);
+  }
+
+  &__consultation-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-spacing-xs);
+  }
+
+  &__consultation-label {
+    font-size: var(--oc-font-size-xs);
+    font-weight: var(--oc-font-weight-semibold);
+    color: var(--oc-color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__prescription-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--oc-spacing-sm);
+
+    li {
+      font-size: var(--oc-font-size-sm);
+      background-color: var(--oc-color-surface-elevated);
+      padding: var(--oc-spacing-xs) var(--oc-spacing-sm);
+      border-radius: var(--oc-radius-sm);
+      color: var(--oc-color-text-primary);
+    }
+  }
+
+  &__document {
+    display: flex;
+    align-items: center;
+    gap: var(--oc-spacing-md);
+    padding: var(--oc-spacing-md);
+    border: 1px solid var(--oc-color-border-default);
+    border-radius: var(--oc-radius-md);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    margin-bottom: var(--oc-spacing-sm);
+
+    &:hover {
+      background-color: var(--oc-color-surface-hover);
+      border-color: var(--oc-color-border-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--oc-color-border-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  &__doc-type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--oc-radius-sm);
+    font-size: var(--oc-font-size-xs);
+    font-weight: var(--oc-font-weight-bold);
+    letter-spacing: 0.05em;
+
+    &--pdf {
+      background-color: var(--oc-color-danger-subtle);
+      color: var(--oc-color-danger);
+    }
+
+    &--image {
+      background-color: var(--oc-color-primary-subtle);
+      color: var(--oc-color-primary);
+    }
+  }
+
+  &__document-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-spacing-xs);
+  }
+
+  &__document-name {
+    font-size: var(--oc-font-size-sm);
+    font-weight: var(--oc-font-weight-medium);
+    color: var(--oc-color-text-primary);
+  }
+
+  &__document-meta {
+    font-size: var(--oc-font-size-xs);
+    color: var(--oc-color-text-secondary);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

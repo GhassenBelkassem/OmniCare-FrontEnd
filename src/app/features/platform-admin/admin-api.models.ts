@@ -29,6 +29,7 @@ export interface ProfessionalPage {
 
 export interface CreateDoctorInput {
   readonly email: string;
+  readonly password: string;
   readonly phone: string | null;
   readonly professionalLicenseNumber: string;
   readonly specialty: string;

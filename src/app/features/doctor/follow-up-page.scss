@@ -1,0 +1,7 @@
+:host { display: block; min-height: 100dvh; background: #f3f5f4; color: #16233d; }
+.follow-up { min-height: 100dvh; display: grid; place-items: center; padding: 32px; }
+.follow-up__panel { width: min(520px, 100%); padding: 28px; border: 1px solid #dce2df; border-radius: 10px; background: #fff; box-shadow: 0 20px 60px rgb(22 35 61 / 12%); }
+.follow-up__panel h1 { margin: 0 0 8px; font-size: 24px; }
+.follow-up__panel p { margin: 0 0 12px; color: #5b6b7a; font-size: 14px; }
+.follow-up__note { padding: 12px; border: 1px dashed #dce2df; border-radius: 8px; color: #5b6b7a; font-size: 13px; }
+.follow-up__actions { display: flex; justify-content: flex-end; margin-top: 16px; }

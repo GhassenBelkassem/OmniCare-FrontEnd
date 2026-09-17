@@ -1,0 +1,189 @@
+.analytics-page {
+  padding: var(--oc-spacing-lg);
+  max-width: var(--oc-max-width-xl);
+  margin: 0 auto;
+
+  &__kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--oc-spacing-md);
+    margin-bottom: var(--oc-spacing-lg);
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  oc-segmented-control {
+    display: block;
+    margin-bottom: var(--oc-spacing-lg);
+  }
+
+  &__charts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--oc-spacing-lg);
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__chart-card {
+    grid-column: span 1;
+
+    &--wide {
+      @media (min-width: 769px) {
+        grid-column: span 2;
+      }
+    }
+  }
+
+  // ── Bar chart ──────────────────────────────────────────
+
+  &__bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--oc-spacing-sm);
+    height: 200px;
+    padding-top: var(--oc-spacing-md);
+  }
+
+  &__bar-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--oc-spacing-xs);
+    height: 100%;
+  }
+
+  &__bar-track {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  &__bar {
+    width: 100%;
+    max-width: 48px;
+    border-radius: var(--oc-radius-sm) var(--oc-radius-sm) 0 0;
+    transition: height 0.3s ease;
+    min-height: 2px;
+
+    &--primary {
+      background-color: var(--oc-color-primary);
+    }
+
+    &--revenue {
+      background-color: var(--oc-color-success);
+    }
+  }
+
+  &__bar-label {
+    font-size: var(--oc-font-size-xs);
+    color: var(--oc-color-text-secondary);
+    white-space: nowrap;
+  }
+
+  &__bar-value {
+    font-size: var(--oc-font-size-xs);
+    font-weight: var(--oc-font-weight-medium);
+    color: var(--oc-color-text-primary);
+  }
+
+  // ── Donut chart ────────────────────────────────────────
+
+  &__donut-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--oc-spacing-xl);
+
+    @media (max-width: 480px) {
+      flex-direction: column;
+    }
+  }
+
+  &__donut {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    flex-shrink: 0;
+  }
+
+  &__donut-ring {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--oc-radius-full);
+    // Cut out the center to form the donut ring
+    mask: radial-gradient(
+      transparent 55%,
+      black 56%
+    );
+    -webkit-mask: radial-gradient(
+      transparent 55%,
+      black 56%
+    );
+  }
+
+  &__donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__donut-total {
+    font-size: var(--oc-font-size-xl);
+    font-weight: var(--oc-font-weight-bold);
+    color: var(--oc-color-text-primary);
+    line-height: 1;
+  }
+
+  &__donut-label {
+    font-size: var(--oc-font-size-xs);
+    color: var(--oc-color-text-secondary);
+  }
+
+  // ── Legend ─────────────────────────────────────────────
+
+  &__legend {
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-spacing-sm);
+    flex: 1;
+  }
+
+  &__legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--oc-spacing-sm);
+  }
+
+  &__legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--oc-radius-full);
+    flex-shrink: 0;
+  }
+
+  &__legend-label {
+    font-size: var(--oc-font-size-sm);
+    color: var(--oc-color-text-primary);
+    flex: 1;
+  }
+
+  &__legend-count {
+    font-size: var(--oc-font-size-sm);
+    color: var(--oc-color-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+}

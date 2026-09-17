@@ -1,0 +1,22 @@
+.consultation-form { padding: 22px; display: grid; gap: 18px; }
+.panel-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.panel-top h2 { margin: 0 0 4px; font-size: 18px; }
+.panel-top p { margin: 0; color: #5b6b7a; font-size: 13px; }
+.field { display: grid; gap: 6px; }
+.field > span { color: #5b6b7a; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+textarea { width: 100%; min-height: 88px; border: 1px solid #dce2df; border-radius: 6px; padding: 8px 10px; background: #fafcfb; color: #16233d; font: inherit; resize: vertical; }
+textarea:focus-visible { outline: 2px solid #2f6f62; outline-offset: 2px; }
+.record-list { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.record-list div { display: grid; gap: 4px; }
+.record-list dt { color: #5b6b7a; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.record-list dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.section-title { margin: 0 0 10px; font-size: 13px; color: #5b6b7a; text-transform: uppercase; letter-spacing: .04em; }
+.summary-list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.summary-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid #dce2df; border-radius: 8px; background: #fafcfb; }
+.summary-list span { color: #5b6b7a; font-size: 13px; }
+.summary-list strong { font-size: 13px; text-align: right; overflow-wrap: anywhere; }
+.empty-note { margin: 0; padding: 14px; border: 1px dashed #dce2df; border-radius: 8px; color: #5b6b7a; text-align: center; }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; }
+@media (max-width: 640px) {
+  .record-list, .summary-list { grid-template-columns: 1fr; }
+}

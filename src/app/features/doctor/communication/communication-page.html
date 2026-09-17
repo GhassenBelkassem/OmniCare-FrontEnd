@@ -1,0 +1,137 @@
+<section class="comm-page">
+  <oc-page-header title="Communication" description="Messages et appels avec vos patients">
+  </oc-page-header>
+
+  <oc-tabs
+    [tabs]="tabs"
+    [selected]="activeTab()"
+    (selectedChange)="onTabChange($event)"
+    label="Type de communication"
+  />
+
+  @if (activeTab() === 'messages') {
+    <div class="comm-page__messages" [class.comm-page__messages--thread-open]="showThread()">
+      <aside class="comm-page__conversations">
+        @for (conv of conversations(); track trackByConvId($index, conv)) {
+          <button
+            type="button"
+            class="conversation-item"
+            [class.conversation-item--active]="selectedConversationId() === conv.id"
+            (click)="selectConversation(conv)"
+          >
+            <oc-avatar [name]="conv.patientName" size="small" />
+            <div class="conversation-item__body">
+              <div class="conversation-item__header">
+                <span class="conversation-item__name">{{ conv.patientName }}</span>
+                <time class="conversation-item__time">{{ conv.lastTime }}</time>
+              </div>
+              <p class="conversation-item__preview">{{ conv.lastMessage }}</p>
+            </div>
+            @if (conv.unread > 0) {
+              <span class="conversation-item__badge">{{ conv.unread }}</span>
+            }
+          </button>
+        } @empty {
+          <oc-empty-state
+            icon="message"
+            title="Aucune conversation"
+            description="Aucun message pour le moment."
+          />
+        }
+      </aside>
+
+      <div class="comm-page__thread">
+        @if (selectedConversation(); as conv) {
+          <header class="thread__header">
+            <oc-button
+              variant="quiet"
+              size="small"
+              leadingIcon="arrow-left"
+              class="thread__back"
+              (click)="closeThread()"
+            />
+            <oc-avatar [name]="conv.patientName" size="small" />
+            <span class="thread__patient-name">{{ conv.patientName }}</span>
+          </header>
+
+          <div class="thread__messages">
+            @for (msg of threadMessages(); track trackByMsgId($index, msg)) {
+              <div
+                class="thread__message"
+                [class.thread__message--doctor]="msg.sender === 'doctor'"
+                [class.thread__message--patient]="msg.sender === 'patient'"
+              >
+                <div class="thread__message-bubble">
+                  <p>{{ msg.text }}</p>
+                  <time class="thread__message-time">{{ msg.time }}</time>
+                </div>
+              </div>
+            } @empty {
+              <div class="thread__empty">
+                <p>Aucun message dans cette conversation.</p>
+              </div>
+            }
+          </div>
+
+          <footer class="thread__composer">
+            <input
+              type="text"
+              class="thread__input"
+              placeholder="Ecrire un message..."
+              [value]="messageText()"
+              (input)="onMessageInput($any($event.target).value)"
+              (keydown.enter)="sendMessage()"
+              aria-label="Message"
+            />
+            <oc-button
+              variant="primary"
+              size="small"
+              leadingIcon="send"
+              [disabled]="!messageText().trim()"
+              (click)="sendMessage()"
+            >
+              Envoyer
+            </oc-button>
+          </footer>
+        } @else {
+          <div class="thread__placeholder">
+            <oc-empty-state
+              icon="message"
+              title="Selectionnez une conversation"
+              description="Choisissez une conversation pour afficher les messages."
+            />
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (activeTab() === 'calls') {
+    <div class="comm-page__calls">
+      @for (call of callHistory(); track trackByCallId($index, call)) {
+        <article class="call-row">
+          <div class="call-row__icon" [class]="'call-row__icon call-row__icon--' + callTypeClass(call.type)">
+            <span aria-hidden="true">&#9742;</span>
+          </div>
+          <div class="call-row__info">
+            <span class="call-row__name">{{ call.patientName }}</span>
+            <span class="call-row__type">{{ callTypeLabel(call.type) }}</span>
+          </div>
+          <div class="call-row__meta">
+            <span class="call-row__duration">{{ call.duration }}</span>
+            <time class="call-row__date">{{ call.date }}</time>
+          </div>
+          <oc-button variant="quiet" size="small" leadingIcon="phone">
+            Rapeler
+          </oc-button>
+        </article>
+      } @empty {
+        <oc-empty-state
+          icon="phone"
+          title="Aucun appel"
+          description="Aucun historique d'appels."
+        />
+      }
+    </div>
+  }
+</section>

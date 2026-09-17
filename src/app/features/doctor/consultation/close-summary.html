@@ -1,0 +1,64 @@
+<section class="panel summary" aria-labelledby="summary-title">
+  <div class="panel-top">
+    <div>
+      <h2 id="summary-title">Consultation terminee</h2>
+      <p>L'e-prescription a ete generee et le dossier est enregistre.</p>
+    </div>
+  </div>
+
+  <dl class="record-list">
+    <div><dt>Patient</dt><dd>{{ record().patient.name }}</dd></div>
+    <div><dt>Date</dt><dd>{{ consultation().dateLabel }}</dd></div>
+    <div><dt>Diagnostic</dt><dd>{{ draft().diagnosis || 'Non renseigne' }}</dd></div>
+    <div><dt>Traitement</dt><dd>{{ draft().treatment || 'Non renseigne' }}</dd></div>
+  </dl>
+
+  <h3 class="section-title">E-prescription</h3>
+  @if (draft().prescriptionLines.length > 0) {
+    <ul class="summary-list">
+      @for (line of draft().prescriptionLines; track line.id) {
+        <li><span>{{ line.drugName }}</span><strong>{{ line.dosage }} · {{ line.timing }} · {{ line.duration }}</strong></li>
+      }
+    </ul>
+  } @else {
+    <p class="empty-note">Aucune ligne de prescription enregistree.</p>
+  }
+
+  <div class="qr-slot">
+    <h3 class="section-title">Code de retrait</h3>
+    <svg class="mock-qr" viewBox="0 0 96 96" role="img" aria-label="Code QR simule">
+      <rect x="0" y="0" width="24" height="24" fill="none" stroke="#16233d" stroke-width="6" />
+      <rect x="6" y="6" width="12" height="12" fill="#16233d" />
+      <rect x="72" y="0" width="24" height="24" fill="none" stroke="#16233d" stroke-width="6" />
+      <rect x="78" y="6" width="12" height="12" fill="#16233d" />
+      <rect x="0" y="72" width="24" height="24" fill="none" stroke="#16233d" stroke-width="6" />
+      <rect x="6" y="78" width="12" height="12" fill="#16233d" />
+      <rect x="40" y="8" width="8" height="8" fill="#16233d" />
+      <rect x="56" y="16" width="6" height="6" fill="#16233d" />
+      <rect x="34" y="28" width="6" height="6" fill="#16233d" />
+      <rect x="48" y="30" width="10" height="6" fill="#16233d" />
+      <rect x="60" y="36" width="6" height="10" fill="#16233d" />
+      <rect x="36" y="44" width="8" height="8" fill="#16233d" />
+      <rect x="50" y="50" width="6" height="6" fill="#16233d" />
+      <rect x="60" y="56" width="12" height="6" fill="#16233d" />
+      <rect x="30" y="60" width="6" height="12" fill="#16233d" />
+      <rect x="44" y="66" width="6" height="6" fill="#16233d" />
+      <rect x="56" y="72" width="8" height="8" fill="#16233d" />
+      <rect x="34" y="80" width="10" height="6" fill="#16233d" />
+      <rect x="50" y="84" width="6" height="6" fill="#16233d" />
+      <rect x="72" y="40" width="6" height="6" fill="#16233d" />
+      <rect x="82" y="48" width="8" height="8" fill="#16233d" />
+      <rect x="72" y="60" width="6" height="8" fill="#16233d" />
+      <rect x="80" y="72" width="8" height="6" fill="#16233d" />
+      <rect x="36" y="36" width="6" height="6" fill="#16233d" />
+      <rect x="24" y="48" width="6" height="6" fill="#16233d" />
+      <rect x="12" y="40" width="6" height="6" fill="#16233d" />
+    </svg>
+    <p class="qr-note">Code QR simule pour la maquette.</p>
+  </div>
+
+  <div class="form-actions">
+    <oc-button variant="secondary" (click)="backToDashboard.emit()">Retour au tableau de bord</oc-button>
+    <oc-button variant="primary" (click)="bookFollowUp.emit()">Prendre un rendez-vous de suivi</oc-button>
+  </div>
+</section>

@@ -48,4 +48,31 @@ describe('AdminApiService', () => {
     expect(request.request.headers.get('Idempotency-Key')).toBeTruthy();
     request.flush({});
   });
+
+  it('sends the initial password and idempotency key when creating a doctor', () => {
+    service.createDoctor({
+      email: 'doctor@omnicare.local',
+      password: 'ChangeMe123!',
+      phone: '+21653332480',
+      professionalLicenseNumber: 'FGJKHFF',
+      specialty: 'GENERAL',
+      governorate: 'NABEUL',
+    }).subscribe();
+
+    const request = http.expectOne('/api/v1/admin/professionals');
+    expect(request.request.headers.get('Authorization')).toBe('Bearer admin-access-token');
+    expect(request.request.headers.get('Idempotency-Key')).toBeTruthy();
+    expect(request.request.body).toEqual({
+      email: 'doctor@omnicare.local',
+      password: 'ChangeMe123!',
+      phone: '+21653332480',
+      professionalLicenseNumber: 'FGJKHFF',
+      specialty: 'GENERAL',
+      governorate: 'NABEUL',
+      role: 'DOCTOR',
+      affiliatedClinicId: null,
+      alsoIndependent: true,
+    });
+    request.flush({});
+  });
 });

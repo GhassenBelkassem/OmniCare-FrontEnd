@@ -1,0 +1,25 @@
+<section class="panel record-view" aria-labelledby="record-title">
+  <div class="panel-top">
+    <div>
+      <h2 id="record-title">Dossier medical</h2>
+      <p class="record-view__identity">{{ record().patient.name }} · {{ ageFromDob(record().patient.dob) }} ans · {{ record().patient.phone }}</p>
+    </div>
+    @if (mode() === 'active' && !started()) {
+      <oc-button variant="primary" (click)="start.emit()">Demarrer la consultation</oc-button>
+    }
+  </div>
+
+  <h3 class="record-view__subtitle">Consultations anterieures</h3>
+  @if (record().pastConsultations.length > 0) {
+    <ul class="record-view__list">
+      @for (past of record().pastConsultations; track past.id) {
+        <li>
+          <time>{{ past.date }}</time>
+          <span>{{ past.diagnosisLabel }}</span>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="empty-note">Aucune consultation anterieure.</p>
+  }
+</section>

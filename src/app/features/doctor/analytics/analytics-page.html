@@ -1,0 +1,103 @@
+<div class="analytics-page">
+  <oc-page-header
+    title="Analyses"
+    description="Performance et statistiques du cabinet"
+  />
+
+  <div class="analytics-page__kpis">
+    <oc-metric-card
+      label="Consultations cette semaine"
+      [value]="'' + weekConsultations()"
+      icon="line-chart"
+      trend="+8%"
+    />
+    <oc-metric-card
+      label="Nouveaux patients"
+      [value]="'' + newPatientsCount()"
+      icon="user-add"
+      trend="+3"
+    />
+    <oc-metric-card
+      label="Revenu total"
+      [value]="totalRevenue() + ' DT'"
+      icon="money-collect"
+      trend="+15%"
+    />
+    <oc-metric-card
+      label="Taux d'occupation"
+      [value]="utilization()"
+      icon="dashboard"
+    />
+  </div>
+
+  <oc-segmented-control
+    label="P\u00e9riode"
+    [options]="periodOptions"
+    [(selected)]="selectedPeriod"
+  />
+
+  <div class="analytics-page__charts">
+    <oc-card class="analytics-page__chart-card analytics-page__chart-card--wide" title="Consultations par jour">
+      <div class="analytics-page__bar-chart" role="img" aria-label="Graphique des consultations par jour">
+        @for (entry of currentConsultations(); track entry.day) {
+          <div class="analytics-page__bar-group">
+            <div class="analytics-page__bar-track">
+              <div
+                class="analytics-page__bar analytics-page__bar--primary"
+                [style.height]="consultationBarHeight(entry.count)"
+                [attr.aria-label]="entry.day + ': ' + entry.count + ' consultations'"
+              ></div>
+            </div>
+            <span class="analytics-page__bar-label">{{ entry.day }}</span>
+            <span class="analytics-page__bar-value">{{ entry.count }}</span>
+          </div>
+        }
+      </div>
+    </oc-card>
+
+    <oc-card class="analytics-page__chart-card" title="Revenus">
+      <div class="analytics-page__bar-chart" role="img" aria-label="Graphique des revenus">
+        @for (entry of currentRevenue(); track entry.label) {
+          <div class="analytics-page__bar-group">
+            <div class="analytics-page__bar-track">
+              <div
+                class="analytics-page__bar analytics-page__bar--revenue"
+                [style.height]="revenueBarHeight(entry.amount)"
+                [attr.aria-label]="entry.label + ': ' + entry.amount + ' DT'"
+              ></div>
+            </div>
+            <span class="analytics-page__bar-label">{{ entry.label }}</span>
+            <span class="analytics-page__bar-value">{{ entry.amount }}</span>
+          </div>
+        }
+      </div>
+    </oc-card>
+
+    <oc-card class="analytics-page__chart-card" title="D\u00e9mographie patients">
+      <div class="analytics-page__donut-wrapper">
+        <div class="analytics-page__donut" role="img" aria-label="R\u00e9partition des patients par \u00e2ge">
+          <div
+            class="analytics-page__donut-ring"
+            [style.background]="donutGradient()"
+          ></div>
+          <div class="analytics-page__donut-center">
+            <span class="analytics-page__donut-total">{{ totalDemographicCount() }}</span>
+            <span class="analytics-page__donut-label">patients</span>
+          </div>
+        </div>
+        <div class="analytics-page__legend">
+          @for (group of demographics; track group.label) {
+            <div class="analytics-page__legend-item">
+              <span
+                class="analytics-page__legend-dot"
+                [style.background-color]="group.color"
+              ></span>
+              <span class="analytics-page__legend-label">{{ group.label }}</span>
+              <span class="analytics-page__legend-count">{{ group.count }} ({{ group.percentage }}%)</span>
+            </div>
+          }
+        </div>
+      </div>
+    </oc-card>
+  </div>
+</div>

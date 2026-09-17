@@ -1,0 +1,39 @@
+@if (open()) {
+  <div class="lookup-overlay" (keydown.escape)="dismiss()" role="presentation">
+    <section class="lookup-panel" role="dialog" aria-modal="true" aria-labelledby="lookup-title">
+      <div class="lookup-panel__head">
+        <div>
+          <h2 id="lookup-title">Rechercher un patient</h2>
+          <p>Trouver un patient par nom ou telephone quand le scan QR n'est pas disponible.</p>
+        </div>
+        <button type="button" class="lookup-close" aria-label="Fermer la recherche" (click)="dismiss()">×</button>
+      </div>
+
+      <label class="lookup-field">
+        <span>Nom ou telephone</span>
+        <input type="search" placeholder="Ex. Trabelsi ou +216 20 111 222" [value]="query()" (input)="updateQuery($event)" autofocus />
+      </label>
+
+      <div class="lookup-results" role="listbox" aria-label="Resultats de recherche">
+        @if (query().trim()) {
+          @if (results().length > 0) {
+            @for (match of results(); track match.id) {
+              <button type="button" class="lookup-result" role="option" (click)="select(match)">
+                <strong>{{ match.name }}</strong>
+                <span>{{ match.phone }}</span>
+              </button>
+            }
+          } @else {
+            <p class="empty-note">Aucun patient ne correspond a cette recherche.</p>
+          }
+        } @else {
+          <p class="empty-note">Saisissez un nom ou un numero de telephone.</p>
+        }
+      </div>
+
+      <div class="form-actions">
+        <oc-button variant="secondary" (click)="dismiss()">Fermer</oc-button>
+      </div>
+    </section>
+  </div>
+}

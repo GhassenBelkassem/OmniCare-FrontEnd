@@ -1,0 +1,189 @@
+<div class="waiting-room-page">
+  <oc-page-header
+    title="Salle d'attente"
+    subtitle="Suivi en temps réel des patients"
+  />
+
+  <div class="waiting-room-page__stats">
+    <oc-metric-card
+      label="Total en attente"
+      [value]="'' + totalWaiting()"
+      icon="users"
+    />
+    <oc-metric-card
+      label="Temps d'attente moyen"
+      [value]="'' + avgWaitTime() + ' min'"
+      icon="clock"
+    />
+    <oc-metric-card
+      label="Attente la plus longue"
+      [value]="'' + longestWait() + ' min'"
+      icon="alert-triangle"
+    />
+  </div>
+
+  <div class="waiting-room-page__refresh">
+    <span class="waiting-room-page__refresh-indicator"
+      [class.waiting-room-page__refresh-indicator--active]="autoRefreshActive()"
+    >
+      <span class="waiting-room-page__refresh-dot"></span>
+      Mise à jour automatique dans {{ refreshCountdown() }}s
+    </span>
+    <span class="waiting-room-page__refresh-last">
+      Dernière mise à jour: {{ lastRefresh() | date:'HH:mm:ss' }}
+    </span>
+  </div>
+
+  <div class="waiting-room-page__board">
+    <div class="waiting-room-page__column">
+      <div class="waiting-room-page__column-header waiting-room-page__column-header--waiting">
+        <h3>En attente</h3>
+        <oc-status-badge status="pending" />
+      </div>
+      <div class="waiting-room-page__column-body">
+        @for (patient of waitingPatients(); track patient.id) {
+          <oc-card title="{{ patient.name }}">
+            <div class="waiting-room-page__patient">
+              <oc-avatar [name]="patient.name" size="small" />
+              <div class="waiting-room-page__patient-info">
+                <span class="waiting-room-page__patient-name">{{ patient.name }}</span>
+                <span class="waiting-room-page__patient-time">RDV: {{ patient.appointmentTime }}</span>
+                <span class="waiting-room-page__patient-type">{{ patient.appointmentType }}</span>
+                <span
+                  class="waiting-room-page__wait"
+                  [class]="getWaitClass(patient.waitMinutes)"
+                >
+                  {{ patient.waitMinutes }} min d'attente
+                </span>
+              </div>
+              <div class="waiting-room-page__patient-actions">
+                <oc-button
+                  variant="secondary"
+                  size="small"
+                  (click)="checkIn(patient.id)"
+                >
+                  Arrivé
+                </oc-button>
+                <oc-button
+                  variant="quiet"
+                  size="small"
+                  (click)="markNoShow(patient.id)"
+                >
+                  Absent
+                </oc-button>
+              </div>
+            </div>
+          </oc-card>
+        } @empty {
+          <oc-empty-state
+            title="Aucun patient en attente"
+            description="Tous les patients ont été accueillis"
+          />
+        }
+      </div>
+    </div>
+
+    <div class="waiting-room-page__column">
+      <div class="waiting-room-page__column-header waiting-room-page__column-header--arrived">
+        <h3>Arrivé</h3>
+        <oc-status-badge status="in-progress" />
+      </div>
+      <div class="waiting-room-page__column-body">
+        @for (patient of arrivedPatients(); track patient.id) {
+          <oc-card title="{{ patient.name }}">
+            <div class="waiting-room-page__patient">
+              <oc-avatar [name]="patient.name" size="small" />
+              <div class="waiting-room-page__patient-info">
+                <span class="waiting-room-page__patient-name">{{ patient.name }}</span>
+                <span class="waiting-room-page__patient-time">RDV: {{ patient.appointmentTime }}</span>
+                <span class="waiting-room-page__patient-type">{{ patient.appointmentType }}</span>
+                <span
+                  class="waiting-room-page__wait"
+                  [class]="getWaitClass(patient.waitMinutes)"
+                >
+                  {{ patient.waitMinutes }} min d'attente
+                </span>
+              </div>
+              <div class="waiting-room-page__patient-actions">
+                <oc-button
+                  variant="primary"
+                  size="small"
+                  (click)="startConsultation(patient.id)"
+                >
+                  Consultation
+                </oc-button>
+                <oc-button
+                  variant="quiet"
+                  size="small"
+                  (click)="markNoShow(patient.id)"
+                >
+                  Absent
+                </oc-button>
+              </div>
+            </div>
+          </oc-card>
+        } @empty {
+          <oc-empty-state
+            title="Aucun patient arrivé"
+            description="Les patients arrivés apparaîtront ici"
+          />
+        }
+      </div>
+    </div>
+
+    <div class="waiting-room-page__column">
+      <div class="waiting-room-page__column-header waiting-room-page__column-header--consultation">
+        <h3>En consultation</h3>
+        <oc-status-badge status="confirmed" />
+      </div>
+      <div class="waiting-room-page__column-body">
+        @for (patient of consultationPatients(); track patient.id) {
+          <oc-card title="{{ patient.name }}">
+            <div class="waiting-room-page__patient">
+              <oc-avatar [name]="patient.name" size="small" />
+              <div class="waiting-room-page__patient-info">
+                <span class="waiting-room-page__patient-name">{{ patient.name }}</span>
+                <span class="waiting-room-page__patient-time">RDV: {{ patient.appointmentTime }}</span>
+                <span class="waiting-room-page__patient-type">{{ patient.appointmentType }}</span>
+              </div>
+              <div class="waiting-room-page__patient-actions">
+                <oc-status-badge status="in-progress" />
+              </div>
+            </div>
+          </oc-card>
+        } @empty {
+          <oc-empty-state
+            title="Aucune consultation en cours"
+            description="Lancez une consultation depuis la colonne Arrivé"
+          />
+        }
+      </div>
+    </div>
+
+    <div class="waiting-room-page__column">
+      <div class="waiting-room-page__column-header waiting-room-page__column-header--no-show">
+        <h3>Pas comparu</h3>
+        <oc-status-badge status="cancelled" />
+      </div>
+      <div class="waiting-room-page__column-body">
+        @for (patient of noShowPatients(); track patient.id) {
+          <oc-card title="{{ patient.name }}">
+            <div class="waiting-room-page__patient">
+              <oc-avatar [name]="patient.name" size="small" />
+              <div class="waiting-room-page__patient-info">
+                <span class="waiting-room-page__patient-name">{{ patient.name }}</span>
+                <span class="waiting-room-page__patient-time">RDV: {{ patient.appointmentTime }}</span>
+                <span class="waiting-room-page__patient-type">{{ patient.appointmentType }}</span>
+              </div>
+            </div>
+          </oc-card>
+        } @empty {
+          <oc-empty-state
+            title="Aucun absent"
+            description="Pas de patients marqués comme absents"
+          />
+        }
+      </div>
+    </div>
+  </div>
+</div>

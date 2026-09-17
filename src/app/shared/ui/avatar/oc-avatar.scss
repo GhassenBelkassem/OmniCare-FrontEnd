@@ -1,0 +1,28 @@
+.oc-avatar {
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-inverse);
+  font-weight: var(--oc-font-weight-strong);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.oc-avatar--small {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.oc-avatar--default {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+
+.oc-avatar--large {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}

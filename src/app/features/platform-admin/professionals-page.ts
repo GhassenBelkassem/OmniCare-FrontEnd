@@ -26,6 +26,7 @@ export class ProfessionalsPage {
   readonly search = new FormControl('', { nonNullable: true });
   readonly form = new FormGroup({
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(16)] }),
     phone: new FormControl('', { nonNullable: true }),
     professionalLicenseNumber: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     specialty: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -51,7 +52,7 @@ export class ProfessionalsPage {
     const value = this.form.getRawValue();
     this.api.createDoctor({ ...value, phone: value.phone.trim() || null }).subscribe({
       next: () => {
-        this.successMessage.set('Doctor created. A one-time invitation has been queued for delivery.');
+        this.successMessage.set('Doctor created. Share the initial password through your approved secure channel.');
         this.submitting.set(false);
         this.createOpen.set(false);
         this.form.reset();
@@ -61,6 +62,11 @@ export class ProfessionalsPage {
     });
   }
 
+  generatePassword(): void {
+    this.form.controls.password.setValue(generateStrongPassword());
+    this.form.controls.password.markAsDirty();
+  }
+
   tableState(): 'loading' | 'empty' | 'error' | 'default' {
     if (this.loading()) return 'loading';
     if (this.errorMessage() && !this.page()) return 'error';
@@ -68,4 +74,13 @@ export class ProfessionalsPage {
   }
 
   trackProfessional(_index: number, item: AdminProfessional): string { return item.userId; }
+}
+
+function generateStrongPassword(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  const symbols = '!@#$%&*?';
+  const bytes = new Uint32Array(18);
+  globalThis.crypto.getRandomValues(bytes);
+  const core = Array.from(bytes, (value) => alphabet[value % alphabet.length]).join('');
+  return `${core}${symbols[bytes[0] % symbols.length]}${bytes[1] % 10}`;
 }

@@ -1,0 +1,55 @@
+.patient-detail {
+  display: grid;
+  gap: var(--oc-space-5);
+}
+
+.patient-detail__header {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+}
+
+.patient-detail__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: var(--oc-font-weight-semibold);
+  color: var(--oc-color-text-primary);
+}
+
+.patient-detail__meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--oc-color-text-muted);
+}
+
+.patient-detail__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--oc-space-4);
+}
+
+.patient-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oc-space-1);
+}
+
+.patient-detail__label {
+  font-size: 11px;
+  font-weight: var(--oc-font-weight-semibold);
+  color: var(--oc-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.patient-detail__value {
+  font-size: var(--oc-font-size-sm);
+  color: var(--oc-color-text-primary);
+}
+
+.patient-detail__empty {
+  padding: var(--oc-space-8) 0;
+  color: var(--oc-color-text-muted);
+  text-align: center;
+  font-size: var(--oc-font-size-sm);
+}

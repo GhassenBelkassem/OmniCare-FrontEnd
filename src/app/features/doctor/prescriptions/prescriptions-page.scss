@@ -1,0 +1,155 @@
+.prescriptions-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oc-space-lg);
+  padding: var(--oc-space-lg);
+  height: 100%;
+  overflow-y: auto;
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-space-md);
+  }
+
+  &__tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-space-md);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--oc-space-sm);
+  }
+
+  &__table-row {
+    border-bottom: 1px solid var(--oc-color-border);
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: var(--oc-color-surface-hover);
+    }
+  }
+
+  &__table-cell {
+    padding: var(--oc-space-sm) var(--oc-space-md);
+    color: var(--oc-color-text);
+    font-size: var(--oc-font-size-sm);
+    vertical-align: middle;
+
+    &--patient {
+      font-weight: var(--oc-font-weight-medium);
+      white-space: nowrap;
+    }
+
+    &--drug {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &--description {
+      max-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &--actions {
+      text-align: right;
+      white-space: nowrap;
+    }
+  }
+
+  &__modeles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--oc-space-md);
+  }
+
+  &__modele-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--oc-space-sm);
+    padding: var(--oc-space-sm);
+  }
+
+  &__modele-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__modele-category {
+    font-size: var(--oc-font-size-xs);
+    font-weight: var(--oc-font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--oc-color-primary);
+    background-color: var(--oc-color-primary-subtle);
+    padding: var(--oc-space-xxs) var(--oc-space-xs);
+    border-radius: var(--oc-radius-sm);
+  }
+
+  &__modele-date {
+    font-size: var(--oc-font-size-xs);
+    color: var(--oc-color-text-muted);
+  }
+
+  &__modele-name {
+    margin: 0;
+    font-size: var(--oc-font-size-base);
+    font-weight: var(--oc-font-weight-semibold);
+    color: var(--oc-color-text);
+  }
+
+  &__modele-content {
+    margin: 0;
+    font-size: var(--oc-font-size-sm);
+    color: var(--oc-color-text-muted);
+    line-height: var(--oc-line-height-relaxed);
+  }
+
+  &__modele-actions {
+    display: flex;
+    gap: var(--oc-space-xs);
+    margin-top: var(--oc-space-xs);
+  }
+}
+
+@media (max-width: 768px) {
+  .prescriptions-page {
+    padding: var(--oc-space-md);
+
+    &__modeles-grid {
+      grid-template-columns: 1fr;
+    }
+
+    &__actions {
+      flex-direction: column;
+
+      app-oc-button {
+        width: 100%;
+      }
+    }
+
+    &__table-cell--drug,
+    &__table-cell--description {
+      max-width: 120px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .prescriptions-page {
+    padding: var(--oc-space-sm);
+
+    &__table-cell {
+      padding: var(--oc-space-xs) var(--oc-space-sm);
+      font-size: var(--oc-font-size-xs);
+    }
+  }
+}
