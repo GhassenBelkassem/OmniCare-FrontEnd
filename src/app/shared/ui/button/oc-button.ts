@@ -2,37 +2,49 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  computed,
   input,
   viewChild,
 } from '@angular/core';
-import { NzButtonModule } from 'ng-zorro-antd/button';
+import { BrnButton } from '@spartan-ng/brain/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-export type OcButtonVariant = 'primary' | 'secondary' | 'quiet' | 'destructive';
-export type OcButtonSize = 'small' | 'default';
+/**
+ * Vendor-neutral action surface backed by the pinned Spartan Brain button
+ * primitive. `quiet` remains as the established OmniCare alias for `ghost`.
+ */
+export type OcButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'quiet'
+  | 'destructive'
+  | 'link';
+export type OcButtonSize = 'small' | 'default' | 'large';
 
 @Component({
   selector: 'oc-button',
-  imports: [NzButtonModule, NzIconModule],
+  imports: [BrnButton, NzIconModule],
   template: `
     <button
       #nativeButton
-      nz-button
-      [nzType]="nzType()"
-      [nzDanger]="variant() === 'destructive'"
-      [nzSize]="size()"
-      [nzLoading]="loading()"
-      [disabled]="disabled() || loading()"
-      [attr.type]="type()"
+      brnButton
+      [disabled]="isDisabled()"
+      [type]="type()"
+      [attr.form]="form()"
       [attr.aria-busy]="loading()"
-      [class.oc-button--quiet]="variant() === 'quiet'"
+      [attr.aria-label]="iconOnly() ? ariaLabel() : null"
+      [class]="buttonClasses()"
     >
-      @if (leadingIcon(); as icon) {
+      @if (loading()) {
+        <span class="oc-button__spinner" aria-hidden="true"></span>
+      } @else if (leadingIcon(); as icon) {
         <nz-icon [nzType]="icon" aria-hidden="true" />
       }
-      <span><ng-content /></span>
-      @if (trailingIcon(); as icon) {
+      @if (!iconOnly()) {
+        <span class="oc-button__label"><ng-content /></span>
+      }
+      @if (!loading() && trailingIcon(); as icon) {
         <nz-icon [nzType]="icon" aria-hidden="true" />
       }
     </button>
@@ -46,12 +58,27 @@ export class OcButton {
   readonly disabled = input(false);
   readonly loading = input(false);
   readonly type = input<'button' | 'submit' | 'reset'>('button');
+  readonly form = input<string>();
   readonly leadingIcon = input<string>();
   readonly trailingIcon = input<string>();
-  readonly nzType = computed(() =>
-    this.variant() === 'primary' ? 'primary' : this.variant() === 'quiet' ? 'text' : 'default',
-  );
+  readonly fullWidth = input(false);
+  readonly iconOnly = input(false);
+  readonly ariaLabel = input<string>();
   private readonly nativeButton = viewChild.required<ElementRef<HTMLButtonElement>>('nativeButton');
+
+  protected isDisabled(): boolean {
+    return this.disabled() || this.loading();
+  }
+
+  protected buttonClasses(): string {
+    return [
+      'oc-button',
+      `oc-button--${this.variant() === 'quiet' ? 'ghost' : this.variant()}`,
+      `oc-button--${this.size()}`,
+      this.fullWidth() ? 'oc-button--full-width' : '',
+      this.iconOnly() ? 'oc-button--icon-only' : '',
+    ].filter(Boolean).join(' ');
+  }
 
   focus(): void {
     this.nativeButton().nativeElement.focus();

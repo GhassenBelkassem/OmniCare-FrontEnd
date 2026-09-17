@@ -29,6 +29,7 @@ import {
   SidebarUserProfile,
 } from '../../shared/ui/sidebar/oc-sidebar';
 import { OcStatus, OcStatusBadge } from '../../shared/ui/status-badge/oc-status-badge';
+import { SpartanCoexistenceHarness } from './spartan-coexistence-harness';
 
 interface ShowcaseFilter {
   readonly id: string;
@@ -71,6 +72,7 @@ interface AppointmentRow {
     OcSegmentedControl,
     OcSidebar,
     OcStatusBadge,
+    SpartanCoexistenceHarness,
   ],
   templateUrl: './design-system.html',
   styleUrl: './design-system.scss',

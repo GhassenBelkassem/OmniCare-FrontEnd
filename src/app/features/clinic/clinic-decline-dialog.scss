@@ -1,0 +1,4 @@
+:host { display: contents; }
+.clinic-dialog__form { display: grid; gap: var(--oc-space-5); }
+.clinic-dialog__response { display: grid; gap: var(--oc-space-2); color: var(--oc-color-text-secondary); font-size: 13px; }
+.clinic-dialog__response ul { margin: 0; padding-inline-start: var(--oc-space-5); }

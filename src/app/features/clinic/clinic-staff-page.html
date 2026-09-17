@@ -1,0 +1,232 @@
+<div class="clinic-page">
+  <oc-page-header title="Staff" description="Manage professionals attached to this clinic">
+    @if (store.canInvite()) {
+      <oc-button
+        ocPrimaryAction
+        variant="primary"
+        leadingIcon="plus"
+        [disabled]="store.isMutating()"
+        (click)="openAddDialog()"
+        >Add staff</oc-button
+      >
+    }
+  </oc-page-header>
+
+  @if (store.notice(); as notice) {
+    <nz-alert
+      [nzType]="notice.tone === 'success' ? 'success' : 'error'"
+      [nzMessage]="notice.message"
+      nzShowIcon
+      nzCloseable
+      (nzOnClose)="store.dismissNotice()"
+    />
+  }
+
+  @if (!store.canRead()) {
+    <oc-empty-state
+      icon="team"
+      title="Staff management is unavailable"
+      description="Your clinic membership does not grant access to staff management."
+    />
+  } @else {
+    <oc-data-table-shell [state]="tableState()" density="compact">
+      <h2 ocTableTitle class="staff-table__title">Clinic staff</h2>
+
+      <div ocTableTools class="staff-filters">
+        <label class="staff-field">
+          <span class="oc-sr-only">Search staff</span>
+          <input
+            type="search"
+            class="staff-input"
+            placeholder="Search staff"
+            [attr.maxlength]="searchMaxLength"
+            (input)="onSearch($event)"
+          />
+        </label>
+        <label class="staff-field">
+          <span class="staff-field__label">Status</span>
+          <select class="staff-input" (change)="onStatusFilter($event)">
+            @for (option of statusFilters; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="staff-field">
+          <span class="staff-field__label">Role</span>
+          <select class="staff-input" (change)="onRoleFilter($event)">
+            @for (option of roleFilterOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        <oc-button variant="quiet" [loading]="store.loading()" (click)="store.refresh()"
+          >Refresh</oc-button
+        >
+      </div>
+
+      <oc-empty-state
+        icon="team"
+        title="No staff match this view"
+        description="Adjust the filters, or attach an existing professional to this clinic."
+      />
+
+      <table class="staff-table">
+        <caption class="oc-sr-only">
+          Professionals attached to this clinic
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Professional role</th>
+            <th scope="col">Membership status</th>
+            <th scope="col">Joined</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (member of store.items(); track trackMembership($index, member)) {
+            <tr>
+              <th scope="row" class="staff-table__name">
+                <a [routerLink]="['/clinic/staff', member.membershipId]">{{
+                  displayName(member)
+                }}</a>
+              </th>
+              <td>{{ roleLabel(member.professionalRole) }}</td>
+              <td>
+                <oc-status-badge [status]="statusTone(member.membershipStatus)" />
+                <span class="staff-table__status-text">{{
+                  statusLabel(member.membershipStatus)
+                }}</span>
+              </td>
+              <td>{{ (member.joinedAt | date: 'mediumDate') ?? '—' }}</td>
+              <td class="staff-table__actions">
+                @if (store.canSuspend() && canSuspendStatus(member.membershipStatus)) {
+                  <oc-button
+                    size="small"
+                    variant="quiet"
+                    [disabled]="store.isMutating()"
+                    [loading]="isRowPending(member) && store.pendingMutation() === 'suspend'"
+                    (click)="requestSuspend(member)"
+                    >Suspend</oc-button
+                  >
+                }
+                @if (store.canReactivate() && canReactivateStatus(member.membershipStatus)) {
+                  <oc-button
+                    size="small"
+                    variant="quiet"
+                    [disabled]="store.isMutating()"
+                    [loading]="isRowPending(member) && store.pendingMutation() === 'reactivate'"
+                    (click)="reactivate(member)"
+                    >Reactivate</oc-button
+                  >
+                }
+                @if (store.canEnd() && canEndStatus(member.membershipStatus)) {
+                  <oc-button
+                    size="small"
+                    variant="destructive"
+                    [disabled]="store.isMutating()"
+                    [loading]="isRowPending(member) && store.pendingMutation() === 'end'"
+                    (click)="requestEnd(member)"
+                    >End membership</oc-button
+                  >
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div ocTableFooter class="staff-pagination">
+        <span class="meta">{{ pageLabel() }}</span>
+        <div class="clinic-actions">
+          <oc-button
+            size="small"
+            [disabled]="!store.hasPrevious() || store.loading()"
+            (click)="store.previousPage()"
+            >Previous</oc-button
+          >
+          <oc-button
+            size="small"
+            [disabled]="!store.hasNext() || store.loading()"
+            (click)="store.nextPage()"
+            >Next</oc-button
+          >
+        </div>
+      </div>
+    </oc-data-table-shell>
+  }
+
+  <app-clinic-staff-dialog
+    [open]="addDialogOpen()"
+    heading="Add existing professional"
+    description="Attach a professional to this clinic. The professional must already have an active OmniCare professional account."
+    confirmLabel="Attach professional"
+    [pending]="store.pendingMutation() === 'attach'"
+    [submitDisabled]="addForm.invalid"
+    (confirmed)="submitAdd()"
+    (dismissed)="closeAddDialog()"
+  >
+    <form [formGroup]="addForm" class="staff-form">
+      <label class="staff-field">
+        <span class="staff-field__label">Professional email</span>
+        <input
+          type="email"
+          class="staff-input"
+          formControlName="email"
+          autocomplete="off"
+          [attr.maxlength]="emailMaxLength"
+          [attr.aria-invalid]="addForm.controls.email.touched && addForm.controls.email.invalid"
+        />
+        @if (addForm.controls.email.touched && addForm.controls.email.invalid) {
+          <span class="staff-field__error" role="alert">Enter a valid professional email.</span>
+        }
+      </label>
+      <label class="staff-field">
+        <span class="staff-field__label">Professional role</span>
+        <select class="staff-input" formControlName="professionalRole">
+          <option value="" disabled>Select a role</option>
+          @for (option of roleOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+        @if (addForm.controls.professionalRole.touched && addForm.controls.professionalRole.invalid) {
+          <span class="staff-field__error" role="alert">Select a professional role.</span>
+        }
+      </label>
+    </form>
+  </app-clinic-staff-dialog>
+
+  <app-clinic-staff-dialog
+    [open]="confirmKind() !== null"
+    [heading]="confirmHeading()"
+    [description]="confirmDescription()"
+    [confirmLabel]="confirmKind() === 'suspend' ? 'Suspend membership' : 'End membership'"
+    [destructive]="true"
+    [pending]="store.isMutating()"
+    (confirmed)="confirmAction()"
+    (dismissed)="closeConfirm()"
+  >
+    @if (confirmKind() === 'suspend') {
+      <form [formGroup]="suspendForm" class="staff-form">
+        <label class="staff-field">
+          <span class="staff-field__label">Suspension reason</span>
+          <select class="staff-input" formControlName="reasonCode">
+            @for (option of reasonOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="staff-field">
+          <span class="staff-field__label">Private note (optional)</span>
+          <textarea
+            class="staff-input"
+            rows="3"
+            formControlName="note"
+            [attr.maxlength]="noteMaxLength"
+          ></textarea>
+          <span class="meta">This note is stored privately and is never shown again.</span>
+        </label>
+      </form>
+    }
+  </app-clinic-staff-dialog>
+</div>

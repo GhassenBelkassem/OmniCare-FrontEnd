@@ -8,13 +8,12 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { OcIcon, OcIconName } from '../icon/oc-icon';
 
 export interface SidebarNavigationItem {
   readonly id: string;
   readonly label: string;
-  readonly icon?: string;
+  readonly icon?: OcIconName | string;
   readonly route?: string;
   readonly children?: readonly SidebarNavigationItem[];
   readonly badge?: string | number;
@@ -29,16 +28,8 @@ export interface SidebarUserProfile {
 
 @Component({
   selector: 'oc-sidebar',
-  imports: [RouterLink, NzIconModule, NzTooltipModule],
+  imports: [RouterLink, OcIcon],
   template: `
-    @if (mobileOpen()) {
-      <button
-        class="oc-sidebar__backdrop"
-        type="button"
-        aria-label="Close navigation"
-        (click)="mobileOpen.set(false)"
-      ></button>
-    }
     <aside
       class="oc-sidebar"
       [class.oc-sidebar--collapsed]="collapsed()"
@@ -52,19 +43,6 @@ export interface SidebarUserProfile {
         }
       </div>
 
-      @if (!collapsed()) {
-        <label class="oc-sidebar__search">
-          <span class="oc-sr-only">Search navigation</span>
-          <nz-icon nzType="search" aria-hidden="true" />
-          <input
-            type="search"
-            placeholder="Find a workspace"
-            [value]="query()"
-            (input)="updateQuery($event)"
-          />
-        </label>
-      }
-
       <nav class="oc-sidebar__nav" aria-label="Workspace">
         <ul>
           @for (item of filteredItems(); track item.id) {
@@ -72,9 +50,7 @@ export interface SidebarUserProfile {
               @if (item.children?.length) {
                 <button
                   class="oc-sidebar__group-button"
-                  nz-tooltip
-                  [nzTooltipTitle]="collapsed() ? item.label : null"
-                  nzTooltipPlacement="right"
+                  [attr.title]="collapsed() ? item.label : null"
                   type="button"
                   [disabled]="item.disabled"
                   [attr.aria-expanded]="isExpanded(item.id)"
@@ -82,15 +58,11 @@ export interface SidebarUserProfile {
                   (click)="toggleGroup(item.id)"
                 >
                   @if (item.icon) {
-                    <nz-icon [nzType]="item.icon" aria-hidden="true" />
+                    <oc-icon [name]="item.icon" intent="information" />
                   }
                   @if (!collapsed()) {
                     <span>{{ item.label }}</span>
-                    <nz-icon
-                      class="oc-sidebar__chevron"
-                      [nzType]="isExpanded(item.id) ? 'up' : 'down'"
-                      aria-hidden="true"
-                    />
+                    <oc-icon class="oc-sidebar__chevron" [name]="isExpanded(item.id) ? 'chevron-down' : 'chevron-right'" />
                   }
                 </button>
                 @if (!collapsed() && isExpanded(item.id)) {
@@ -116,9 +88,7 @@ export interface SidebarUserProfile {
               } @else {
                 <a
                   class="oc-sidebar__standalone"
-                  nz-tooltip
-                  [nzTooltipTitle]="collapsed() ? item.label : null"
-                  nzTooltipPlacement="right"
+                  [attr.title]="collapsed() ? item.label : null"
                   [routerLink]="item.route ?? null"
                   [class.oc-sidebar__item--active]="activeId() === item.id"
                   [attr.aria-current]="activeId() === item.id ? 'page' : null"
@@ -126,7 +96,7 @@ export interface SidebarUserProfile {
                   (click)="mobileOpen.set(false)"
                 >
                   @if (item.icon) {
-                    <nz-icon [nzType]="item.icon" aria-hidden="true" />
+                    <oc-icon [name]="item.icon" intent="information" />
                   }
                   @if (!collapsed()) {
                     <span>{{ item.label }}</span>
@@ -151,10 +121,10 @@ export interface SidebarUserProfile {
             >
             <button
               type="button"
-              [attr.aria-label]="'Open user menu for ' + userProfile.name"
+              aria-label="Sign out"
               (click)="profileMenu.emit()"
             >
-              <nz-icon nzType="more" aria-hidden="true" />
+              <oc-icon name="close" /><span>Sign out</span>
             </button>
           }
         </div>
@@ -165,7 +135,7 @@ export interface SidebarUserProfile {
         [attr.aria-label]="collapsed() ? 'Expand navigation' : 'Collapse navigation'"
         (click)="collapsed.update((value) => !value)"
       >
-        <nz-icon [nzType]="collapsed() ? 'menu-unfold' : 'menu-fold'" aria-hidden="true" />
+        <oc-icon [name]="collapsed() ? 'chevron-right' : 'chevron-left'" />
         @if (!collapsed()) {
           <span>Collapse navigation</span>
         }

@@ -35,7 +35,8 @@ const STATUS_LABELS: Record<OcStatus, string> = {
 })
 export class OcStatusBadge {
   readonly status = input.required<OcStatus>();
-  readonly label = computed(() => STATUS_LABELS[this.status()]);
+  readonly customLabel = input<string>();
+  readonly label = computed(() => this.customLabel() ?? STATUS_LABELS[this.status()]);
   readonly tone = computed(() => {
     const status = this.status();
     if (status === 'confirmed' || status === 'completed') return 'success';

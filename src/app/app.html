@@ -1,1 +1,8 @@
-<router-outlet />
+@if (auth.authState() === 'unknown') {
+  <main class="app-boot" aria-live="polite" aria-busy="true">
+    <span class="app-boot__mark" aria-hidden="true">O<span>+</span></span>
+    <p>Preparing secure workspace…</p>
+  </main>
+} @else {
+  <router-outlet />
+}

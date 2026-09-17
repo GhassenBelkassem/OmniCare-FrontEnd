@@ -1,0 +1,7 @@
+:host { display: block; }
+.oc-textarea { box-sizing: border-box; display: block; width: 100%; min-height: 82px; resize: vertical; border: 1px solid var(--oc-color-border-strong); border-radius: var(--oc-radius-md); padding: var(--oc-space-3); background: var(--oc-color-surface-card); color: var(--oc-color-text-primary); font: inherit; line-height: 1.45; }
+.oc-textarea:hover:not(:disabled) { border-color: var(--oc-color-brand-primary); }
+.oc-textarea:focus-visible { border-color: var(--oc-color-brand-primary); outline: 3px solid var(--oc-color-brand-primary); outline-offset: 1px; }
+.oc-textarea[aria-invalid='true'] { border-color: var(--oc-color-critical); }
+.oc-textarea:disabled { cursor: not-allowed; background: var(--oc-color-surface-disabled); color: var(--oc-color-text-disabled); }
+.oc-textarea__count { margin: var(--oc-space-1) 0 0; color: var(--oc-color-text-muted); font-size: 12px; text-align: end; }

@@ -1,0 +1,8 @@
+:host { display: block; }
+.oc-field { display: grid; gap: var(--oc-space-2); min-width: 0; }
+.oc-field__label { color: var(--oc-color-text-secondary); font-size: 13px; font-weight: var(--oc-font-weight-semibold); }
+.oc-field__required { color: var(--oc-color-critical); }
+.oc-field__hint { margin: 0; color: var(--oc-color-text-muted); font-size: 12px; line-height: 1.4; }
+.oc-field__error { margin: 0; color: var(--oc-color-critical); font-size: 12px; font-weight: var(--oc-font-weight-semibold); line-height: 1.4; }
+.oc-field--compact { gap: var(--oc-space-1); }
+.oc-field--disabled { opacity: .72; }

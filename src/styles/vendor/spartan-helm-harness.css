@@ -1,0 +1,14 @@
+/* Selected Spartan 1.2.0 Maia Helm styles copied for the private P0 harness. */
+@layer components {
+  .spartan-button {
+    @apply focus-visible:border-ring focus-visible:ring-ring/50 data-[matches-spartan-invalid=true]:ring-destructive/20 rounded-4xl border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-[3px] active:not-aria-[haspopup]:translate-y-px;
+  }
+  .spartan-button-variant-default { @apply bg-primary text-primary-foreground hover:bg-primary/80; }
+  .spartan-button-variant-outline { @apply border-border bg-input/30 hover:bg-input/50 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground; }
+  .spartan-button-variant-secondary { @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground; }
+  .spartan-button-variant-ghost { @apply hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground; }
+  .spartan-button-variant-destructive { @apply bg-destructive/10 hover:bg-destructive/20 focus-visible:ring-destructive/20 text-destructive focus-visible:border-destructive/40; }
+  .spartan-button-size-sm { @apply h-8 gap-1 px-3; }
+  .spartan-button-size-default { @apply h-9 gap-1.5 px-3; }
+  .spartan-button-size-lg { @apply h-10 gap-1.5 px-4; }
+}

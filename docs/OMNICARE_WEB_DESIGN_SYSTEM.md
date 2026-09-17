@@ -16,6 +16,44 @@ NG-ZORRO 21 does not expose the date-adapter provider introduced in NG-ZORRO 22.
 
 Use raw NG-ZORRO controls when OmniCare adds no stable semantic behavior. Create an OmniCare component when it standardizes a product pattern, repeated visual rules, accessibility, a composition of primitives, or a vendor boundary. Do not mirror every vendor input and output.
 
+## Spartan coexistence foundation (P0)
+
+The approved compatibility stack is pinned in `package.json`: `@spartan-ng/brain` `1.2.0`, `@angular/cdk` `21.2.14`, `clsx` `2.1.1`, `luxon` `3.7.2`, `tw-animate-css` `1.4.0`, `tailwindcss` `4.3.2`, and `@tailwindcss/postcss` `4.3.2`. Spartan Brain `1.2.0` declares Angular and CDK support from 21 through 22; its headless primitives are the only Spartan runtime dependency at this stage.
+
+`@spartan-ng/cli` `1.2.0` was evaluated only as a development generator and then removed. Its published nested `zod@3.25.76` dependency declares an `index.cjs` export that is absent from that package, so the generator is unusable in this workspace. No dependency was patched in `node_modules`. The small private `HlmButton` and selected harness stylesheet are traceable adaptations of the 1.2.0 generated Helm templates; they remain development-only, have no public `shared/ui` export, and retain the upstream dependency licences in `package-lock.json`/package metadata (`@spartan-ng/brain` MIT, `class-variance-authority` Apache-2.0, and the remaining direct compatibility utilities MIT). Re-evaluate the CLI only after an upstream fixed release, regenerate in a clean workspace, and compare its generated button source/styles before replacing these private copies.
+
+`angular.json` has a deterministic global style order:
+
+1. `src/styles/vendor/ng-zorro-theme.less`
+2. `src/styles/vendor/spartan-tailwind.css`
+3. `src/styles.scss`
+
+Tailwind imports its theme, Preflight, and utilities in named layers. NG-ZORRO and OmniCare SCSS remain unlayered, so they retain normal-cascade precedence over Preflight. Spartan's preset owns only the shared CDK overlay stylesheet/behaviour; it does not create another overlay container. The existing `--oc-z-*` CDK container rule remains the single overlay stack owner.
+
+`themes/_omnicare-light.scss` maps Spartan's `--background`, `--primary`, `--border`, `--ring`, typography, radius, and related theme variables to existing `--oc-*` semantic variables. These aliases are a compatibility bridge, not a new color palette. Light mode and existing typography remain unchanged.
+
+The development-only `/design-system` route contains `SpartanCoexistenceHarness`. It proves private Brain dialog and sheet primitives plus token-styled button, field, native select, alert, skeleton, badge, and presentational table states. It is not exported by `shared/ui`, is not in production navigation, and must never become a feature dependency.
+
+P1 adds the focused production `OcDialog` abstraction under `shared/ui/dialog`. Its public API is vendor-neutral: controlled `open`, required `title`, optional `description`/`error`, `standard` or `destructive` intent, initial-focus selector, backdrop-dismiss option, submitting/disabled state, explicit `hasFooter`, and `dismissed` output. The component alone imports Spartan Brain's 1.2 dialog directives; it uses Brain's CDK focus trap, focus restoration, Escape/backdrop policy, and block-scroll strategy while OmniCare SCSS owns surfaces and layout. Dialogs use the normal `dialog` role even for destructive form collection, with visible destructive text rather than an `alertdialog` role or decorative warning bar. The global CDK backdrop class is the only modal backdrop rule, so it covers fixed application shell regions without feature z-index overrides.
+
+P1-FIX adds vendor-neutral `OcButton`, `OcField`, `OcSelect`, and `OcTextarea` contracts under `shared/ui`. `OcButton` uses Brain's pinned button directive internally and preserves the established `primary`, `secondary`, `quiet`, and `destructive` API (`quiet` aliases `ghost`), while adding `outline`, `ghost`, `link`, `large`, full-width, and accessible icon-only support. `OcSelect` composes Brain's pinned select and popover directives into a focused static single-select CVA; `OcTextarea` is a focused CVA; and `OcField` provides deterministic label/hint/error identifiers for projected controls. Feature code imports only these `Oc*` components. No Helm source was copied for these controls: their structure follows the pinned Brain directive contracts, and their visual layer uses existing OmniCare semantic tokens.
+
+P2 establishes the white clinic workspace treatment through the existing semantic token authority: white application and surface tokens, neutral separators, OmniCare-green focus and active states, and a coordination-violet semantic token. `OcIcon` is the vendor-neutral, inline outline-icon boundary used by the clinic shell; it is tree-shaken by explicit names and supports decorative or labelled meaningful use plus semantic intent. `OcSheet` is the vendor-neutral controlled sheet boundary backed by pinned Spartan Brain sheet directives. It owns CDK overlay placement, scroll containment, focus restoration, Escape/backdrop policy, and an optional action footer; feature code sees no Brain import. The clinic shell uses `OcSheet` for mobile navigation, while My Tasks uses a read-only right-side task preview at tablet and desktop widths and preserves the canonical detail route on mobile and for all mutations.
+
+P2.1 defines the startup lifecycle for this browser-session application. `app.routes.server.ts` marks all routes as `RenderMode.Client`: the existing opaque session and refresh token exist only in browser `sessionStorage`, so rendering any route at build time would otherwise produce an anonymous Login tree for an authenticated URL. The root `App` therefore renders only a neutral white boot surface while `AuthTokenStore` is `unknown`. Browser startup invokes `AuthBootstrapService` through `provideAppInitializer`; it restores a structurally valid stored session, validates it once with the existing refresh endpoint, and settles the store as `authenticated` or `anonymous`. Blocking initial navigation then lets guards decide only after this resolution. `authenticatedGuard` and role guards return `UrlTree` redirects after resolution, while the Login route's `anonymousOnlyGuard` redirects authenticated users before its component is constructed. No token, role, clinic context, or capability is sent through SSR or transfer state.
+
+Feature directories are prohibited from importing `@spartan-ng/*`. `npm run check:ui-boundaries` enforces that rule while allowing the development-only design-system harness. Future OmniCare primitives may internalize Brain/Helm implementation only after their stable `Oc*` contracts are approved.
+
+## Authenticated clinic certification (P0A)
+
+`e2e/clinic-ui-isolation.spec.ts` exercises the clinic shell and protected task, request, staff, and handover routes at 1440×900, 1024×768, and 390×844. It uses no account, real token, environment secret, API write, or production auth bypass. Instead, `e2e/clinic-e2e-fixture.ts` creates a fresh, browser-only `sessionStorage` session and intercepts only `/api/v1/**` with fictional values. This is UI isolation, not an authentication test or a representation of production authorization; the application guards and capability checks remain active and the fixture first follows the ordinary `/clinic` context-initialization route.
+
+Every covered route checks its landmark/heading, client-side navigation, page-level horizontal containment, browser errors, AXE WCAG tags, and a full-page screenshot. Successful screenshots and transient Playwright reports are intentionally ignored (`test-results/`, `playwright-report/`, and `playwright/.auth/`) and must not be committed. The AXE assertion has a route-scoped, node-level legacy baseline rather than a rule-wide suppression: legacy colour-contrast issues in the sidebar/table/link styling, the legacy NG-ZORRO hidden-select label finding, and the legacy staff header ARIA attribute remain visible in the test source; a new critical or serious node fails. The handover control was corrected to real ARIA tabs with Arrow/Home/End behavior, which removes its prior critical required-children violation.
+
+The responsive certification also makes the clinic shell/table composition constrain min-content width so wide tables scroll within their labelled table region instead of causing document-level horizontal overflow. This does not change any authorization, workflow, or data behavior.
+
+Rollback: remove the P0 style entry, `.postcssrc.json`, Spartan token aliases, development harness, tests, and boundary script; then remove only the seven pinned P0 packages with npm and regenerate the lock file. Do this as one reviewed change. No production feature should require a rollback because none imports Spartan.
+
 ## Token architecture
 
 Global SCSS is organized under `src/styles`:
@@ -33,7 +71,7 @@ Components consume `--oc-` semantic variables. Primitive color values stay in ap
 
 No official OmniCare logo, font, palette or design-reference image was present in this project. `_brand-source.scss` therefore marks these provisional values with a TODO:
 
-- Primary: `#176b5b`
+- Primary: `#1FBF9A`
 - Primary hover: `#12594c`
 - Primary active: `#0d473d`
 - Secondary: `#294b63`
@@ -51,7 +89,7 @@ Motion is 120/180/240ms with restrained easing. Reduced-motion preferences colla
 
 ## Icon rules
 
-Only registered NG-ZORRO / Ant Design outline icons are used. Sizes are 16px for compact controls, 18px for ordinary controls, 20px for navigation and 24px only for larger empty-state/metric expression. Icon-only buttons require an accessible label and tooltip; status never relies on icons or color alone.
+Use the vendor-neutral `OcIcon` boundary for new shared and clinic workspace icons; it exposes a deliberate outline-icon subset rather than an entire catalogue. Sizes are 16px for compact controls, 18px for ordinary controls, 20px for navigation and 24px only for larger empty-state/metric expression. Decorative icons are hidden from assistive technology; meaningful icons receive a label. Icon-only buttons require an accessible label and tooltip; status never relies on icons or color alone.
 
 ## Application shell and sidebar
 

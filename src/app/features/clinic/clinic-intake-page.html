@@ -1,0 +1,170 @@
+<div class="requests-page">
+  <oc-page-header
+    title="Requests"
+    description="Manage incoming OmniCare requests for this clinic."
+  >
+    <span ocBreadcrumbs>Clinic workspace&nbsp; / &nbsp;Requests</span>
+    <div ocSecondaryActions>
+      <oc-button variant="quiet" [loading]="store.refreshing()" (click)="refresh()">
+        Refresh
+      </oc-button>
+    </div>
+  </oc-page-header>
+
+  <section class="requests-filter-bar" aria-label="Request filters">
+    <label class="requests-filter">
+      <span>Status</span>
+      <nz-select [formControl]="statusControl" aria-label="Filter requests by status">
+        <nz-option nzValue="ALL" nzLabel="All statuses" />
+        @for (status of statusOptions; track status.value) {
+          <nz-option [nzValue]="status.value" [nzLabel]="status.label" />
+        }
+      </nz-select>
+    </label>
+    @if (hasActiveFilter()) {
+      <oc-button variant="quiet" size="small" (click)="clearFilters()">Clear filters</oc-button>
+    }
+    <p class="requests-filter-bar__note">Filters are applied by the server.</p>
+  </section>
+
+  <oc-data-table-shell [state]="tableState()" density="compact">
+    <div ocTableTitle class="requests-table-title">
+      <h2>Request queue</h2>
+      @if (store.lastGeneratedAt(); as generatedAt) {
+        <p>Updated {{ generatedAt | date: 'dd MMM, HH:mm' }}</p>
+      } @else {
+        <p>Current clinic requests</p>
+      }
+    </div>
+    <div ocTableTools class="requests-page-size">
+      <label for="request-page-size">Rows</label>
+      <nz-select
+        id="request-page-size"
+        [formControl]="pageSizeControl"
+        aria-label="Rows per page"
+      >
+        @for (size of pageSizes; track size) {
+          <nz-option [nzValue]="size" [nzLabel]="'' + size" />
+        }
+      </nz-select>
+    </div>
+
+    <div ocTableEmpty>
+      @if (tableState() === 'empty') {
+        @if (hasActiveFilter()) {
+          <oc-empty-state
+            icon="search"
+            title="No requests match these filters"
+            description="Clear the status filter to return to the full request queue."
+          >
+            <oc-button variant="quiet" (click)="clearFilters()">Clear filters</oc-button>
+          </oc-empty-state>
+        } @else {
+          <oc-empty-state
+            icon="file-text"
+            title="No requests yet"
+            description="New OmniCare requests assigned to this clinic will appear here."
+          />
+        }
+      }
+    </div>
+
+    @if (store.errorMessage(); as errorMessage) {
+      <div class="requests-error" role="alert" aria-live="assertive">
+        <div>
+          <h2>We couldn't load the request list</h2>
+          <p>{{ errorMessage }}</p>
+        </div>
+        <oc-button variant="secondary" (click)="refresh()">Try again</oc-button>
+      </div>
+    }
+
+    @if (tableState() === 'default' && store.error() === null) {
+      <table class="requests-table">
+        <caption class="oc-sr-only">
+          Clinic requests. Open a row with its View request link.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Request</th>
+            <th scope="col">Patient</th>
+            <th scope="col" class="requests-table__situation">Situation</th>
+            <th scope="col">Status</th>
+            <th scope="col">Priority</th>
+            <th scope="col" class="requests-table__step">Current step</th>
+            <th scope="col" class="requests-table__submitted">Submitted</th>
+            <th scope="col"><span class="oc-sr-only">Action</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (request of store.items(); track trackRequest($index, request)) {
+            <tr>
+              <td>
+                <strong class="request-reference" [title]="request.clinicCaseId">
+                  {{ reference(request.clinicCaseId) }}
+                </strong>
+              </td>
+              <td>
+                <span class="request-patient">{{ request.patientDisplayName }}</span>
+                <small>
+                  {{ request.subjectType === 'SELF' ? 'Self' : request.relationship || 'Family member' }}
+                </small>
+              </td>
+              <td class="requests-table__situation">
+                <span class="situation-label">{{ situationLabel(request.situation) }}</span>
+              </td>
+              <td>
+                <oc-status-badge
+                  [status]="statusTone(request.administrativeStatus)"
+                  [customLabel]="statusLabel(request.administrativeStatus)"
+                />
+              </td>
+              <td>
+                <span
+                  class="priority-label"
+                  [class.priority-label--high]="request.priority === 'HIGH'"
+                  [class.priority-label--critical]="request.priority === 'CRITICAL'"
+                >
+                  <span aria-hidden="true"></span>{{ priorityLabel(request.priority) }}
+                </span>
+              </td>
+              <td class="requests-table__step">{{ stepLabel(request.currentStepKey) }}</td>
+              <td class="requests-table__submitted oc-tabular">
+                <time [attr.datetime]="request.submittedAt">
+                  <strong>{{ request.submittedAt | date: 'dd MMM yyyy' }}</strong>
+                  <small>{{ request.submittedAt | date: 'HH:mm' }}</small>
+                </time>
+              </td>
+              <td class="requests-table__action">
+                <a
+                  [routerLink]="['/clinic/requests', request.clinicCaseId]"
+                  [queryParams]="{ status: statusFilter() === 'ALL' ? null : statusFilter(), page: page() || null, pageSize: pageSize() === 20 ? null : pageSize() }"
+                  aria-label="View request {{ reference(request.clinicCaseId) }} for {{ request.patientDisplayName }}"
+                >View request</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div ocTableFooter class="requests-table-footer" aria-live="polite">
+      <span>Page {{ page() + 1 }} · {{ store.items().length }} shown</span>
+      <div class="requests-pager" aria-label="Request pages">
+        <oc-button
+          variant="quiet"
+          size="small"
+          [disabled]="!store.hasPrevious() || store.loading()"
+          (click)="previousPage()"
+        >Previous</oc-button>
+        <oc-button
+          variant="quiet"
+          size="small"
+          [disabled]="!store.hasNext() || store.loading()"
+          (click)="nextPage()"
+        >Next</oc-button>
+      </div>
+    </div>
+  </oc-data-table-shell>
+
+</div>

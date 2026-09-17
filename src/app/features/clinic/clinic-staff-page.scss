@@ -1,0 +1,94 @@
+.staff-table__title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.staff-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--oc-space-3);
+}
+
+.staff-field {
+  display: grid;
+  gap: var(--oc-space-1);
+  min-width: 0;
+}
+
+.staff-field__label {
+  color: var(--oc-color-text-muted);
+  font-size: 12px;
+}
+
+.staff-field__error {
+  color: var(--oc-color-critical-text, #b42318);
+  font-size: 12px;
+}
+
+.staff-input {
+  min-height: 32px;
+  padding: var(--oc-space-1) var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-strong);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+.staff-input:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 1px;
+}
+
+.staff-form {
+  display: grid;
+  gap: var(--oc-space-4);
+}
+
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.staff-table th,
+.staff-table td {
+  padding: var(--oc-space-3) var(--oc-space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--oc-color-border-subtle);
+  vertical-align: middle;
+}
+
+.staff-table thead th {
+  color: var(--oc-color-text-muted);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+  white-space: nowrap;
+}
+
+.staff-table__name {
+  font-weight: var(--oc-font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.staff-table__status-text {
+  margin-left: var(--oc-space-2);
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+}
+
+.staff-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+}
+
+.staff-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+}

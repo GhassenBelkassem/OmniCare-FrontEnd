@@ -1,0 +1,29 @@
+/*
+ * Coexistence order is declared in angular.json:
+ * 1. NG-ZORRO Less, 2. this layered Tailwind/Spartan entry, 3. OmniCare SCSS.
+ * Unlayered NG-ZORRO and OmniCare rules therefore retain precedence over
+ * Tailwind Preflight; the Spartan preset supplies only shared CDK overlay
+ * behaviour and utility definitions. OmniCare semantic tokens map the Spartan
+ * theme variables in themes/_omnicare-light.scss.
+ */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import '@spartan-ng/brain/hlm-tailwind-preset.css';
+@import './spartan-helm-harness.css';
+
+/* Private development-harness overlay surfaces. */
+.oc-spartan-compat-backdrop {
+  background: var(--oc-color-surface-overlay);
+}
+
+.cdk-overlay-pane.oc-spartan-compat-dialog-pane,
+.cdk-overlay-pane.oc-spartan-compat-sheet-pane {
+  max-width: calc(100vw - var(--oc-space-8));
+}
+
+.oc-spartan-compat-sheet-pane {
+  block-size: 100dvh;
+}
