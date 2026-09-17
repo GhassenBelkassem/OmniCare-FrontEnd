@@ -1,7 +1,7 @@
 import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 
-import { authenticatedGuard, roleGuard } from './core/auth/auth.guards';
+import { landingRedirect } from './core/auth/auth.guards';
 
 const productionRoutes: Routes = [
   {
@@ -49,7 +49,7 @@ const productionRoutes: Routes = [
         loadChildren: () =>
           import('./features/patient/patient.routes').then((routes) => routes.PATIENT_ROUTES),
       },
-      { path: '', pathMatch: 'full', redirectTo: 'login' },
+      { path: '', pathMatch: 'full', redirectTo: landingRedirect },
       { path: '**', redirectTo: 'login' },
     ],
   },

@@ -1,0 +1,399 @@
+<div class="task-detail-page">
+  <a class="task-detail-back" routerLink="/clinic/tasks/my"
+    ><span aria-hidden="true">←</span> My Tasks</a
+  >
+
+  @if (store.detailLoading()) {
+    <section class="task-detail-loading" aria-label="Loading task detail" aria-live="polite">
+      <span class="oc-sr-only">Loading task detail</span>
+      <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 10 }" />
+    </section>
+  } @else if (store.detailError() !== null) {
+    <section class="task-detail-state" role="alert">
+      <oc-empty-state
+        [icon]="store.detailNotFound() ? 'search' : 'exclamation-circle'"
+        [title]="store.detailNotFound() ? 'Task not found' : 'We couldn\'t load this task'"
+        [description]="store.detailErrorMessage() ?? 'Try again in a moment.'"
+      >
+        @if (!store.detailNotFound()) {
+          <oc-button variant="secondary" (click)="refresh()">Try again</oc-button>
+        }
+        <a class="task-detail-state__link" routerLink="/clinic/tasks/my">Return to My Tasks</a>
+      </oc-empty-state>
+    </section>
+  } @else if (store.detail(); as task) {
+    <oc-page-header
+      [title]="taskTypeLabel(task.taskType)"
+      [description]="'Task ' + taskReference(task.taskId)"
+    >
+      <span ocBreadcrumbs>Clinic workspace&nbsp; / &nbsp;Tasks&nbsp; / &nbsp;Detail</span>
+      <div ocSecondaryActions>
+        <oc-button variant="quiet" (click)="refresh()">Refresh</oc-button>
+      </div>
+    </oc-page-header>
+
+    @if (store.commandError(); as error) {
+      <p class="task-message task-message--error" role="alert">{{ error }}</p>
+    }
+    @if (store.commandNotice(); as notice) {
+      <p class="task-message task-message--success" role="status">{{ notice }}</p>
+    }
+
+    <section class="task-summary" aria-labelledby="task-summary-title">
+      <div>
+        <p>Task</p>
+        <h2 id="task-summary-title">{{ taskTypeLabel(task.taskType) }}</h2>
+        <span>{{ task.responsibilityType }}</span>
+      </div>
+      <div class="task-summary__signals">
+        <oc-status-badge
+          [status]="taskStatusTone(task.status)"
+          [customLabel]="taskStatusLabel(task.status)"
+        />
+        <strong>{{ priorityLabel(task.priority) }} priority</strong>
+      </div>
+      <dl>
+        <div>
+          <dt>Request</dt>
+          <dd>
+            <a [routerLink]="['/clinic/requests', task.caseId]">{{ caseReference(task.caseId) }}</a>
+          </dd>
+        </div>
+        <div>
+          <dt>Current position</dt>
+          <dd>{{ positionLabel(task.assignedPositionId) }}</dd>
+        </div>
+        <div>
+          <dt>Current owner</dt>
+          <dd>{{ ownerLabel(task) }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    @if (
+      canAcknowledge(task) ||
+      canStart(task) ||
+      canGenericBlock(task) ||
+      canGenericUnblock(task) ||
+      canRequestInformation(task) ||
+      canAdministrativeReviewComplete(task) ||
+      canGenericComplete(task) ||
+      canInitiateHandover(task)
+    ) {
+      <section class="task-section task-actions" aria-labelledby="task-actions-title">
+        <header>
+          <p>Backend-authorized workflow</p>
+          <h2 id="task-actions-title">Available actions</h2>
+        </header>
+        <div class="clinic-actions">
+          @if (canAcknowledge(task)) {
+            <oc-button
+              [loading]="store.command() === 'ACKNOWLEDGE'"
+              [disabled]="store.command() !== null"
+              (click)="acknowledge(task)"
+              >Acknowledge</oc-button
+            >
+          }
+          @if (canStart(task)) {
+            <oc-button
+              [loading]="store.command() === 'START'"
+              [disabled]="store.command() !== null"
+              (click)="start(task)"
+              >{{ task.startedAt ? 'Resume task' : 'Start task' }}</oc-button
+            >
+          }
+          @if (canRequestInformation(task)) {
+            <oc-button
+              variant="secondary"
+              [disabled]="store.command() !== null"
+              (click)="openBlockDialog()"
+              >Request information</oc-button
+            >
+          }
+          @if (canGenericBlock(task)) {
+            <oc-button
+              variant="secondary"
+              [disabled]="store.command() !== null"
+              (click)="openGenericBlock()"
+              >Block task</oc-button
+            >
+          }
+          @if (canGenericUnblock(task)) {
+            <oc-button
+              variant="secondary"
+              [loading]="store.command() === 'UNBLOCK'"
+              [disabled]="store.command() !== null"
+              (click)="unblock(task)"
+              >Unblock task</oc-button
+            >
+          }
+          @if (canAdministrativeReviewComplete(task)) {
+            <oc-button
+              [loading]="store.command() === 'COMPLETE'"
+              [disabled]="store.command() !== null"
+              (click)="complete(task)"
+              >Ready for planning</oc-button
+            >
+          }
+          @if (canGenericComplete(task)) {
+            <oc-button
+              [loading]="store.command() === 'COMPLETE'"
+              [disabled]="store.command() !== null"
+              (click)="completeGeneric(task)"
+              >Complete task</oc-button
+            >
+          }
+          @if (canInitiateHandover(task)) {
+            <oc-button
+              variant="secondary"
+              [disabled]="store.command() !== null || handoverSubmitting()"
+              (click)="openHandover(task)"
+              >Hand over task</oc-button
+            >
+          }
+        </div>
+        @if (genericBlockOpen()) {
+          <div class="task-block-controls">
+            <label for="clinic-generic-block-reason">
+              <span>Block reason</span>
+              <select id="clinic-generic-block-reason" [formControl]="genericBlockReasonControl">
+                <option [ngValue]="null" disabled>Select a reason</option>
+                @for (reason of genericBlockReasons; track reason) {
+                  <option [ngValue]="reason">{{ blockReasonLabel(reason) }}</option>
+                }
+              </select>
+            </label>
+            <div class="clinic-actions">
+              <oc-button
+                [loading]="store.command() === 'BLOCK'"
+                [disabled]="genericBlockReasonControl.value === null || store.command() !== null"
+                (click)="block(task)"
+                >Confirm block</oc-button
+              >
+              <oc-button
+                variant="quiet"
+                [disabled]="store.command() !== null"
+                (click)="genericBlockOpen.set(false)"
+                >Cancel</oc-button
+              >
+            </div>
+          </div>
+        }
+      </section>
+    }
+
+    @if (handoverNotice(); as notice) {
+      <p class="task-message task-message--success" role="status">{{ notice }}</p>
+      <a class="task-detail-state__link" routerLink="/clinic/handovers">View outgoing handovers</a>
+    }
+    @if (handoverOpen()) {
+      <section class="task-section task-reassign" aria-labelledby="handover-title">
+        <header><p>Targeted peer handover</p><h2 id="handover-title">Hand over task</h2></header>
+        @if (handoverError(); as error) { <p class="task-message task-message--error" role="alert">{{ error }}</p> }
+        @if (handoverTargetsLoading()) {
+          <p aria-live="polite">Loading eligible team members…</p>
+        } @else if (handoverTargetsError()) {
+          <p role="alert">Eligible team members could not be loaded. Refresh before initiating a handover.</p>
+        } @else if (handoverTargets().length === 0) {
+          <p>No eligible team member is currently available for handover.</p>
+        } @else {
+          <div class="task-reassign__controls">
+            <label><span>Team member</span><nz-select [formControl]="handoverTargetControl" nzPlaceHolder="Select eligible team member">
+              @for (target of handoverTargets(); track target.membershipId) {
+                <nz-option [nzValue]="target.membershipId" [nzLabel]="target.displayName + ' · ' + target.positionName" />
+              }
+            </nz-select></label>
+            <label><span>Reason</span><nz-select [formControl]="handoverReasonControl" nzPlaceHolder="Select reason">
+              @for (reason of handoverReasons; track reason) { <nz-option [nzValue]="reason" [nzLabel]="handoverReasonLabel(reason)" /> }
+            </nz-select></label>
+            <oc-button [loading]="handoverSubmitting()" [disabled]="handoverTargetControl.value === null || handoverReasonControl.value === null || handoverSubmitting()" (click)="initiateHandover(task)">Initiate handover</oc-button>
+            <oc-button variant="quiet" [disabled]="handoverSubmitting()" (click)="handoverOpen.set(false)">Cancel</oc-button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (task.status === 'BLOCKED' && task.blockedReasonCode) {
+      <section class="task-callout" aria-labelledby="blocked-title">
+        <div>
+          <p>Blocked reason</p>
+          <h2 id="blocked-title">{{ blockReasonLabel(task.blockedReasonCode) }}</h2>
+        </div>
+        <p>
+          {{
+            task.blockedReasonCode === 'WAITING_FOR_PATIENT_INFORMATION'
+              ? 'Patient-information tasks resume only through the authoritative patient-response flow.'
+              : 'The current owner can unblock this task after the operational dependency is resolved.'
+          }}
+        </p>
+      </section>
+    }
+
+    <div class="task-detail-grid">
+      <section class="task-section" aria-labelledby="timing-title">
+        <header>
+          <p>Authoritative timestamps</p>
+          <h2 id="timing-title">Deadlines and progress</h2>
+        </header>
+        <dl class="task-detail-list">
+          <div>
+            <dt>ACK due</dt>
+            <dd>
+              @if (!task.acknowledgementRequired) {
+                Not required
+              } @else if (task.acknowledgementDueAt) {
+                <time [attr.datetime]="task.acknowledgementDueAt">{{
+                  task.acknowledgementDueAt | date: dateTimeFormat
+                }}</time>
+                @if (isAcknowledgementOverdue(task)) {
+                  <strong class="overdue">Overdue</strong>
+                }
+              } @else {
+                Not set
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Task due</dt>
+            <dd>
+              @if (task.dueAt) {
+                <time [attr.datetime]="task.dueAt">{{ task.dueAt | date: dateTimeFormat }}</time>
+                @if (isTaskDeadlineOverdue(task)) {
+                  <strong class="overdue">Overdue</strong>
+                }
+              } @else {
+                Not set
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Created</dt>
+            <dd>
+              <time [attr.datetime]="task.createdAt">{{
+                task.createdAt | date: dateTimeFormat
+              }}</time>
+            </dd>
+          </div>
+          <div>
+            <dt>Acknowledged</dt>
+            <dd>
+              @if (task.acknowledgedAt) {
+                <time [attr.datetime]="task.acknowledgedAt">{{
+                  task.acknowledgedAt | date: dateTimeFormat
+                }}</time>
+              } @else {
+                Not yet
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Started</dt>
+            <dd>
+              @if (task.startedAt) {
+                <time [attr.datetime]="task.startedAt">{{
+                  task.startedAt | date: dateTimeFormat
+                }}</time>
+              } @else {
+                Not yet
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Completed</dt>
+            <dd>
+              @if (task.completedAt) {
+                <time [attr.datetime]="task.completedAt">{{
+                  task.completedAt | date: dateTimeFormat
+                }}</time>
+              } @else {
+                Not yet
+              }
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="task-section" aria-labelledby="context-title">
+        <header>
+          <p>Safe operational context</p>
+          <h2 id="context-title">Request and case</h2>
+        </header>
+        <dl class="task-detail-list">
+          <div>
+            <dt>Case status</dt>
+            <dd>{{ caseStatusLabel(task.caseContext.intakeStatus) }}</dd>
+          </div>
+          <div>
+            <dt>Situation</dt>
+            <dd>{{ situationLabel(task.caseContext.situation) }}</dd>
+          </div>
+          <div>
+            <dt>Current step</dt>
+            <dd>{{ stepLabel(task.caseContext.currentStepKey) }}</dd>
+          </div>
+          <div>
+            <dt>Request ID</dt>
+            <dd class="task-id">{{ task.caseContext.sourceRequestId }}</dd>
+          </div>
+          <div>
+            <dt>Routing incident</dt>
+            <dd>
+              {{
+                task.caseContext.hasOpenRoutingIncident
+                  ? 'Open routing incident requires attention'
+                  : 'None reported'
+              }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+
+    @if (canReassignTask(task)) {
+      <section class="task-section task-reassign" aria-labelledby="reassign-title">
+        <header>
+          <p>Clinic administration</p>
+          <h2 id="reassign-title">Reassign position queue</h2>
+        </header>
+        <p>
+          Current position: <strong>{{ positionLabel(task.assignedPositionId) }}</strong>
+        </p>
+        @if (positionsError()) {
+          <p role="alert">
+            Eligible position data could not be loaded. Refresh before reassigning.
+          </p>
+        } @else {
+          <div class="task-reassign__controls">
+            <label
+              ><span>Target position</span
+              ><nz-select [formControl]="positionControl" nzPlaceHolder="Select position">
+                @for (position of positions(); track position.id) {
+                  @if (position.id !== task.assignedPositionId) {
+                    <nz-option [nzValue]="position.id" [nzLabel]="position.displayName" />
+                  }
+                }</nz-select
+            ></label>
+            <oc-button
+              [loading]="store.command() === 'REASSIGN'"
+              [disabled]="positionControl.value === null || store.command() !== null"
+              (click)="reassign(task)"
+              >Reassign</oc-button
+            >
+          </div>
+        }
+      </section>
+    }
+  }
+</div>
+
+<app-clinic-information-dialog
+  [open]="informationDialogOpen()"
+  requestLabel="this task"
+  [selectedReason]="informationReason()"
+  [patientInstruction]="patientInstruction()"
+  [loading]="store.command() === 'BLOCK'"
+  (reasonChanged)="informationReason.set($event)"
+  (instructionChanged)="patientInstruction.set($event)"
+  (confirmed)="confirmBlock($event)"
+  (cancelled)="informationDialogOpen.set(false)"
+/>

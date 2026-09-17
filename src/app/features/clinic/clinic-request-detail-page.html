@@ -1,0 +1,235 @@
+<div class="request-detail-page">
+  <a class="request-detail-back" routerLink="/clinic/requests" queryParamsHandling="preserve">
+    <span aria-hidden="true">←</span> Requests
+  </a>
+
+  @if (store.detailLoading()) {
+    <section class="request-detail-loading" aria-label="Loading request detail" aria-live="polite">
+      <span class="oc-sr-only">Loading request detail</span>
+      <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 10 }" />
+    </section>
+  } @else if (store.detailError() !== null) {
+    <section class="request-detail-state" role="alert" aria-live="assertive">
+      @if (store.detailNotFound()) {
+        <oc-empty-state
+          icon="search"
+          title="Request not found"
+          description="This request is unavailable or you do not have access to it."
+        >
+          <a class="request-detail-state__link" routerLink="/clinic/requests" queryParamsHandling="preserve">
+            Return to requests
+          </a>
+        </oc-empty-state>
+      } @else {
+        <oc-empty-state
+          icon="exclamation-circle"
+          title="We couldn't load this request"
+          [description]="store.detailErrorMessage() ?? 'Try again in a moment.'"
+        >
+          <oc-button variant="secondary" (click)="refresh()">Try again</oc-button>
+          <a class="request-detail-state__link" routerLink="/clinic/requests" queryParamsHandling="preserve">
+            Return to requests
+          </a>
+        </oc-empty-state>
+      }
+    </section>
+  } @else if (store.detail(); as request) {
+    <oc-page-header
+      [title]="'Request ' + reference(request.clinicCaseId)"
+      description="Operational request detail"
+    >
+      <span ocBreadcrumbs>Clinic workspace&nbsp; / &nbsp;Requests&nbsp; / &nbsp;Detail</span>
+      <div ocSecondaryActions>
+        <oc-button variant="quiet" (click)="refresh()">Refresh</oc-button>
+      </div>
+    </oc-page-header>
+
+    <section class="request-summary" aria-labelledby="request-summary-title">
+      <div class="request-summary__identity">
+        <p>Patient / subject</p>
+        <h2 id="request-summary-title">{{ request.patientSummary.displayName }}</h2>
+        <span>
+          {{ request.patientSummary.subjectType === 'SELF' ? 'Self' : request.patientSummary.relationship || 'Family member' }}
+        </span>
+      </div>
+      <div class="request-summary__signals" aria-label="Request status and priority">
+        <oc-status-badge
+          [status]="statusTone(request.administrativeStatus)"
+          [customLabel]="statusLabel(request.administrativeStatus)"
+        />
+        <span
+          class="detail-priority"
+          [class.detail-priority--high]="request.priority === 'HIGH'"
+          [class.detail-priority--critical]="request.priority === 'CRITICAL'"
+        >
+          <span aria-hidden="true"></span>{{ priorityLabel(request.priority) }} priority
+        </span>
+      </div>
+      <dl class="request-summary__facts">
+        <div>
+          <dt>Situation</dt>
+          <dd>{{ situationLabel(request.situation) }}</dd>
+        </div>
+        <div>
+          <dt>Current step</dt>
+          <dd>{{ stepLabel(request.currentStepKey) }}</dd>
+        </div>
+        <div>
+          <dt>Submitted</dt>
+          <dd><time [attr.datetime]="request.submittedAt">{{ request.submittedAt | date: dateTimeFormat }}</time></dd>
+        </div>
+      </dl>
+    </section>
+
+    @if (canReview() && request.availableActions.length > 0) {
+      <section class="request-detail-section request-actions" aria-labelledby="request-actions-heading">
+        <header>
+          <p>Operational review</p>
+          <h2 id="request-actions-heading">Available actions</h2>
+        </header>
+        @if (actionError(); as error) {
+          <p class="request-actions__error" role="alert">{{ error }}</p>
+        }
+        <div class="clinic-actions">
+          @if (hasAction(request, 'START_REVIEW')) {
+            <oc-button [loading]="actionLoading() === 'START_REVIEW'" [disabled]="actionLoading() !== null" (click)="startReview(request)">Start review</oc-button>
+          }
+          @if (hasAction(request, 'REQUEST_INFORMATION')) {
+            <oc-button [loading]="actionLoading() === 'REQUEST_INFORMATION'" [disabled]="actionLoading() !== null" (click)="openInformationDialog()">Request information</oc-button>
+          }
+          @if (hasAction(request, 'READY_FOR_PLANNING')) {
+            <oc-button [loading]="actionLoading() === 'READY_FOR_PLANNING'" [disabled]="actionLoading() !== null" (click)="readyForPlanning(request)">Ready for planning</oc-button>
+          }
+          @if (hasAction(request, 'DECLINE')) {
+            <oc-button variant="destructive" [loading]="actionLoading() === 'DECLINE'" [disabled]="actionLoading() !== null" (click)="openDeclineDialog()">Decline request</oc-button>
+          }
+        </div>
+      </section>
+    }
+
+    @if (request.administrativeStatus === 'INFORMATION_REQUIRED') {
+      <section class="request-callout request-callout--waiting" aria-labelledby="waiting-title">
+        <div>
+          <p>Waiting state</p>
+          <h2 id="waiting-title">Waiting for patient information</h2>
+        </div>
+        <p>
+          The clinic requested additional information from the patient. Processing will resume
+          when the response is received.
+        </p>
+      </section>
+    }
+
+    @if (terminal(request.administrativeStatus)) {
+      <section class="request-callout request-callout--terminal" aria-labelledby="terminal-title">
+        <div>
+          <p>Terminal state</p>
+          <h2 id="terminal-title">{{ statusLabel(request.administrativeStatus) }}</h2>
+        </div>
+        <p>
+          {{ request.administrativeStatus === 'DECLINED'
+            ? 'This request is no longer active.'
+            : 'This request was cancelled and is no longer active.' }}
+        </p>
+      </section>
+    }
+
+    <div class="request-detail-grid">
+      <section class="request-detail-section" aria-labelledby="overview-heading">
+        <header>
+          <p>Overview</p>
+          <h2 id="overview-heading">Operational context</h2>
+        </header>
+        <dl class="request-detail-list">
+          <div><dt>Patient / subject</dt><dd>{{ request.patientSummary.displayName }}</dd></div>
+          <div>
+            <dt>Subject type</dt>
+            <dd>{{ request.patientSummary.subjectType === 'SELF' ? 'Self' : 'Family member' }}</dd>
+          </div>
+          @if (request.patientSummary.relationship) {
+            <div><dt>Relationship</dt><dd>{{ request.patientSummary.relationship }}</dd></div>
+          }
+          <div><dt>Situation</dt><dd>{{ situationLabel(request.situation) }}</dd></div>
+          <div><dt>Case status</dt><dd>{{ statusLabel(request.administrativeStatus) }}</dd></div>
+          <div><dt>Priority</dt><dd>{{ priorityLabel(request.priority) }}</dd></div>
+          <div><dt>Authoritative step</dt><dd>{{ stepLabel(request.currentStepKey) }}</dd></div>
+          <div>
+            <dt>Request identifier</dt>
+            <dd class="request-detail-id">{{ request.clinicCaseId }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      @if (request.informationRequest; as informationRequest) {
+        <section class="request-detail-section" aria-labelledby="information-heading">
+          <header>
+            <p>Information request</p>
+            <h2 id="information-heading">
+              {{ informationRequest.status === 'OPEN' ? 'Awaiting response' : 'Response summary' }}
+            </h2>
+          </header>
+          <dl class="request-detail-list">
+            <div><dt>Reason</dt><dd>{{ informationReasonLabel(informationRequest.reasonCode) }}</dd></div>
+            <div><dt>Status</dt><dd>{{ informationRequest.status === 'OPEN' ? 'Open' : informationRequest.status === 'RESPONDED' ? 'Responded' : 'Cancelled' }}</dd></div>
+            @if (informationRequest.patientInstruction) {
+              <div><dt>Patient instruction</dt><dd>{{ informationRequest.patientInstruction }}</dd></div>
+            }
+            @if (informationRequest.responseSummary) {
+              <div><dt>Response</dt><dd>{{ informationRequest.responseSummary }}</dd></div>
+            }
+          </dl>
+        </section>
+      }
+    </div>
+
+    <section class="request-detail-section request-timeline" aria-labelledby="timeline-heading">
+      <header>
+        <p>History</p>
+        <h2 id="timeline-heading">Administrative timeline</h2>
+      </header>
+      @if (request.timeline.length === 0) {
+        <p class="request-timeline__empty">No administrative events are recorded yet.</p>
+      } @else {
+        <ol>
+          @for (event of request.timeline; track event.occurredAt + event.eventType) {
+            <li>
+              <span class="request-timeline__marker" aria-hidden="true"></span>
+              <div>
+                <strong>{{ event.eventType === 'CASE_RECEIVED' ? 'Request received' : 'Request status updated' }}</strong>
+                <p>
+                  @if (event.previousStatus === null) {
+                    {{ statusLabel(event.newStatus) }}
+                  } @else {
+                    {{ statusLabel(event.previousStatus) }} → {{ statusLabel(event.newStatus) }}
+                  }
+                </p>
+                <time [attr.datetime]="event.occurredAt">{{ event.occurredAt | date: dateTimeFormat }}</time>
+              </div>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+  }
+</div>
+
+<app-clinic-information-dialog
+  [open]="informationDialogOpen()"
+  [requestLabel]="store.detail()?.patientSummary?.displayName ?? 'this request'"
+  [selectedReason]="informationReason()"
+  [patientInstruction]="patientInstruction()"
+  [loading]="actionLoading() === 'REQUEST_INFORMATION'"
+  (reasonChanged)="informationReason.set($event)"
+  (instructionChanged)="patientInstruction.set($event)"
+  (confirmed)="confirmInformation($event)"
+  (cancelled)="informationDialogOpen.set(false)"
+/>
+<app-clinic-decline-dialog
+  [open]="declineDialogOpen()"
+  [requestLabel]="store.detail()?.patientSummary?.displayName ?? 'this request'"
+  [selectedReason]="declineReason()"
+  [loading]="actionLoading() === 'DECLINE'"
+  (reasonChanged)="declineReason.set($event)"
+  (confirmed)="confirmDecline($event)"
+  (cancelled)="declineDialogOpen.set(false)"
+/> 

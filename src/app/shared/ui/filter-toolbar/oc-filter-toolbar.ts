@@ -10,7 +10,7 @@ import { OcSegmentOption, OcSegmentedControl } from '../segmented-control/oc-seg
   selector: 'oc-filter-toolbar',
   imports: [NzIconModule, NzInputModule, OcButton, OcIconButton, OcSegmentedControl],
   template: `
-    <section class="oc-filter-toolbar" aria-label="Data filters">
+    <section class="oc-filter-toolbar" [class.oc-filter-toolbar--flat]="flat()" aria-label="Data filters">
       <div class="oc-filter-toolbar__primary">
         <label class="oc-search">
           <span class="oc-sr-only">{{ searchLabel() }}</span>
@@ -23,8 +23,9 @@ import { OcSegmentOption, OcSegmentedControl } from '../segmented-control/oc-seg
             (input)="updateQuery($event)"
           />
         </label>
+        <ng-content select="[ocInlineFilter]" />
         <oc-button #advancedButton leadingIcon="filter" (click)="advancedFilter.emit()">
-          Advanced filters
+          {{ advancedLabel() }}
           @if (activeFilterCount() > 0) {
             <span class="oc-filter-toolbar__count">{{ activeFilterCount() }}</span>
           }
@@ -33,16 +34,18 @@ import { OcSegmentOption, OcSegmentedControl } from '../segmented-control/oc-seg
           <oc-button variant="quiet" size="small" (click)="clearAll.emit()">Clear all</oc-button>
         }
       </div>
-      <div class="oc-filter-toolbar__views">
-        <oc-segmented-control label="View mode" [options]="viewOptions()" [(selected)]="viewMode" />
-        <oc-icon-button
-          label="Customize columns"
-          tooltip="Customize columns"
-          icon="table"
-          appearance="quiet"
-          (click)="customizeColumns.emit()"
-        />
-      </div>
+      @if (showViewControls()) {
+        <div class="oc-filter-toolbar__views">
+          <oc-segmented-control label="View mode" [options]="viewOptions()" [(selected)]="viewMode" />
+          <oc-icon-button
+            label="Customize columns"
+            tooltip="Customize columns"
+            icon="table"
+            appearance="quiet"
+            (click)="customizeColumns.emit()"
+          />
+        </div>
+      }
       <div class="oc-filter-toolbar__chips"><ng-content /></div>
     </section>
   `,
@@ -53,6 +56,9 @@ export class OcFilterToolbar {
   readonly searchLabel = input('Search records');
   readonly searchPlaceholder = input('Search');
   readonly activeFilterCount = input(0);
+  readonly showViewControls = input(true);
+  readonly flat = input(false);
+  readonly advancedLabel = input('Advanced filters');
   readonly query = model('');
   readonly viewMode = model('list');
   readonly viewOptions = input<readonly OcSegmentOption[]>([
