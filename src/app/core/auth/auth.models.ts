@@ -1,4 +1,4 @@
-export type DashboardRole = 'ADMIN' | 'DOCTOR' | 'CLINIC_ADMIN';
+export type DashboardRole = 'ADMIN' | 'DOCTOR' | 'CLINIC_ADMIN' | 'PATIENT';
 
 export interface AuthenticatedUser {
   readonly id: string;
@@ -18,6 +18,7 @@ export interface LoginSession {
 export interface EmailPasswordLoginResponse {
   readonly status: 'AUTHENTICATED' | 'REQUIRES_PHONE_OTP';
   readonly session: LoginSession | null;
+  readonly phone: string | null;
 }
 
 export interface ApiErrorBody {

@@ -1,0 +1,102 @@
+:host {
+  display: block;
+}
+
+.consultation-workspace {
+  display: grid;
+  gap: var(--oc-space-6);
+}
+
+.panel {
+  background: var(--oc-color-surface-card);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+}
+
+.consultation-patient-select {
+  background: var(--oc-color-surface-card);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+  padding: var(--oc-space-8);
+}
+
+.consultation-patient-select__search {
+  display: grid;
+  gap: var(--oc-space-2);
+}
+
+.consultation-patient-select__search h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.consultation-patient-select__search p {
+  margin: 0;
+  color: var(--oc-color-text-muted);
+  font-size: 14px;
+}
+
+.consultation-patient-select__input {
+  width: 100%;
+  max-width: 480px;
+  padding: 10px 14px;
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-md);
+  font-size: 14px;
+  background: var(--oc-color-surface-subtle);
+  outline: none;
+  transition: border-color 0.15s;
+
+  &:focus {
+    border-color: var(--oc-color-brand-primary);
+  }
+}
+
+.consultation-patient-select__results {
+  list-style: none;
+  margin: var(--oc-space-4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--oc-space-1);
+}
+
+.consultation-patient-select__result {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+  width: 100%;
+  padding: var(--oc-space-2) var(--oc-space-3);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--oc-radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, border-color 0.1s;
+
+  &:hover {
+    background: var(--oc-color-surface-subtle);
+    border-color: var(--oc-color-border-subtle);
+  }
+}
+
+.consultation-patient-select__result-info {
+  display: grid;
+  gap: 2px;
+
+  strong {
+    font-size: 14px;
+    color: var(--oc-color-text-primary);
+  }
+
+  span {
+    font-size: 12px;
+    color: var(--oc-color-text-muted);
+  }
+}
+
+.consultation-patient-select__empty {
+  margin: var(--oc-space-4) 0 0;
+  color: var(--oc-color-text-muted);
+  font-size: 14px;
+}

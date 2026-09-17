@@ -1,0 +1,11 @@
+.oc-confirm-dialog__message {
+  color: var(--oc-color-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.oc-confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--oc-space-2);
+}

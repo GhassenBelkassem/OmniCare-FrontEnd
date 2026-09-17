@@ -1,0 +1,273 @@
+<div class="results-page">
+  <oc-page-header
+    title="Resultats & Suivis"
+    subtitle="Consultez vos resultats, rappels et taches"
+  />
+
+  <div class="results-page__content">
+    <oc-tabs
+      [tabs]="tabs()"
+      [selected]="activeTab()"
+      (selectedChange)="onTabChange($event)"
+    >
+      <ng-template #tabBadge let-tab="tab">
+        @if (tab.id === 'inbox' && inboxCount() > 0) {
+          <span class="results-page__badge results-page__badge--warning">{{ inboxCount() }}</span>
+        }
+        @if (tab.id === 'recalls' && recallsCount() > 0) {
+          <span class="results-page__badge results-page__badge--info">{{ recallsCount() }}</span>
+        }
+        @if (tab.id === 'tasks' && tasksCount() > 0) {
+          <span class="results-page__badge results-page__badge--primary">{{ tasksCount() }}</span>
+        }
+      </ng-template>
+    </oc-tabs>
+
+    @if (activeTab() === 'inbox') {
+      <div class="results-page__tab-content">
+        <div class="results-page__inbox-stats">
+          <div class="results-page__stat-card">
+            <span class="results-page__stat-value">{{ pendingLabCount() }}</span>
+            <span class="results-page__stat-label">Analyses en attente</span>
+          </div>
+          <div class="results-page__stat-card">
+            <span class="results-page__stat-value">{{ pendingImagingCount() }}</span>
+            <span class="results-page__stat-label">Imageries en attente</span>
+          </div>
+          <div class="results-page__stat-card results-page__stat-card--critical">
+            <span class="results-page__stat-value">{{ criticalCount() }}</span>
+            <span class="results-page__stat-label">Resultats critiques</span>
+          </div>
+        </div>
+
+        @if (allResults().length === 0) {
+          <oc-empty-state
+            title="Aucun resultat"
+            description="Aucun resultat d'examen n'est disponible."
+            icon="inbox"
+          />
+        } @else {
+          <oc-data-table-shell>
+            @for (result of allResults(); track result.id) {
+              <tr class="results-page__table-row" [class.results-page__table-row--critical]="result.status === 'critical'">
+                <td class="results-page__table-cell">
+                  <span class="results-page__source-badge" [class.results-page__source-badge--lab]="result.sourceType === 'lab'" [class.results-page__source-badge--imaging]="result.sourceType === 'imaging'">
+                    {{ result.sourceType === 'lab' ? 'Labo' : 'Imagerie' }}
+                  </span>
+                </td>
+                <td class="results-page__table-cell results-page__table-cell--patient">
+                  {{ result.patientName }}
+                </td>
+                <td class="results-page__table-cell">
+                  {{ 'testName' in result ? result.testName : result.examType }}
+                </td>
+                <td class="results-page__table-cell">
+                  {{ result.date }}
+                </td>
+                <td class="results-page__table-cell">
+                  <oc-status-badge
+                    [status]="result.status === 'reviewed' ? 'completed' : result.status"
+                  />
+                </td>
+                <td class="results-page__table-cell results-page__table-cell--summary">
+                  {{ result.summary || '---' }}
+                </td>
+                <td class="results-page__table-cell results-page__table-cell--actions">
+                  @if (result.status !== 'reviewed') {
+                    <oc-button
+                      variant="primary"
+                      size="small"
+                      (click)="onReviewResult(result)"
+                    >Marquer lu</oc-button>
+                  }
+                </td>
+              </tr>
+            }
+          </oc-data-table-shell>
+        }
+      </div>
+    }
+
+    @if (activeTab() === 'recalls') {
+      <div class="results-page__tab-content">
+        @if (patientRecalls().length === 0) {
+          <oc-empty-state
+            title="Aucun rappel"
+            description="Tous les rappels patients ont ete traites."
+            icon="phone"
+          />
+        } @else {
+          <div class="results-page__recalls-list">
+            @for (recall of patientRecalls(); track recall.id) {
+              <oc-card [title]="recall.patientName">
+                <div class="results-page__recall-card">
+                  <div class="results-page__recall-header">
+                    <div class="results-page__recall-info">
+                      <h4 class="results-page__recall-name">{{ recall.patientName }}</h4>
+                      <span class="results-page__recall-phone">{{ recall.phone }}</span>
+                    </div>
+                    <span class="results-page__recall-date">
+                      Derniere visite: {{ recall.lastVisit }}
+                    </span>
+                  </div>
+
+                  <div class="results-page__recall-body">
+                    <p class="results-page__recall-reason">
+                      <strong>Motif:</strong> {{ recall.reason }}
+                    </p>
+                    <p class="results-page__recall-action">
+                      <strong>Action suggeree:</strong> {{ recall.suggestedAction }}
+                    </p>
+                  </div>
+
+                  <div class="results-page__recall-actions">
+                    <oc-button
+                      variant="primary"
+                      size="small"
+                      (click)="onCallPatient(recall)"
+                    >Appeler</oc-button>
+                    <oc-button
+                      variant="quiet"
+                      size="small"
+                      (click)="onDismissRecall(recall)"
+                    >Ignorer</oc-button>
+                  </div>
+                </div>
+              </oc-card>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (activeTab() === 'tasks') {
+      <div class="results-page__tab-content">
+        <div class="results-page__task-actions">
+          <oc-button
+            variant="primary"
+            (click)="onAddTask()"
+          >Nouvelle tache</oc-button>
+        </div>
+
+        @if (tasks().length === 0) {
+          <oc-empty-state
+            title="Aucune tache"
+            description="Vous n'avez aucune tache en cours."
+            icon="check-circle"
+          />
+        } @else {
+          @if (highPriorityTasks().length > 0) {
+            <div class="results-page__priority-section">
+              <h3 class="results-page__priority-title results-page__priority-title--high">
+                Priorite haute
+              </h3>
+              @for (task of highPriorityTasks(); track task.id) {
+                <oc-card [title]="task.title">
+                  <div class="results-page__task-card">
+                    <div class="results-page__task-left">
+                      <input
+                        type="checkbox"
+                        class="results-page__task-checkbox"
+                        [checked]="task.completed"
+                        (change)="onToggleTask(task)"
+                      />
+                      <div class="results-page__task-details">
+                        <span class="results-page__task-title">{{ task.title }}</span>
+                        <span class="results-page__task-description">{{ task.description }}</span>
+                      </div>
+                    </div>
+                    <div class="results-page__task-right">
+                      <oc-status-badge
+                        [status]="priorityOcStatus()[task.priority]"
+                      />
+                      <span class="results-page__task-due">Echeance: {{ task.dueDate }}</span>
+                      <oc-button
+                        variant="quiet"
+                        size="small"
+                        (click)="onDeleteTask(task)"
+                      >Supprimer</oc-button>
+                    </div>
+                  </div>
+                </oc-card>
+              }
+            </div>
+          }
+
+          @if (mediumPriorityTasks().length > 0) {
+            <div class="results-page__priority-section">
+              <h3 class="results-page__priority-title results-page__priority-title--medium">
+                Priorite moyenne
+              </h3>
+              @for (task of mediumPriorityTasks(); track task.id) {
+                <oc-card [title]="task.title">
+                  <div class="results-page__task-card">
+                    <div class="results-page__task-left">
+                      <input
+                        type="checkbox"
+                        class="results-page__task-checkbox"
+                        [checked]="task.completed"
+                        (change)="onToggleTask(task)"
+                      />
+                      <div class="results-page__task-details">
+                        <span class="results-page__task-title">{{ task.title }}</span>
+                        <span class="results-page__task-description">{{ task.description }}</span>
+                      </div>
+                    </div>
+                    <div class="results-page__task-right">
+                      <oc-status-badge
+                        [status]="priorityOcStatus()[task.priority]"
+                      />
+                      <span class="results-page__task-due">Echeance: {{ task.dueDate }}</span>
+                      <oc-button
+                        variant="quiet"
+                        size="small"
+                        (click)="onDeleteTask(task)"
+                      >Supprimer</oc-button>
+                    </div>
+                  </div>
+                </oc-card>
+              }
+            </div>
+          }
+
+          @if (lowPriorityTasks().length > 0) {
+            <div class="results-page__priority-section">
+              <h3 class="results-page__priority-title results-page__priority-title--low">
+                Priorite basse
+              </h3>
+              @for (task of lowPriorityTasks(); track task.id) {
+                <oc-card [title]="task.title">
+                  <div class="results-page__task-card">
+                    <div class="results-page__task-left">
+                      <input
+                        type="checkbox"
+                        class="results-page__task-checkbox"
+                        [checked]="task.completed"
+                        (change)="onToggleTask(task)"
+                      />
+                      <div class="results-page__task-details">
+                        <span class="results-page__task-title">{{ task.title }}</span>
+                        <span class="results-page__task-description">{{ task.description }}</span>
+                      </div>
+                    </div>
+                    <div class="results-page__task-right">
+                      <oc-status-badge
+                        [status]="priorityOcStatus()[task.priority]"
+                      />
+                      <span class="results-page__task-due">Echeance: {{ task.dueDate }}</span>
+                      <oc-button
+                        variant="quiet"
+                        size="small"
+                        (click)="onDeleteTask(task)"
+                      >Supprimer</oc-button>
+                    </div>
+                  </div>
+                </oc-card>
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+  </div>
+</div>

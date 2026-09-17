@@ -4,10 +4,30 @@ import { catchError, throwError } from 'rxjs';
 
 import { AuthTokenStore } from './auth-token.store';
 
+const ANONYMOUS_AUTH_SUFFIXES = [
+  '/auth/login',
+  '/auth/login/phone/initiate',
+  '/auth/login/phone/verify',
+  '/auth/refresh',
+  '/auth/signup/phone/initiate',
+  '/auth/signup/phone/verify',
+  '/auth/signup/complete',
+  '/auth/google/initiate',
+  '/auth/google/phone/initiate',
+  '/auth/google/phone/verify',
+  '/auth/google/complete',
+] as const;
+
+function isAnonymousAuthEndpoint(url: string): boolean {
+  const path = url.split('?')[0];
+  return ANONYMOUS_AUTH_SUFFIXES.some((suffix) => path.endsWith(suffix));
+}
+
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const tokens = inject(AuthTokenStore);
   const token = tokens.accessToken();
-  const authenticatedRequest = token
+  const attachAuthorization = token !== null && !isAnonymousAuthEndpoint(request.urlWithParams);
+  const authenticatedRequest = attachAuthorization
     ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
     : request;
   return next(authenticatedRequest).pipe(

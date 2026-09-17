@@ -1,0 +1,9 @@
+.ordonnance { display: grid; gap: 12px; padding: 16px; border: 1px solid #dce2df; border-radius: 8px; background: #fafcfb; }
+.ordonnance__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ordonnance__head h3 { margin: 0 0 2px; font-size: 15px; }
+.ordonnance__head p { margin: 0; color: #5b6b7a; font-size: 13px; }
+.field { display: grid; gap: 6px; }
+.field > span { color: #5b6b7a; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+textarea { width: 100%; min-height: 96px; border: 1px solid #dce2df; border-radius: 6px; padding: 8px 10px; background: #fff; color: #16233d; font: inherit; resize: vertical; }
+textarea:focus-visible { outline: 2px solid #2f6f62; outline-offset: 2px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; }

@@ -1,0 +1,102 @@
+<nz-modal
+  [nzVisible]="open"
+  [nzTitle]="rule ? 'Modifier la regle' : 'Ajouter une regle'"
+  [nzFooter]="null"
+  nzWidth="480px"
+  (nzOnCancel)="close()"
+>
+  <ng-container *nzModalContent>
+    <div class="rule-form">
+    <nz-form-item>
+      <nz-form-label nzRequired>Jour de la semaine</nz-form-label>
+      <nz-form-control>
+        <nz-select
+          [ngModel]="dayOfWeek()"
+          (ngModelChange)="dayOfWeek.set($event)"
+          class="rule-form__select"
+        >
+          @for (day of days; track day.value) {
+            <nz-option [nzValue]="day.value" [nzLabel]="day.label" />
+          }
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <div class="rule-form__row">
+      <nz-form-item>
+        <nz-form-label nzRequired>Heure de debut</nz-form-label>
+        <nz-form-control>
+          <input
+            nz-input
+            type="time"
+            [ngModel]="startTime()"
+            (ngModelChange)="startTime.set($event)"
+          />
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-label nzRequired>Heure de fin</nz-form-label>
+        <nz-form-control>
+          <input
+            nz-input
+            type="time"
+            [ngModel]="endTime()"
+            (ngModelChange)="endTime.set($event)"
+          />
+        </nz-form-control>
+      </nz-form-item>
+    </div>
+
+    <div class="rule-form__row">
+      <nz-form-item>
+        <nz-form-label>Pause debut</nz-form-label>
+        <nz-form-control>
+          <input
+            nz-input
+            type="time"
+            [ngModel]="pauseStart() ?? ''"
+            (ngModelChange)="pauseStart.set($event || null)"
+          />
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-label>Pause fin</nz-form-label>
+        <nz-form-control>
+          <input
+            nz-input
+            type="time"
+            [ngModel]="pauseEnd() ?? ''"
+            (ngModelChange)="pauseEnd.set($event || null)"
+          />
+        </nz-form-control>
+      </nz-form-item>
+    </div>
+
+    <nz-form-item>
+      <nz-form-label>Duree du creneau (min)</nz-form-label>
+      <nz-form-control>
+        <nz-select
+          [ngModel]="slotDuration()"
+          (ngModelChange)="slotDuration.set($event)"
+          class="rule-form__select"
+        >
+          <nz-option [nzValue]="15" nzLabel="15 min" />
+          <nz-option [nzValue]="20" nzLabel="20 min" />
+          <nz-option [nzValue]="30" nzLabel="30 min" />
+          <nz-option [nzValue]="45" nzLabel="45 min" />
+          <nz-option [nzValue]="60" nzLabel="60 min" />
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <div class="rule-form__actions">
+      <oc-button variant="secondary" (click)="close()">Annuler</oc-button>
+      <oc-button variant="primary" (click)="onSave()">
+        {{ rule ? 'Enregistrer' : 'Ajouter' }}
+      </oc-button>
+    </div>
+    </div>
+  </ng-container>
+</nz-modal>

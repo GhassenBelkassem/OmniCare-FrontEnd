@@ -1,0 +1,132 @@
+<section class="command-page">
+  <header class="command-page__header">
+    <h1>Bonjour, Dr Ben Salah</h1>
+    <p>Tableau de bord de la journee</p>
+  </header>
+
+  @if (loading()) {
+    <div class="command-page__state" role="status">Chargement...</div>
+  } @else if (error(); as message) {
+    <div class="command-page__error" role="alert">
+      <span>{{ message }}</span>
+      <oc-button variant="quiet" size="small">Reessayer</oc-button>
+    </div>
+  } @else {
+    <div class="command-page__stats">
+      @for (stat of stats(); track stat.label) {
+        <oc-metric-card
+          [icon]="stat.icon"
+          [label]="stat.label"
+          [value]="'' + stat.value"
+        />
+      }
+    </div>
+
+    @if (noAvailability()) {
+      <div class="command-page__banner command-page__banner--warning" role="alert">
+        <nz-icon nzType="warning" />
+        <div class="command-page__banner-text">
+          <strong>Aucun créneau configuré</strong>
+          <span>Vos patients ne peuvent pas prendre de rendez-vous en ligne. Configurez vos disponibilités pour activer la prise de rendez-vous.</span>
+        </div>
+        <oc-button variant="primary" size="small" (click)="goToSchedule()">Configurer mes disponibilités</oc-button>
+      </div>
+    }
+
+    @if (urgentOffers().length > 0) {
+      <oc-card title="Demandes Urgentes" subtitle="Reponnez rapidement aux demandes de vos patients">
+        <div class="urgent-list">
+          @for (offer of urgentOffers(); track trackByOfferId($index, offer)) {
+            <article class="urgent-row" (click)="openUrgentDetail(offer)">
+              <div class="urgent-row__indicator" aria-hidden="true"></div>
+              <oc-avatar [name]="offer.patientName" size="small" />
+              <div class="urgent-row__info">
+                <strong>{{ offer.patientName }}</strong>
+                <span>{{ offer.notes || 'Demande urgente' }}</span>
+              </div>
+              <oc-status-badge status="pending" />
+              <div class="urgent-row__actions" (click)="$event.stopPropagation()">
+                <oc-button variant="primary" size="small" (click)="openUrgentDetail(offer)">
+                  Repondre
+                </oc-button>
+              </div>
+            </article>
+          }
+        </div>
+      </oc-card>
+    }
+
+    @if (urgentLoading()) {
+      <div class="command-page__urgent-loading" role="status">Actualisation des urgences...</div>
+    }
+
+    @if (urgentError(); as msg) {
+      <div class="command-page__error command-page__error--urgent" role="alert">
+        <span>{{ msg }}</span>
+        <oc-button variant="quiet" size="small" (click)="retryUrgent()">Reessayer</oc-button>
+      </div>
+    }
+
+    <oc-card title="Rendez-vous du jour">
+      <div class="appointment-list">
+        @for (apt of pendingAppointments(); track trackByAppointmentId($index, apt)) {
+          <article
+            class="appointment-row"
+            [class.appointment-row--urgent]="apt.source === 'URGENT'"
+            (click)="openAptDetail(apt)"
+          >
+            <time class="appointment-row__time">{{ appointmentTime(apt) }}</time>
+            <oc-avatar [name]="patientName(apt.patientId, apt)" size="small" />
+            <div class="appointment-row__info">
+              <strong>{{ patientName(apt.patientId, apt) }}</strong>
+              <span>{{ apt.notes || 'Consultation' }}</span>
+            </div>
+            <span class="appointment-row__badge appointment-row__badge--cabinet">
+              {{ apt.source }}
+            </span>
+            <div class="appointment-row__actions" (click)="$event.stopPropagation()">
+              <oc-button
+                variant="primary"
+                size="small"
+                (click)="startConsultation(apt.id)"
+              >
+                Consultation
+              </oc-button>
+            </div>
+          </article>
+        } @empty {
+          <oc-empty-state
+            icon="calendar"
+            title="Aucun rendez-vous"
+            description="Pas de rendez-vous prevu pour aujourd'hui."
+          />
+        }
+      </div>
+    </oc-card>
+
+    <oc-card title="Actions rapides">
+      <div class="quick-actions">
+        <button class="quick-action" (click)="goTo('/doctor/calendar')">
+          <nz-icon nzType="calendar" />
+          <span>Agenda</span>
+        </button>
+        <button class="quick-action" (click)="goTo('/doctor/patients')">
+          <nz-icon nzType="user" />
+          <span>Patients</span>
+        </button>
+        <button class="quick-action" (click)="goTo('/doctor/requests')">
+          <nz-icon nzType="inbox" />
+          <span>Demandes</span>
+        </button>
+        <button class="quick-action" (click)="goTo('/doctor/consultation/new')">
+          <nz-icon nzType="plus-circle" />
+          <span>Nouvelle consultation</span>
+        </button>
+      </div>
+    </oc-card>
+  }
+
+  <app-appointment-detail-panel #aptPanel (updated)="onAppointmentUpdated($event)" />
+  <app-urgent-request-detail-panel #urgentPanel (accepted)="onUrgentAccepted($event)" />
+  <app-patient-summary-panel #patientPanel />
+</section>

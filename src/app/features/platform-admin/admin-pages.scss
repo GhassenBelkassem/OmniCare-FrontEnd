@@ -8,6 +8,8 @@
 .form-grid .span-2 { grid-column: 1 / -1; }
 .field { display: grid; gap: var(--oc-space-2); }
 .field label { font-weight: var(--oc-font-weight-semibold); }
+.inline-control { display: flex; gap: var(--oc-space-2); align-items: center; }
+.inline-control input { min-width: 0; }
 input, select, textarea { width: 100%; min-height: 44px; padding: var(--oc-space-2) var(--oc-space-3); border: 1px solid var(--oc-color-border-strong); border-radius: var(--oc-radius-md); background: var(--oc-color-surface-card); color: var(--oc-color-text-primary); }
 textarea { min-height: 88px; resize: vertical; }
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--oc-color-border-focus); outline-offset: 2px; }
@@ -27,4 +29,4 @@ td a { color: var(--oc-color-text-link); font-weight: var(--oc-font-weight-semib
 .definition-grid dd { margin: var(--oc-space-1) 0 0; font-weight: var(--oc-font-weight-semibold); overflow-wrap: anywhere; }
 .back-link { color: var(--oc-color-text-link); font-weight: var(--oc-font-weight-semibold); }
 .pagination { display: flex; justify-content: space-between; align-items: center; gap: var(--oc-space-4); }
-@media (max-width: 800px) { .form-grid, .definition-grid { grid-template-columns: 1fr; } .form-grid .span-2 { grid-column: auto; } th:nth-child(n+4), td:nth-child(n+4) { display: none; } }
+@media (max-width: 800px) { .form-grid, .definition-grid { grid-template-columns: 1fr; } .form-grid .span-2 { grid-column: auto; } .inline-control { align-items: stretch; flex-direction: column; } th:nth-child(n+4), td:nth-child(n+4) { display: none; } }

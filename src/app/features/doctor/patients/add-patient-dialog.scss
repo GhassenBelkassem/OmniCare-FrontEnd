@@ -1,0 +1,37 @@
+.add-patient-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oc-space-2);
+
+  &__alert {
+    margin-bottom: var(--oc-space-2);
+  }
+
+  &__duplicate-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--oc-space-4);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--oc-space-4);
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__select {
+    width: 100%;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--oc-space-2);
+    padding-top: var(--oc-space-4);
+    border-top: 1px solid var(--oc-color-border-default);
+  }
+}

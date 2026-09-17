@@ -1,0 +1,117 @@
+<div class="tracking">
+  <section class="tracking-head">
+    <div>
+      <h1>Suivi de la demande urgente</h1>
+      <p>Demande {{ requestId }}</p>
+    </div>
+    <div class="tracking-head__actions">
+      @if (cancellable()) {
+        <oc-button variant="destructive" (click)="openCancelDialog()">
+          Annuler la demande
+        </oc-button>
+      } @else if (cancelUnavailable()) {
+        <oc-button variant="destructive" [disabled]="true">Annulation indisponible</oc-button>
+      }
+      <oc-button variant="secondary" (click)="backToUrgent()">Retour au tableau de bord</oc-button>
+    </div>
+  </section>
+
+  @if (loading()) {
+    <div class="loading-note" role="status">Chargement du suivi...</div>
+  } @else if (error(); as message) {
+    <div class="request-error" role="alert">
+      <span>{{ message }}</span>
+    </div>
+  } @else if (request(); as request) {
+    @if (arrived()) {
+      <section class="arrival-banner" role="status">
+        <div class="arrival-banner__signal" aria-hidden="true"></div>
+        <div>
+          <strong>Votre medecin est arrive</strong>
+          @if (arrivedAtLabel(); as label) {
+            <p>Arrivee confirmee a {{ label }}. Le medecin va demarrer la consultation.</p>
+          } @else {
+            <p>Le medecin va demarrer la consultation.</p>
+          }
+        </div>
+      </section>
+    } @else {
+      <section class="tracking-card" role="status">
+        <div class="tracking-card__signal" aria-hidden="true"></div>
+        <div>
+          <strong>En route</strong>
+          <p>Le medecin choisi se dirige vers vous.</p>
+          @if (matchedAtLabel(); as label) {
+            <p class="tracking-card__meta">Pris en charge a {{ label }}</p>
+          }
+        </div>
+      </section>
+    }
+
+    <section class="panel">
+      <div class="panel-top">
+        <div>
+          <h2>{{ doctorName() ?? 'Medecin' }}</h2>
+          <p>{{ visitLabel() }} · {{ request.notes ?? 'Consultation urgente' }}</p>
+        </div>
+        @if (acceptedLabel(); as label) {
+          <span class="accepted-at">Accepte le {{ label }}</span>
+        }
+      </div>
+
+      @if (cabinetVisit()) {
+        <p class="tracking-note">
+          Adresse du cabinet non disponible pour le moment. Rendez-vous au cabinet indique par le
+          medecin.
+        </p>
+      } @else {
+        <p class="tracking-distance">
+          <strong>{{ distanceLabel() }}</strong>
+        </p>
+        @if (livePosition(); as position) {
+          <div class="live-position" role="status">
+            <span class="live-position__dot" aria-hidden="true"></span>
+            <span>
+              Position en direct · {{ position.latitude.toFixed(5) }},
+              {{ position.longitude.toFixed(5) }}
+              @if (positionUpdatedAtLabel(); as label) {
+                ({{ label }})
+              }
+            </span>
+            <a
+              class="live-position__link"
+              [href]="'https://www.google.com/maps?q=' + position.latitude + ',' + position.longitude"
+              target="_blank"
+              rel="noopener"
+            >
+              Voir sur la carte
+            </a>
+          </div>
+          <button type="button" class="live-position__route" (click)="openDirections()">
+            Itineraire vers ma position
+          </button>
+        } @else {
+          <p class="tracking-note">
+            La position du medecin s'affiche des sa premiere transmission.
+          </p>
+        }
+      }
+    </section>
+  }
+
+  <oc-confirm-dialog
+    [(open)]="cancelOpen"
+    title="Annuler la demande urgente"
+    message="Le medecin en route sera informe immediatement. Confirmer l'annulation ?"
+    confirmLabel="Annuler la demande"
+    cancelLabel="Retour"
+    [destructive]="true"
+    [loading]="cancelling()"
+    (confirm)="confirmCancel()"
+  />
+  @if (cancelError(); as cancelMessage) {
+    <div class="request-error" role="alert">
+      <span>{{ cancelMessage }}</span>
+    </div>
+  }
+</div>

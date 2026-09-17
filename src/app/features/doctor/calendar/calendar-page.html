@@ -1,0 +1,472 @@
+<div class="calendar-page">
+  <oc-page-header
+    title="Planning"
+    description="Gestion de votre agenda et de vos disponibilités"
+  />
+
+  <div class="calendar-page__controls">
+    <oc-segmented-control
+      label="Mode d'affichage"
+      [options]="viewOptions"
+      [selected]="viewMode()"
+      (selectedChange)="setViewMode($event)"
+    />
+
+    <div class="calendar-page__nav">
+      <span
+        class="calendar-page__health"
+        [class.calendar-page__health--live]="realtimeHealth() === 'live'"
+        role="status"
+      >
+        {{ realtimeHealth() === 'live' ? 'Temps réel actif' : 'MAJ indisponibles' }}
+      </span>
+      <oc-button variant="secondary" size="small" [leadingIcon]="'left'" (click)="previous()"></oc-button>
+      <oc-button variant="primary" size="small" (click)="goToday()">Aujourd'hui</oc-button>
+      <oc-button variant="secondary" size="small" [leadingIcon]="'right'" (click)="next()"></oc-button>
+      <oc-button variant="secondary" size="small" [leadingIcon]="'calendar'" (click)="goToSchedule()">Modifier emploi du temps</oc-button>
+      <oc-button variant="primary" size="small" [leadingIcon]="'plus'" (click)="openExceptionForm()">Ajouter une exception</oc-button>
+    </div>
+  </div>
+
+  <h2 class="calendar-page__title">{{ currentTitle() }}</h2>
+
+  @if (loading()) {
+    <div class="cal-skeleton" role="status" aria-busy="true">
+      <span class="oc-sr-only">Chargement du planning…</span>
+      <div class="cal-skeleton__head">
+        @for (i of [1, 2, 3, 4, 5, 6, 7]; track i) {
+          <span class="cal-skeleton__bar cal-skeleton__bar--head"></span>
+        }
+      </div>
+      <div class="cal-skeleton__body">
+        @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+          <span
+            class="cal-skeleton__bar"
+            [style.width.%]="35 + (i * 13) % 55"
+          ></span>
+        }
+      </div>
+    </div>
+  } @else if (loadError(); as error) {
+    <oc-empty-state
+      title="Planning indisponible"
+      [description]="error"
+    >
+      <oc-button ocEmptyStateAction variant="primary" size="small" (click)="retryLoad()">
+        Réessayer
+      </oc-button>
+    </oc-empty-state>
+  } @else {
+    @switch (viewMode()) {
+      @case ('month') {
+        <div class="cal-month">
+          <div class="cal-month__head" role="row">
+            @for (label of weekdayLabels; track label) {
+              <span class="cal-month__head-cell">{{ label }}</span>
+            }
+          </div>
+          <div class="cal-month__grid">
+            @for (cell of monthCells(); track cell.key) {
+              <button
+                type="button"
+                class="cal-month__cell"
+                [class.cal-month__cell--outside]="!cell.inMonth"
+                [class.cal-month__cell--today]="cell.isToday"
+                [attr.aria-label]="cell.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ', ' + cell.appointmentCount + ' rendez-vous, ' + cell.urgentCount + ' urgence(s)'"
+                (click)="goToDate(cell.date)"
+              >
+                <span class="cal-month__num">{{ cell.dayOfMonth }}</span>
+                <span class="cal-month__indicators">
+                  @if (cell.appointmentCount > 0) {
+                    <span class="cal-pill cal-pill--appt">{{ cell.appointmentCount }} rdv</span>
+                  }
+                  @if (cell.urgentCount > 0) {
+                    <span class="cal-pill cal-pill--urgent">{{ cell.urgentCount }} urgent{{ cell.urgentCount > 1 ? 's' : '' }}</span>
+                  }
+                </span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+      @case ('week') {
+        <div class="cal-board" tabindex="0">
+          <div class="cal-board__header">
+            <div class="cal-board__corner"></div>
+            @for (col of dayColumns(); track col.key) {
+              <button
+                type="button"
+                class="cal-board__day-head"
+                [class.cal-board__day-head--today]="col.isToday"
+                (click)="goToDate(col.date)"
+              >
+                <span>{{ col.weekdayLabel }}</span>
+                <span>{{ col.dayNumber }}</span>
+              </button>
+            }
+          </div>
+          <div class="cal-board__body">
+            <div class="cal-board__gutter">
+              <div class="cal-board__gutter-spacer"></div>
+              <div class="cal-board__hour-labels" [style.height.px]="laneHeight()">
+                @for (h of hourLabels(); track h.hour) {
+                  <span class="cal-board__hour-label" [style.top.px]="h.topPx">{{ h.label }}</span>
+                }
+              </div>
+            </div>
+            <div class="cal-board__lanes">
+              @for (col of dayColumns(); track col.key) {
+                <div
+                  class="cal-lane"
+                  [style.height.px]="laneHeight()"
+                  (click)="onLaneBackgroundClick($event, col)"
+                >
+                  @for (h of hourLabels(); track h.hour) {
+                    <span class="cal-lane__tick" [style.top.px]="h.topPx" aria-hidden="true"></span>
+                  }
+                  @for (cell of col.cells; track $index) {
+                    <button
+                      type="button"
+                      class="cal-cell"
+                      [class]="'cal-cell--' + cell.state.toLowerCase()"
+                      [class.cal-cell--compact]="(cell.endMin - cell.startMin) <= 30"
+                      [class.cal-cell--today]="col.isToday"
+                      [style.top.px]="cellTop(cell, col.startMin)"
+                      [style.height.px]="cellHeight(cell)"
+                      (click)="onCellClick(cell, col)"
+                    >
+                      @switch (cell.state) {
+                        @case ('HAS_APPOINTMENT') {
+                          @if (cell.appointment; as appt) {
+                            <span class="cal-cell__time">{{ formatIsoTime(appt.startTime) }} – {{ formatIsoTime(appt.endTime) }}</span>
+                            <span class="cal-cell__title" [class]="'cal-cell__title--' + statusClass(appt.status)">
+                              {{ patientName(appt) }} · {{ statusFr(appt.status) }}
+                            </span>
+                          }
+                        }
+                        @case ('FREE_BOOKABLE') {
+                          <span class="cal-cell__hint">Libre</span>
+                        }
+                        @case ('BLOCKED') {
+                          @if (cell.exception; as ex) {
+                            <span class="cal-cell__hint">Bloqué{{ ex.reason ? ' — ' + ex.reason : '' }}</span>
+                          }
+                        }
+                        @case ('PASSED') {
+                          @if (cell.appointment; as appt) {
+                            <span class="cal-cell__time">{{ formatIsoTime(appt.startTime) }} – {{ formatIsoTime(appt.endTime) }}</span>
+                            <span class="cal-cell__title">{{ patientName(appt) }} · {{ statusFr(appt.status) }}</span>
+                          } @else {
+                            <span class="cal-cell__hint">Passé</span>
+                          }
+                        }
+                        @case ('EXTRA') {
+                          <span class="cal-cell__hint">Ouverture exceptionnelle</span>
+                        }
+                        @default {}
+                      }
+                    </button>
+                  }
+                  @for (block of col.urgent; track block.requestId) {
+                    <div
+                      class="cal-urgent"
+                      [class.cal-urgent--arrived]="block.arrivedAt !== null"
+                      [style.top.px]="urgentTop(block, col.startMin)"
+                      [style.height.px]="urgentHeight(block)"
+                      role="note"
+                      [attr.aria-label]="'Urgence estimée, ' + block.patientName + ', ' + formatTime(block.start)"
+                    >
+                      <span class="cal-urgent__tag">
+                        <span class="cal-urgent__pulse" aria-hidden="true"></span>
+                        Urgence
+                      </span>
+                      <span class="cal-urgent__name">{{ block.patientName }}</span>
+                      <span class="cal-urgent__meta">
+                        {{ formatTime(block.start) }} · {{ urgentEstimatedMinutes }} min estimées
+                      </span>
+                      @if (block.arrivedAt; as arrived) {
+                        <span class="cal-urgent__arrived">Patient arrivé à {{ formatTime(arrived) }}</span>
+                      }
+                    </div>
+                  }
+                  @if (nowLineVisible(col)) {
+                    <div class="cal-nowline" aria-hidden="true" [style.top.px]="nowLineTop(col)">
+                      <span class="cal-nowline__dot"></span>
+                      <span class="cal-nowline__line"></span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="calendar-page__legend">
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--appt"></span>Rendez-vous</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--free"></span>Créneau libre</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--blocked"></span>Bloqué</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--extra"></span>Ouverture excep.</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--passed"></span>Passé</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--urgent"></span>Urgence</span>
+        </div>
+      }
+      @case ('day') {
+        <div class="cal-board" tabindex="0">
+          <div class="cal-board__body cal-board__body--single">
+            <div class="cal-board__gutter">
+              <div class="cal-board__gutter-spacer"></div>
+              <div class="cal-board__hour-labels" [style.height.px]="laneHeight()">
+                @for (h of hourLabels(); track h.hour) {
+                  <span class="cal-board__hour-label" [style.top.px]="h.topPx">{{ h.label }}</span>
+                }
+              </div>
+            </div>
+            <div class="cal-board__lanes">
+              @for (col of dayColumns(); track col.key) {
+                <div
+                  class="cal-lane"
+                  [style.height.px]="laneHeight()"
+                  (click)="onLaneBackgroundClick($event, col)"
+                >
+                  @for (h of hourLabels(); track h.hour) {
+                    <span class="cal-lane__tick" [style.top.px]="h.topPx" aria-hidden="true"></span>
+                  }
+                  @for (cell of col.cells; track $index) {
+                    <button
+                      type="button"
+                      class="cal-cell"
+                      [class]="'cal-cell--' + cell.state.toLowerCase()"
+                      [class.cal-cell--compact]="(cell.endMin - cell.startMin) <= 30"
+                      [class.cal-cell--today]="col.isToday"
+                      [style.top.px]="cellTop(cell, col.startMin)"
+                      [style.height.px]="cellHeight(cell)"
+                      (click)="onCellClick(cell, col)"
+                    >
+                      @switch (cell.state) {
+                        @case ('HAS_APPOINTMENT') {
+                          @if (cell.appointment; as appt) {
+                            <span class="cal-cell__time">{{ formatIsoTime(appt.startTime) }} – {{ formatIsoTime(appt.endTime) }}</span>
+                            <span class="cal-cell__title" [class]="'cal-cell__title--' + statusClass(appt.status)">
+                              {{ patientName(appt) }} · {{ statusFr(appt.status) }}
+                            </span>
+                          }
+                        }
+                        @case ('FREE_BOOKABLE') {
+                          <span class="cal-cell__hint">Libre — prise de RDV depuis la demande du patient</span>
+                        }
+                        @case ('BLOCKED') {
+                          @if (cell.exception; as ex) {
+                            <span class="cal-cell__hint">Bloqué{{ ex.reason ? ' — ' + ex.reason : '' }}</span>
+                          }
+                        }
+                        @case ('PASSED') {
+                          @if (cell.appointment; as appt) {
+                            <span class="cal-cell__time">{{ formatIsoTime(appt.startTime) }} – {{ formatIsoTime(appt.endTime) }}</span>
+                            <span class="cal-cell__title">{{ patientName(appt) }} · {{ statusFr(appt.status) }}</span>
+                          } @else {
+                            <span class="cal-cell__hint">Passé</span>
+                          }
+                        }
+                        @case ('EXTRA') {
+                          <span class="cal-cell__hint">Ouverture exceptionnelle</span>
+                        }
+                        @default {}
+                      }
+                    </button>
+                  }
+                  @for (block of col.urgent; track block.requestId) {
+                    <div
+                      class="cal-urgent"
+                      [class.cal-urgent--arrived]="block.arrivedAt !== null"
+                      [style.top.px]="urgentTop(block, col.startMin)"
+                      [style.height.px]="urgentHeight(block)"
+                      role="note"
+                      [attr.aria-label]="'Urgence estimée, ' + block.patientName + ', ' + formatTime(block.start)"
+                    >
+                      <span class="cal-urgent__tag">
+                        <span class="cal-urgent__pulse" aria-hidden="true"></span>
+                        Urgence
+                      </span>
+                      <span class="cal-urgent__name">{{ block.patientName }}</span>
+                      <span class="cal-urgent__meta">
+                        {{ formatTime(block.start) }} · {{ urgentEstimatedMinutes }} min estimées
+                      </span>
+                      @if (block.arrivedAt; as arrived) {
+                        <span class="cal-urgent__arrived">Patient arrivé à {{ formatTime(arrived) }}</span>
+                      }
+                    </div>
+                  }
+                  @if (nowLineVisible(col)) {
+                    <div class="cal-nowline" aria-hidden="true" [style.top.px]="nowLineTop(col)">
+                      <span class="cal-nowline__dot"></span>
+                      <span class="cal-nowline__line"></span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="calendar-page__legend">
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--appt"></span>Rendez-vous</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--free"></span>Créneau libre</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--blocked"></span>Bloqué</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--extra"></span>Ouverture excep.</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--passed"></span>Passé</span>
+          <span class="calendar-page__legend-item"><span class="cal-dot cal-dot--urgent"></span>Urgence</span>
+        </div>
+      }
+    }
+  }
+
+  @if (toast(); as message) {
+    <div class="calendar-page__toast" role="status" aria-live="polite">{{ message }}</div>
+  }
+
+  <app-appointment-detail-panel
+    #aptPanel
+    (updated)="onAppointmentUpdated($event)"
+    (cancel)="cancelSelectedAppointment()"
+  />
+
+  <nz-modal
+    [nzVisible]="selectedException() !== null"
+    nzTitle="Indisponibilité"
+    [nzClosable]="true"
+    [nzMaskClosable]="true"
+    [nzKeyboard]="true"
+    [nzWidth]="420"
+    (nzOnCancel)="closeExceptionDetail()"
+  >
+    <ng-template nzModalContent>
+      @if (selectedException(); as ex) {
+        <div class="cal-panel">
+          <dl class="cal-panel__grid">
+            <div class="cal-panel__field">
+              <dt>Date</dt>
+              <dd>{{ ex.exceptionDate }}</dd>
+            </div>
+            <div class="cal-panel__field">
+              <dt>Horaire</dt>
+              <dd>{{ ex.startTime }} — {{ ex.endTime }}</dd>
+            </div>
+            <div class="cal-panel__field">
+              <dt>Type</dt>
+              <dd>{{ ex.type === 'BLOCK' ? 'Blocage' : 'Heure supplémentaire' }}</dd>
+            </div>
+            <div class="cal-panel__field">
+              <dt>Motif</dt>
+              <dd>{{ ex.reason ?? '—' }}</dd>
+            </div>
+          </dl>
+          @if (exceptionError(); as formError) {
+            <p class="cal-panel__error" role="alert">{{ formError }}</p>
+          }
+        </div>
+      }
+    </ng-template>
+    <ng-template nzModalFooter>
+      <oc-button variant="secondary" size="small" (click)="closeExceptionDetail()">Fermer</oc-button>
+      <oc-button
+        variant="primary"
+        size="small"
+        [loading]="deletingException()"
+        (click)="confirmDeleteException()"
+      >
+        Supprimer le blocage
+      </oc-button>
+    </ng-template>
+  </nz-modal>
+
+  <nz-modal
+    [nzVisible]="exceptionFormOpen()"
+    nzTitle="Ajouter une exception"
+    [nzClosable]="true"
+    [nzMaskClosable]="true"
+    [nzKeyboard]="true"
+    [nzWidth]="420"
+    (nzOnCancel)="closeExceptionForm()"
+  >
+    <ng-template nzModalContent>
+      <form class="cal-panel" [formGroup]="exceptionForm" (ngSubmit)="saveException()">
+        <div class="cal-form">
+          <label class="cal-form__field">
+            <span>Type</span>
+            <select formControlName="type">
+              <option value="BLOCK">Bloquer (indisponible)</option>
+              <option value="EXTRA">Ouverture exceptionnelle</option>
+            </select>
+          </label>
+          <label class="cal-form__field">
+            <span>Date</span>
+            <input type="date" formControlName="date" readonly />
+          </label>
+          <div class="cal-form__row">
+            <label class="cal-form__field">
+              <span>Début</span>
+              <input type="time" formControlName="startTime" />
+            </label>
+            <label class="cal-form__field">
+              <span>Fin</span>
+              <input type="time" formControlName="endTime" />
+            </label>
+          </div>
+          <label class="cal-form__field">
+            <span>Motif</span>
+            <input type="text" formControlName="reason" placeholder="Optionnel" />
+          </label>
+        </div>
+        @if (exceptionError(); as formError) {
+          <p class="cal-panel__error" role="alert">{{ formError }}</p>
+        }
+      </form>
+    </ng-template>
+    <ng-template nzModalFooter>
+      <oc-button type="button" variant="secondary" size="small" (click)="closeExceptionForm()">Annuler</oc-button>
+      <oc-button
+        type="submit"
+        variant="primary"
+        size="small"
+        [loading]="exceptionSaving()"
+        (click)="saveException()"
+      >
+        Enregistrer
+      </oc-button>
+    </ng-template>
+  </nz-modal>
+
+  <nz-modal
+    [nzVisible]="freeSlotModalOpen()"
+    nzTitle="Créneau non disponible"
+    [nzClosable]="true"
+    [nzMaskClosable]="true"
+    [nzKeyboard]="true"
+    [nzWidth]="400"
+    (nzOnCancel)="closeFreeSlotModal()"
+  >
+    <ng-template nzModalContent>
+      <p>La prise de rendez-vous depuis le calendrier n'est pas encore disponible pour ce créneau.</p>
+    </ng-template>
+    <ng-template nzModalFooter>
+      <oc-button variant="primary" size="small" (click)="closeFreeSlotModal()">Fermer</oc-button>
+    </ng-template>
+  </nz-modal>
+
+  <nz-modal
+    [nzVisible]="passedSlotModalOpen()"
+    nzTitle="Créneau passé"
+    [nzClosable]="true"
+    [nzMaskClosable]="true"
+    [nzKeyboard]="true"
+    [nzWidth]="400"
+    (nzOnCancel)="closePassedSlotModal()"
+  >
+    <ng-template nzModalContent>
+      <p>Ce créneau est déjà passé pour aujourd'hui.</p>
+    </ng-template>
+    <ng-template nzModalFooter>
+      <oc-button variant="primary" size="small" (click)="closePassedSlotModal()">Fermer</oc-button>
+    </ng-template>
+  </nz-modal>
+</div>

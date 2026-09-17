@@ -1,0 +1,89 @@
+.urgent-detail {
+  display: grid;
+  gap: var(--oc-space-5);
+}
+
+.urgent-detail__patient {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+}
+
+.urgent-detail__name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: var(--oc-font-weight-semibold);
+  color: var(--oc-color-text-primary);
+}
+
+.urgent-detail__status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--oc-color-text-muted);
+}
+
+.urgent-detail__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--oc-space-4);
+}
+
+.urgent-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oc-space-1);
+}
+
+.urgent-detail__field--full {
+  grid-column: 1 / -1;
+}
+
+.urgent-detail__label {
+  font-size: 11px;
+  font-weight: var(--oc-font-weight-semibold);
+  color: var(--oc-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.urgent-detail__value {
+  margin: 0;
+  font-size: var(--oc-font-size-sm);
+  color: var(--oc-color-text-primary);
+  line-height: var(--oc-line-height-relaxed);
+}
+
+.urgent-detail__arrived-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-success-subtle);
+  color: var(--oc-color-success);
+  font-size: var(--oc-font-size-sm);
+  font-weight: var(--oc-font-weight-medium);
+}
+
+.urgent-detail__arrived-icon {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-success);
+}
+
+.urgent-detail__waiting {
+  font-size: var(--oc-font-size-sm);
+  color: var(--oc-color-text-muted);
+}
+
+.urgent-detail__error {
+  margin: var(--oc-space-3) 0 0;
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border: 1px solid var(--oc-color-critical);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-critical-surface);
+  color: var(--oc-color-critical);
+  font-size: var(--oc-font-size-sm);
+}

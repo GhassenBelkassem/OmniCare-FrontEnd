@@ -1,0 +1,177 @@
+<div class="prescriptions-page">
+  <oc-page-header
+    title="Prescriptions & Demandes"
+    subtitle="Gerez vos prescriptions, demandes d'examens et modeles"
+  />
+
+  <div class="prescriptions-page__content">
+    <oc-tabs
+      [tabs]="tabs()"
+      [selected]="activeTab()"
+      (selectedChange)="onTabChange($event)"
+    />
+
+    @if (activeTab() === 'prescriptions') {
+      <div class="prescriptions-page__tab-content">
+        <div class="prescriptions-page__actions">
+          <oc-button
+            variant="primary"
+            (click)="onNewPrescription()"
+          >Nouvelle ordonnance</oc-button>
+        </div>
+
+        @if (filteredPrescriptions().length === 0) {
+          <oc-empty-state
+            title="Aucune prescription"
+            description="Aucune prescription n'a ete trouvee."
+            icon="file-medical"
+          />
+        } @else {
+          <oc-data-table-shell>
+            @for (rx of filteredPrescriptions(); track rx.id) {
+              <tr class="prescriptions-page__table-row">
+                <td class="prescriptions-page__table-cell prescriptions-page__table-cell--patient">
+                  {{ rx.patientName }}
+                </td>
+                <td class="prescriptions-page__table-cell">
+                  {{ rx.date }}
+                </td>
+                <td class="prescriptions-page__table-cell prescriptions-page__table-cell--drug">
+                  {{ rx.drug }}
+                </td>
+                <td class="prescriptions-page__table-cell">
+                  <oc-status-badge
+                    [status]="prescriptionOcStatus()[rx.status]"
+                  />
+                </td>
+                <td class="prescriptions-page__table-cell prescriptions-page__table-cell--actions">
+                  <oc-button
+                    variant="quiet"
+                    size="small"
+                    (click)="onViewPrescription(rx)"
+                  >Voir</oc-button>
+                </td>
+              </tr>
+            }
+          </oc-data-table-shell>
+        }
+      </div>
+    }
+
+    @if (activeTab() === 'demandes') {
+      <div class="prescriptions-page__tab-content">
+        <div class="prescriptions-page__actions">
+          <oc-button
+            variant="primary"
+            (click)="onNewLabRequest()"
+          >Demande labo</oc-button>
+          <oc-button
+            variant="secondary"
+            (click)="onNewImagingRequest()"
+          >Demande imagerie</oc-button>
+          <oc-button
+            variant="secondary"
+            (click)="onNewReferral()"
+          >Orientation</oc-button>
+          <oc-button
+            variant="secondary"
+            (click)="onNewCertificate()"
+          >Certificat</oc-button>
+        </div>
+
+        @if (filteredDemandes().length === 0) {
+          <oc-empty-state
+            title="Aucune demande"
+            description="Aucune demande n'a ete trouvee."
+            icon="clipboard-list"
+          />
+        } @else {
+          <oc-data-table-shell>
+            @for (demande of filteredDemandes(); track demande.id) {
+              <tr class="prescriptions-page__table-row">
+                <td class="prescriptions-page__table-cell">
+                  <oc-status-badge
+                    [status]="demandeTypeOcStatus()[demande.type]"
+                  />
+                </td>
+                <td class="prescriptions-page__table-cell prescriptions-page__table-cell--patient">
+                  {{ demande.patientName }}
+                </td>
+                <td class="prescriptions-page__table-cell">
+                  {{ demande.date }}
+                </td>
+                <td class="prescriptions-page__table-cell prescriptions-page__table-cell--description">
+                  {{ demande.description }}
+                </td>
+                <td class="prescriptions-page__table-cell">
+                  <oc-status-badge
+                    [status]="demandeOcStatus()[demande.status]"
+                  />
+                </td>
+                <td class="prescriptions-page__table-cell prescriptions-page__table-cell--actions">
+                  <oc-button
+                    variant="quiet"
+                    size="small"
+                    (click)="onDeleteDemande(demande)"
+                  >Supprimer</oc-button>
+                </td>
+              </tr>
+            }
+          </oc-data-table-shell>
+        }
+      </div>
+    }
+
+    @if (activeTab() === 'modeles') {
+      <div class="prescriptions-page__tab-content">
+        @if (filteredModeles().length === 0) {
+          <oc-empty-state
+            title="Aucun modele"
+            description="Creez des modeles pour gagner du temps sur vos prescriptions recurrentes."
+            icon="bookmark"
+          />
+        } @else {
+          <div class="prescriptions-page__modeles-grid">
+            @for (modele of filteredModeles(); track modele.id) {
+              <oc-card title="{{ modele.name }}">
+                <div class="prescriptions-page__modele-card">
+                  <div class="prescriptions-page__modele-header">
+                    <span class="prescriptions-page__modele-category">
+                      {{ modele.category }}
+                    </span>
+                    <span class="prescriptions-page__modele-date">
+                      Utilise le {{ modele.lastUsed }}
+                    </span>
+                  </div>
+                  <h4 class="prescriptions-page__modele-name">
+                    {{ modele.name }}
+                  </h4>
+                  <p class="prescriptions-page__modele-content">
+                    {{ modele.content }}
+                  </p>
+                  <div class="prescriptions-page__modele-actions">
+                    <oc-button
+                      variant="primary"
+                      size="small"
+                      (click)="onUseModele(modele)"
+                    >Utiliser</oc-button>
+                    <oc-button
+                      variant="quiet"
+                      size="small"
+                      (click)="onEditModele(modele)"
+                    >Modifier</oc-button>
+                    <oc-button
+                      variant="quiet"
+                      size="small"
+                      (click)="onDeleteModele(modele)"
+                    >Supprimer</oc-button>
+                  </div>
+                </div>
+              </oc-card>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

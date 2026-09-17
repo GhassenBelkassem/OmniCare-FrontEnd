@@ -1,6 +1,8 @@
 import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 
+import { authenticatedGuard, roleGuard } from './core/auth/auth.guards';
+
 const productionRoutes: Routes = [
   {
     path: '',
@@ -14,12 +16,14 @@ const productionRoutes: Routes = [
       },
       {
         path: 'first-login',
-        loadComponent: () => import('./features/login/first-login-page').then((component) => component.FirstLoginPage),
+        loadComponent: () =>
+          import('./features/login/first-login-page').then((component) => component.FirstLoginPage),
         title: 'Complete invitation | OmniCare',
       },
       {
         path: 'forbidden',
-        loadComponent: () => import('./features/login/forbidden-page').then((component) => component.ForbiddenPage),
+        loadComponent: () =>
+          import('./features/login/forbidden-page').then((component) => component.ForbiddenPage),
         title: 'Access unavailable | OmniCare',
       },
       {
@@ -39,6 +43,11 @@ const productionRoutes: Routes = [
         path: 'clinic',
         loadChildren: () =>
           import('./features/clinic/clinic.routes').then((routes) => routes.CLINIC_ROUTES),
+      },
+      {
+        path: 'patient',
+        loadChildren: () =>
+          import('./features/patient/patient.routes').then((routes) => routes.PATIENT_ROUTES),
       },
       { path: '', pathMatch: 'full', redirectTo: 'login' },
       { path: '**', redirectTo: 'login' },

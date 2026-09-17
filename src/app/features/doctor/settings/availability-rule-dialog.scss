@@ -1,0 +1,23 @@
+.rule-form {
+  display: grid;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.rule-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.rule-form__select {
+  width: 100%;
+}
+
+.rule-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--oc-color-border, #d4dfda);
+}

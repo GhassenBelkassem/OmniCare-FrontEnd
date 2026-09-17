@@ -1,0 +1,30 @@
+<section class="rx-builder" aria-labelledby="rx-title">
+  <div class="rx-builder__head">
+    <h3 id="rx-title">Prescription</h3>
+    <oc-button variant="secondary" size="small" leadingIcon="plus" (click)="addLine()">Ajouter une ligne</oc-button>
+  </div>
+
+  @for (line of current(); track line.id) {
+    <div class="rx-line">
+      <label>
+        <span>Medicament</span>
+        <input type="text" placeholder="Paracetamol" [ngModel]="line.drugName" name="drug-{{ line.id }}" (ngModelChange)="updateLine(line.id, 'drugName', $event)" />
+      </label>
+      <label>
+        <span>Dosage</span>
+        <input type="text" placeholder="1000 mg" [ngModel]="line.dosage" name="dosage-{{ line.id }}" (ngModelChange)="updateLine(line.id, 'dosage', $event)" />
+      </label>
+      <label>
+        <span>Rythme</span>
+        <input type="text" placeholder="3x/jour" [ngModel]="line.timing" name="timing-{{ line.id }}" (ngModelChange)="updateLine(line.id, 'timing', $event)" />
+      </label>
+      <label>
+        <span>Duree</span>
+        <input type="text" placeholder="5 jours" [ngModel]="line.duration" name="duration-{{ line.id }}" (ngModelChange)="updateLine(line.id, 'duration', $event)" />
+      </label>
+      <button type="button" class="text-button" (click)="removeLine(line.id)">Supprimer</button>
+    </div>
+  } @empty {
+    <p class="empty-note">Aucune ligne de prescription. Ajoutez-en une pour generer l'e-prescription.</p>
+  }
+</section>

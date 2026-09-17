@@ -16,3 +16,7 @@
   font-size: 12px;
   line-height: 16px;
 }
+/* NG-ZORRO select menus render in the global overlay container, outside modals. */
+.cdk-overlay-container .ant-select-dropdown {
+  z-index: calc(var(--oc-z-modal) + 10);
+}

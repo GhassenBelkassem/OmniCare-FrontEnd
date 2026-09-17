@@ -8,15 +8,21 @@
 
   @if (createOpen()) {
     <section class="panel" aria-labelledby="create-doctor-title">
-      <h2 id="create-doctor-title">Invite an independent doctor</h2>
-      <p>The doctor chooses their own password from a one-time email link.</p>
+      <h2 id="create-doctor-title">Create an independent doctor</h2>
       <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
         <div class="field"><label for="doctor-email">Email</label><input id="doctor-email" type="email" formControlName="email" autocomplete="off" /></div>
+        <div class="field">
+          <label for="doctor-password">Initial password</label>
+          <div class="inline-control">
+            <input id="doctor-password" type="text" formControlName="password" autocomplete="new-password" minlength="16" />
+            <oc-button variant="secondary" type="button" (click)="generatePassword()">Generate</oc-button>
+          </div>
+        </div>
         <div class="field"><label for="doctor-phone">Phone (optional)</label><input id="doctor-phone" type="tel" inputmode="tel" formControlName="phone" placeholder="+216 20 123 456 or 20 123 456" /></div>
         <div class="field"><label for="doctor-license">Professional license</label><input id="doctor-license" formControlName="professionalLicenseNumber" /></div>
         <div class="field"><label for="doctor-specialty">Specialty</label><input id="doctor-specialty" formControlName="specialty" /></div>
         <div class="field"><label for="doctor-governorate">Governorate</label><input id="doctor-governorate" formControlName="governorate" /></div>
-        <div class="actions span-2"><oc-button variant="primary" type="submit" [loading]="submitting()">Create and invite</oc-button><oc-button variant="quiet" (click)="createOpen.set(false)">Cancel</oc-button></div>
+        <div class="actions span-2"><oc-button variant="primary" type="submit" [loading]="submitting()">Create doctor</oc-button><oc-button variant="quiet" (click)="createOpen.set(false)">Cancel</oc-button></div>
       </form>
     </section>
   }

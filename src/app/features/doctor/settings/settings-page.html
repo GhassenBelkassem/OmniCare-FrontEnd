@@ -1,0 +1,372 @@
+<div class="settings-page">
+  <oc-page-header
+    title="Parametres"
+    description="Gerez votre profil, emploi du temps et preferences"
+  />
+
+  <div class="settings-page__content">
+    <oc-tabs
+      label="Parametres"
+      [tabs]="tabs()"
+      [selected]="activeTab()"
+      (selectedChange)="onTabChange($event)"
+    />
+
+    @if (activeTab() === 'profile') {
+      <div class="settings-page__tab-content">
+        <oc-card title="Informations personnelles" subtitle="Modifiez vos informations de profil">
+          <form class="settings-page__form">
+            <div class="settings-page__form-grid">
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="firstName">Prenom</label>
+                <input
+                  id="firstName"
+                  class="settings-page__input"
+                  type="text"
+                  [ngModel]="profile().firstName"
+                  (ngModelChange)="onProfileFieldChange('firstName', $event)"
+                  name="firstName"
+                />
+              </div>
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="lastName">Nom</label>
+                <input
+                  id="lastName"
+                  class="settings-page__input"
+                  type="text"
+                  [ngModel]="profile().lastName"
+                  (ngModelChange)="onProfileFieldChange('lastName', $event)"
+                  name="lastName"
+                />
+              </div>
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="email">Email</label>
+                <input
+                  id="email"
+                  class="settings-page__input"
+                  type="email"
+                  [ngModel]="profile().email"
+                  (ngModelChange)="onProfileFieldChange('email', $event)"
+                  name="email"
+                />
+              </div>
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="phone">Telephone</label>
+                <input
+                  id="phone"
+                  class="settings-page__input"
+                  type="tel"
+                  [ngModel]="profile().phone"
+                  (ngModelChange)="onProfileFieldChange('phone', $event)"
+                  name="phone"
+                />
+              </div>
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="specialty">Specialite</label>
+                <input
+                  id="specialty"
+                  class="settings-page__input"
+                  type="text"
+                  [ngModel]="profile().specialty"
+                  (ngModelChange)="onProfileFieldChange('specialty', $event)"
+                  name="specialty"
+                />
+              </div>
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="governorate">Gouvernorat</label>
+                <input
+                  id="governorate"
+                  class="settings-page__input"
+                  type="text"
+                  [ngModel]="profile().governorate"
+                  (ngModelChange)="onProfileFieldChange('governorate', $event)"
+                  name="governorate"
+                />
+              </div>
+              <div class="settings-page__field settings-page__field--full">
+                <label class="settings-page__label" for="licenseNumber">Numero de licence</label>
+                <input
+                  id="licenseNumber"
+                  class="settings-page__input"
+                  type="text"
+                  [ngModel]="profile().licenseNumber"
+                  (ngModelChange)="onProfileFieldChange('licenseNumber', $event)"
+                  name="licenseNumber"
+                />
+              </div>
+            </div>
+            <div class="settings-page__form-actions">
+              @if (profileSaved()) {
+                <span class="settings-page__success-message">Profil mis a jour</span>
+              }
+              <oc-button
+                variant="primary"
+                (click)="onSaveProfile()"
+              >Enregistrer</oc-button>
+            </div>
+          </form>
+        </oc-card>
+      </div>
+    }
+
+    @if (activeTab() === 'schedule') {
+      <div class="settings-page__tab-content">
+        <oc-card title="Emploi du temps" subtitle="Vos regles de disponibilite hebdomadaires">
+          <div class="settings-page__schedule-header">
+            <oc-button variant="primary" size="small" (click)="openAddRule()">Ajouter une regle</oc-button>
+          </div>
+
+          @if (scheduleLoading()) {
+            <div class="settings-page__loading">
+              <span class="settings-page__spinner" aria-label="Chargement..."></span>
+            </div>
+          } @else if (scheduleError()) {
+            <oc-empty-state
+              icon="warning"
+              title="Erreur de chargement"
+              [description]="scheduleError()!"
+            />
+          } @else if (availabilityRules().length === 0) {
+            <oc-empty-state
+              icon="calendar"
+              title="Aucune regle configuree"
+              description="Aucune regle de disponibilite n'a ete trouvee pour votre compte."
+            />
+          } @else {
+            <div class="settings-page__schedule-list">
+              @for (day of dayKeys(); track day) {
+                @if (getDayRules(day).length > 0) {
+                  <div class="settings-page__schedule-day">
+                    <div class="settings-page__schedule-day-header">
+                      <span class="settings-page__day-name">{{ getDayLabel(day) }}</span>
+                      @if (getDayRules(day).some(r => r.active)) {
+                        <span class="settings-page__status-dot settings-page__status-dot--active"></span>
+                      } @else {
+                        <span class="settings-page__status-dot settings-page__status-dot--inactive"></span>
+                      }
+                    </div>
+                    <div class="settings-page__schedule-rules">
+                      @for (rule of getDayRules(day); track trackByRuleId($index, rule)) {
+                        <div
+                          class="settings-page__rule"
+                          [class.settings-page__rule--inactive]="!rule.active"
+                        >
+                          <span class="settings-page__rule-time">
+                            {{ formatTime(rule.startTime) }} - {{ formatTime(rule.endTime) }}
+                          </span>
+                          @if (rule.pauseStart && rule.pauseEnd) {
+                            <span class="settings-page__rule-pause">
+                              Pause {{ formatTime(rule.pauseStart) }} - {{ formatTime(rule.pauseEnd) }}
+                            </span>
+                          }
+                          <span class="settings-page__rule-duration">
+                            {{ rule.slotDurationMinutes }} min/slot
+                          </span>
+                          <div class="settings-page__rule-actions">
+                            <oc-button variant="quiet" size="small" (click)="openEditRule(rule)">Modifier</oc-button>
+                            <oc-button variant="quiet" size="small" (click)="deleteRule(rule)">Supprimer</oc-button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </oc-card>
+
+        <oc-card title="Exceptions" subtitle="Bloquez ou ajoutez des plages exceptionnelles">
+          <div class="settings-page__schedule-header">
+            <oc-button variant="primary" size="small" (click)="exceptionDialogOpen.set(true); loadExceptions()">Gerer les exceptions</oc-button>
+          </div>
+
+          @if (exceptions().length > 0) {
+            <div class="settings-page__exceptions-list">
+              @for (exception of exceptions(); track trackByExceptionId($index, exception)) {
+                <div class="settings-page__exception-row">
+                  <span class="settings-page__exception-date">{{ exception.exceptionDate }}</span>
+                  <span class="settings-page__exception-type" [class]="'settings-page__exception-type--' + exception.type.toLowerCase()">
+                    {{ exception.type === 'BLOCK' ? 'Blocage' : 'Supplement' }}
+                  </span>
+                  @if (exception.reason) {
+                    <span class="settings-page__exception-reason">{{ exception.reason }}</span>
+                  }
+                  <oc-button variant="quiet" size="small" (click)="deleteException(exception)">Supprimer</oc-button>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="settings-page__empty-text">Aucune exception configuree.</p>
+          }
+        </oc-card>
+
+        <app-availability-rule-dialog
+          [open]="ruleDialogOpen()"
+          [rule]="editingRule()"
+          (openChange)="onRuleDialogClose()"
+          (saved)="onRuleSaved($event)"
+        />
+
+        @if (exceptionDialogOpen()) {
+          <div class="settings-page__exception-dialog">
+            <div class="settings-page__exception-dialog-content">
+              <h3>Ajouter une exception</h3>
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="exceptionDate">Date</label>
+                <input id="exceptionDate" class="settings-page__input" type="date" [ngModel]="newExceptionDate()" (ngModelChange)="newExceptionDate.set($event)" />
+              </div>
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="exceptionType">Type</label>
+                <select id="exceptionType" class="settings-page__input" [ngModel]="newExceptionType()" (ngModelChange)="newExceptionType.set($event)">
+                  <option value="BLOCK">Blocage</option>
+                  <option value="EXTRA">Supplement</option>
+                </select>
+              </div>
+              <div class="settings-page__field">
+                <label class="settings-page__label" for="exceptionReason">Raison</label>
+                <input id="exceptionReason" class="settings-page__input" type="text" placeholder="Optionnel" [ngModel]="newExceptionReason()" (ngModelChange)="newExceptionReason.set($event)" />
+              </div>
+              <div class="settings-page__form-actions">
+                <oc-button variant="secondary" (click)="exceptionDialogOpen.set(false)">Annuler</oc-button>
+                <oc-button variant="primary" (click)="addException()">Ajouter</oc-button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (activeTab() === 'services') {
+      <div class="settings-page__tab-content">
+        <oc-card title="Services proposes" subtitle="Activez ou desactivez vos services">
+          <div class="settings-page__services-list">
+            @for (service of services(); track trackByServiceId($index, service)) {
+              <div class="settings-page__service-row">
+                <div class="settings-page__service-info">
+                  <span class="settings-page__service-name">{{ service.name }}</span>
+                  <span class="settings-page__service-meta">{{ service.duration }}</span>
+                </div>
+                <div class="settings-page__service-right">
+                  <span class="settings-page__service-price">{{ service.price }} TND</span>
+                  <button
+                    type="button"
+                    class="settings-page__toggle"
+                    [class.settings-page__toggle--active]="service.active"
+                    [attr.aria-label]="service.name + (service.active ? ' - actif' : ' - inactif')"
+                    [attr.aria-pressed]="service.active"
+                    (click)="onServiceToggle(service.id)"
+                  >
+                    <span class="settings-page__toggle-knob"></span>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </oc-card>
+      </div>
+    }
+
+    @if (activeTab() === 'templates') {
+      <div class="settings-page__tab-content">
+        <oc-card title="Modeles de consultation" subtitle="Modeles predefinis pour vos consultations">
+          <div class="settings-page__templates-grid">
+            @for (template of templates(); track trackByTemplateId($index, template)) {
+              <div class="settings-page__template-card">
+                <div class="settings-page__template-header">
+                  <span class="settings-page__template-category">{{ template.category }}</span>
+                  <span class="settings-page__template-date">Utilise le {{ template.lastUsed }}</span>
+                </div>
+                <h4 class="settings-page__template-name">{{ template.name }}</h4>
+                <p class="settings-page__template-description">{{ template.description }}</p>
+                <div class="settings-page__template-actions">
+                  <oc-button variant="primary" size="small" [leadingIcon]="'edit'">Utiliser</oc-button>
+                  <oc-button variant="secondary" size="small" [leadingIcon]="'copy'">Copier</oc-button>
+                </div>
+              </div>
+            }
+          </div>
+        </oc-card>
+      </div>
+    }
+
+    @if (activeTab() === 'preferences') {
+      <div class="settings-page__tab-content">
+        <oc-card title="Notifications" subtitle="Configurez vos preferences de notification">
+          <div class="settings-page__prefs-list">
+            <div class="settings-page__pref-row">
+              <div class="settings-page__pref-info">
+                <span class="settings-page__pref-label">Notifications email</span>
+                <span class="settings-page__pref-description">Recevez les rappels et confirmations par email</span>
+              </div>
+              <button
+                type="button"
+                class="settings-page__toggle"
+                [class.settings-page__toggle--active]="emailNotifications()"
+                [attr.aria-label]="'Notifications email' + (emailNotifications() ? ' - active' : ' - desactivee')"
+                [attr.aria-pressed]="emailNotifications()"
+                (click)="onEmailNotificationsToggle()"
+              >
+                <span class="settings-page__toggle-knob"></span>
+              </button>
+            </div>
+            <div class="settings-page__pref-row">
+              <div class="settings-page__pref-info">
+                <span class="settings-page__pref-label">Notifications SMS</span>
+                <span class="settings-page__pref-description">Recevez les alertes urgentes par SMS</span>
+              </div>
+              <button
+                type="button"
+                class="settings-page__toggle"
+                [class.settings-page__toggle--active]="smsNotifications()"
+                [attr.aria-label]="'Notifications SMS' + (smsNotifications() ? ' - active' : ' - desactivee')"
+                [attr.aria-pressed]="smsNotifications()"
+                (click)="onSmsNotificationsToggle()"
+              >
+                <span class="settings-page__toggle-knob"></span>
+              </button>
+            </div>
+            <div class="settings-page__pref-row">
+              <div class="settings-page__pref-info">
+                <span class="settings-page__pref-label">Alertes urgentes</span>
+                <span class="settings-page__pref-description">Notification immediate pour les demandes urgentes</span>
+              </div>
+              <button
+                type="button"
+                class="settings-page__toggle"
+                [class.settings-page__toggle--active]="urgentAlerts()"
+                [attr.aria-label]="'Alertes urgentes' + (urgentAlerts() ? ' - active' : ' - desactivee')"
+                [attr.aria-pressed]="urgentAlerts()"
+                (click)="onUrgentAlertsToggle()"
+              >
+                <span class="settings-page__toggle-knob"></span>
+              </button>
+            </div>
+          </div>
+        </oc-card>
+      </div>
+    }
+  </div>
+
+  <oc-confirm-dialog
+    [open]="deleteRuleConfirmOpen()"
+    title="Supprimer la regle"
+    [message]="'Supprimer la regle du ' + (ruleToDelete() ? getDayLabel(ruleToDelete()!.dayOfWeek) : '') + ' ?'"
+    confirmLabel="Supprimer"
+    cancelLabel="Annuler"
+    [destructive]="true"
+    (confirm)="confirmDeleteRule()"
+    (cancelled)="cancelDeleteRule()"
+  />
+
+  <oc-confirm-dialog
+    [open]="deleteExceptionConfirmOpen()"
+    title="Supprimer l'exception"
+    message="Supprimer cette exception ?"
+    confirmLabel="Supprimer"
+    cancelLabel="Annuler"
+    [destructive]="true"
+    (confirm)="confirmDeleteException()"
+    (cancelled)="cancelDeleteException()"
+  />
+</div>
