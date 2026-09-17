@@ -239,6 +239,7 @@ export class ClinicTaskStore {
     command: 'BLOCK' | 'COMPLETE',
     request$: Observable<ClinicCaseDetail>,
     notice: string,
+    onSuccess?: () => void,
   ): void {
     if (this.commandState() !== null) return;
     this.commandState.set(command);
@@ -249,6 +250,7 @@ export class ClinicTaskStore {
         this.caseState.set(caseDetail);
         this.commandState.set(null);
         this.commandNoticeState.set(notice);
+        onSuccess?.();
         this.refreshDetail();
       },
       error: (error: unknown) => this.failCommand(command, error, false),

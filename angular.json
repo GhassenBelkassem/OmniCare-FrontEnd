@@ -25,6 +25,11 @@
           "builder": "@angular/build:application",
           "options": {
             "browser": "src/main.ts",
+            "server": "src/main.server.ts",
+            "prerender": true,
+            "ssr": {
+              "entry": "src/server.ts"
+            },
             "tsConfig": "tsconfig.app.json",
             "polyfills": ["src/polyfills/global.ts"],
             "inlineStyleLanguage": "scss",
@@ -34,7 +39,11 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles/vendor/ng-zorro-theme.less", "src/styles.scss"],
+            "styles": [
+              "src/styles/vendor/ng-zorro-theme.less",
+              "src/styles/vendor/spartan-tailwind.css",
+              "src/styles.scss"
+            ],
             "stylePreprocessorOptions": {
               "includePaths": ["src"]
             },
@@ -83,7 +92,10 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "setupFiles": ["src/test-setup.ts"]
+          }
         }
       }
     }

@@ -2,3 +2,28 @@
   display: block;
   min-height: 100dvh;
 }
+
+.app-boot {
+  display: grid;
+  min-height: 100dvh;
+  place-content: center;
+  justify-items: center;
+  gap: var(--oc-space-3);
+  background: var(--oc-color-surface-app);
+  color: var(--oc-color-text-secondary);
+}
+
+.app-boot p { margin: 0; font-size: 14px; }
+
+.app-boot__mark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-selected);
+  color: var(--oc-color-brand-primary);
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.app-boot__mark span { color: var(--oc-color-brand-primary-active); }

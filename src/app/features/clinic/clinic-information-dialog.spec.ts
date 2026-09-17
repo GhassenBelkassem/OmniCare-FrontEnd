@@ -11,7 +11,7 @@ describe('ClinicInformationDialog', () => {
   let fixture: ComponentFixture<ClinicInformationDialog>;
   let component: ClinicInformationDialog;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [ClinicInformationDialog],
     });
@@ -21,6 +21,7 @@ describe('ClinicInformationDialog', () => {
     fixture.componentRef.setInput('requestLabel', 'Amina Trabelsi');
     fixture.componentRef.setInput('open', true);
     fixture.detectChanges();
+    await fixture.whenStable();
   });
 
   it('renders every backend-supported controlled reason option', () => {
@@ -32,12 +33,12 @@ describe('ClinicInformationDialog', () => {
     );
   });
 
-  it('renders an enabled native select with every controlled reason', () => {
-    const select = reasonSelect();
+  it('renders an enabled Spartan select trigger for the controlled reasons', () => {
+    const select = reasonTrigger();
 
     expect(component.form.controls.reasonCode.enabled).toBe(true);
     expect(select.disabled).toBe(false);
-    expect(select.options).toHaveLength(component.reasons.length + 1);
+    expect(select.getAttribute('role')).toBe('combobox');
   });
 
   it('emits the selected backend enum value without converting it to the label', () => {
@@ -50,6 +51,29 @@ describe('ClinicInformationDialog', () => {
     fixture.detectChanges();
 
     expect(confirmed).toEqual(['REQUEST_ADMINISTRATIVE_DETAILS']);
+  });
+
+  it('emits a valid request only once while the parent action is becoming loading', () => {
+    const confirmed: ClinicInformationReasonCode[] = [];
+    component.confirmed.subscribe((reason) => confirmed.push(reason));
+    component.form.controls.reasonCode.setValue('CONTACT_INFORMATION');
+
+    component.confirm();
+    component.confirm();
+
+    expect(confirmed).toEqual(['CONTACT_INFORMATION']);
+  });
+
+  it('does not emit for an invalid form and marks the required field as invalid', () => {
+    const confirmed: ClinicInformationReasonCode[] = [];
+    component.confirmed.subscribe((reason) => confirmed.push(reason));
+
+    component.confirm();
+    fixture.detectChanges();
+
+    expect(confirmed).toEqual([]);
+    expect(reasonTrigger().getAttribute('aria-invalid')).toBe('true');
+    expect(dialogRoot().querySelector('[role="alert"]')?.textContent).toContain('Select the information needed');
   });
 
   it('keeps submit disabled until reasonCode makes the form valid', () => {
@@ -89,29 +113,45 @@ describe('ClinicInformationDialog', () => {
   it('disables the select and submit only while the request mutation is active', () => {
     component.form.controls.reasonCode.setValue('OTHER_ADMINISTRATIVE');
     fixture.detectChanges();
-    expect(reasonSelect().disabled).toBe(false);
+    expect(reasonTrigger().disabled).toBe(false);
     expect(confirmButton().disabled).toBe(false);
 
     fixture.componentRef.setInput('loading', true);
     fixture.detectChanges();
 
     expect(component.form.controls.reasonCode.disabled).toBe(true);
-    expect(reasonSelect().disabled).toBe(true);
+    expect(reasonTrigger().disabled).toBe(true);
     expect(confirmButton().disabled).toBe(true);
 
     fixture.componentRef.setInput('loading', false);
     fixture.detectChanges();
 
     expect(component.form.controls.reasonCode.enabled).toBe(true);
-    expect(reasonSelect().disabled).toBe(false);
+    expect(reasonTrigger().disabled).toBe(false);
     expect(confirmButton().disabled).toBe(false);
   });
 
-  function reasonSelect(): HTMLSelectElement {
-    return fixture.nativeElement.querySelector('#clinic-information-reason') as HTMLSelectElement;
+  it('keeps the dialog content and entered instruction after a server error', () => {
+    component.form.setValue({ reasonCode: 'OTHER_ADMINISTRATIVE', patientInstruction: 'Please add the missing document.' });
+    fixture.componentRef.setInput('error', 'This request changed while you were reviewing it.');
+    fixture.detectChanges();
+
+    expect(reasonTrigger().textContent).toContain('Other administrative information');
+    expect((dialogRoot().querySelector('#clinic-information-instruction') as HTMLTextAreaElement).value).toBe('Please add the missing document.');
+    expect(dialogRoot().querySelector('[role="alert"]')?.textContent).toContain('This request changed');
+  });
+
+  function dialogRoot(): ParentNode {
+    return document.querySelector('.cdk-overlay-container') ?? fixture.nativeElement;
+  }
+
+  function reasonTrigger(): HTMLButtonElement {
+    return dialogRoot().querySelector('#clinic-information-reason') as HTMLButtonElement;
   }
 
   function confirmButton(): HTMLButtonElement {
-    return fixture.nativeElement.querySelector('.clinic-dialog__confirm') as HTMLButtonElement;
+    return Array.from(dialogRoot().querySelectorAll('button')).find(
+      (button) => button.textContent?.includes('Request information'),
+    ) as HTMLButtonElement;
   }
 });

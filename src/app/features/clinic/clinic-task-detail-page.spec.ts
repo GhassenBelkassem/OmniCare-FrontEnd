@@ -166,6 +166,26 @@ describe('ClinicTaskDetailPage', () => {
     expect(text()).toContain('Waiting for patient information');
   });
 
+  it('keeps Request Information open when the case command fails', () => {
+    setup(assistantBootstrap());
+    createPage();
+    taskRequest().flush(task({ status: 'IN_PROGRESS', startedAt: '2026-08-11T10:20:00Z' }));
+    caseRequest().flush(caseDetail({ availableActions: ['REQUEST_INFORMATION'] }));
+    fixture.componentInstance.openBlockDialog();
+    fixture.componentInstance.informationReason.set('CONTACT_INFORMATION');
+
+    fixture.componentInstance.confirmBlock('CONTACT_INFORMATION');
+    http.expectOne(`${CASE_URL}/information-required`).flush(
+      { errorCode: 'CLINIC_CASE_VERSION_CONFLICT' },
+      { status: 409, statusText: 'Conflict' },
+    );
+
+    expect(fixture.componentInstance.informationDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.informationReason()).toBe('CONTACT_INFORMATION');
+    taskRequest().flush(task({ status: 'IN_PROGRESS', startedAt: '2026-08-11T10:20:00Z' }));
+    caseRequest().flush(caseDetail({ availableActions: ['REQUEST_INFORMATION'] }));
+  });
+
   it('completes administrative review through the atomic case command and refetches', () => {
     setup(assistantBootstrap());
     createPage();

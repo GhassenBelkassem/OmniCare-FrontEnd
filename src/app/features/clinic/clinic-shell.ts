@@ -1,11 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
-import { OcSidebar, SidebarNavigationItem, SidebarUserProfile } from '../../shared/ui';
+import { OcIcon, OcSheet, OcSidebar, SidebarNavigationItem, SidebarUserProfile } from '../../shared/ui';
 import {
   CLINIC_REQUESTS_READ_CAPABILITY,
   hasClinicCapability,
@@ -16,44 +15,43 @@ import { clinicInitials, clinicRoleLabel } from './clinic-page-utils';
 const REQUESTS_ITEM: SidebarNavigationItem = {
   id: 'requests',
   label: 'Requests',
-  icon: 'file-text',
+  icon: 'requests',
   route: '/clinic/requests',
 };
 const STAFF_ITEM: SidebarNavigationItem = {
   id: 'staff',
   label: 'Staff',
-  icon: 'team',
+  icon: 'staff',
   route: '/clinic/staff',
 };
 const TASKS_ITEM: SidebarNavigationItem = {
   id: 'tasks',
   label: 'Tasks',
-  icon: 'audit',
+  icon: 'tasks',
   children: [
     { id: 'task-queue', label: 'Position Queue', route: '/clinic/tasks/queue' },
     { id: 'my-tasks', label: 'My Tasks', route: '/clinic/tasks/my' },
   ],
 };
 const HANDOVERS_ITEM: SidebarNavigationItem = {
-  id: 'handovers', label: 'Handovers', icon: 'audit', route: '/clinic/handovers',
+  id: 'handovers', label: 'Handovers', icon: 'handover', route: '/clinic/handovers',
 };
 const ROUTING_INCIDENTS_ITEM: SidebarNavigationItem = {
-  id: 'routing-incidents', label: 'Routing Incidents', icon: 'bell', route: '/clinic/routing-incidents',
+  id: 'routing-incidents', label: 'Routing Incidents', icon: 'warning', route: '/clinic/routing-incidents',
 };
-const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Configuration',icon:'setting',children:[{id:'positions',label:'Positions',route:'/clinic/positions'},{id:'responsibilities',label:'Responsibilities',route:'/clinic/responsibilities'}] };
+const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Configuration',icon:'settings',children:[{id:'positions',label:'Positions',route:'/clinic/positions'},{id:'responsibilities',label:'Responsibilities',route:'/clinic/responsibilities'}] };
 
 @Component({
   selector: 'app-clinic-shell',
-  imports: [RouterOutlet, NzIconModule, OcSidebar],
+  imports: [RouterLink, RouterOutlet, OcIcon, OcSheet, OcSidebar],
   template: `
     <a class="oc-skip-link" href="#clinic-content">Skip to main content</a>
     <div class="clinic-shell">
       @if (profile(); as clinicProfile) {
-        <oc-sidebar
+        <oc-sidebar class="clinic-shell__desktop-sidebar"
           [items]="navigation()"
           [activeId]="activeId()"
           [profile]="clinicProfile"
-          [(mobileOpen)]="mobileNavigationOpen"
           (profileMenu)="signOut()"
         />
       }
@@ -66,16 +64,13 @@ const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Co
               aria-label="Open clinic navigation"
               (click)="mobileNavigationOpen.set(true)"
             >
-              <nz-icon nzType="menu-unfold" aria-hidden="true" />
+              <oc-icon name="menu" />
             </button>
-            <div class="clinic-context-bar__identity">
+            <a class="clinic-context-bar__identity" routerLink="/clinic/select" aria-label="Change clinic workspace">
               <span>Clinic workspace</span>
               <strong>{{ bootstrap.clinic.clinicName }}</strong>
-            </div>
+            </a>
             <span class="clinic-context-bar__role">{{ roleLabel() }}</span>
-            <button class="clinic-context-bar__signout" type="button" (click)="signOut()">
-              Sign out
-            </button>
           </header>
         }
         <main id="clinic-content" class="clinic-shell__content" tabindex="-1">
@@ -83,6 +78,13 @@ const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Co
         </main>
       </div>
     </div>
+    @if (profile(); as clinicProfile) {
+      <!-- OcSheet uses a display-contents overlay host. Keep it outside the workspace grid
+           so its closed Brain host can never become an implicit grid item. -->
+      <oc-sheet [open]="mobileNavigationOpen()" side="left" title="Clinic navigation" [backdropDismissible]="true" (dismissed)="mobileNavigationOpen.set(false)">
+        <oc-sidebar [items]="navigation()" [activeId]="activeId()" [profile]="clinicProfile" (profileMenu)="signOut()" />
+      </oc-sheet>
+    }
   `,
   styles: [
     `
@@ -92,13 +94,18 @@ const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Co
         background: var(--oc-color-surface-app);
       }
       .clinic-shell {
+        width: 100%;
+        max-width: 100%;
         min-height: 100dvh;
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
       }
       .clinic-shell__workspace {
+        grid-column: 2;
         min-width: 0;
+        min-height: 100dvh;
       }
+      .clinic-shell__desktop-sidebar { display: contents; }
       .clinic-context-bar {
         position: sticky;
         z-index: var(--oc-z-topbar);
@@ -114,7 +121,11 @@ const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Co
       .clinic-context-bar__identity {
         display: grid;
         line-height: 1.25;
+        color: inherit;
+        text-decoration: none;
       }
+      .clinic-context-bar__identity:hover strong { color: var(--oc-color-brand-primary); }
+      .clinic-context-bar__identity:focus-visible { outline: 3px solid var(--oc-color-border-focus); outline-offset: 3px; }
       .clinic-context-bar__identity span,
       .clinic-context-bar__role {
         color: var(--oc-color-text-muted);
@@ -128,7 +139,6 @@ const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Co
         padding-inline-start: var(--oc-space-4);
         border-inline-start: 1px solid var(--oc-color-border-subtle);
       }
-      .clinic-context-bar__signout,
       .clinic-context-bar__menu {
         min-height: 36px;
         border: 0;
@@ -137,17 +147,10 @@ const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Co
         color: var(--oc-color-text-secondary);
         cursor: pointer;
       }
-      .clinic-context-bar__signout {
-        margin-inline-start: auto;
-        padding-inline: var(--oc-space-3);
-        font-weight: var(--oc-font-weight-semibold);
-      }
-      .clinic-context-bar__signout:hover,
       .clinic-context-bar__menu:hover {
         background: var(--oc-color-surface-hover);
         color: var(--oc-color-text-primary);
       }
-      .clinic-context-bar__signout:focus-visible,
       .clinic-context-bar__menu:focus-visible {
         outline: 3px solid var(--oc-color-border-focus);
         outline-offset: 2px;
@@ -160,6 +163,9 @@ const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Co
       }
       .clinic-shell__content {
         min-width: 0;
+        min-height: calc(100dvh - var(--oc-topbar-height));
+        overflow-y: auto;
+        overflow-x: clip;
         padding: var(--oc-space-8);
         background: var(--oc-color-surface-page);
       }
@@ -167,6 +173,8 @@ const CONFIGURATION_ITEM: SidebarNavigationItem = { id:'configuration',label:'Co
         .clinic-shell {
           display: block;
         }
+        .clinic-shell__desktop-sidebar { display: none; }
+        .clinic-shell__workspace { grid-column: auto; }
         .clinic-context-bar {
           padding-inline: var(--oc-space-4);
         }

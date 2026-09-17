@@ -4,7 +4,7 @@ import {
   Component,
   DestroyRef,
   computed,
-  effect,
+  effect, signal,
   inject,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -16,7 +16,7 @@ import {
   OcDataTableShell,
   OcEmptyState,
   OcPageHeader,
-  OcStatusBadge,
+  OcStatusBadge, OcSheet, OcIcon,
 } from '../../shared/ui';
 import { ClinicTaskListItem, hasClinicCapability } from './clinic-api.models';
 import { clinicCaseReference, clinicPriorityLabel } from './clinic-case-utils';
@@ -24,10 +24,13 @@ import { ClinicContextStore } from './clinic-context.store';
 import { ClinicTaskListKind, ClinicTaskStore } from './clinic-task.store';
 import {
   clinicTaskReference,
+  isAcknowledgementOverdue,
+  isTaskDeadlineOverdue,
   clinicTaskStatusLabel,
   clinicTaskStatusTone,
   clinicTaskTypeLabel,
 } from './clinic-task-utils';
+import { TaskDetailPresentationService } from './task-detail-presentation.service';
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -40,7 +43,7 @@ const DEFAULT_PAGE_SIZE = 20;
     OcDataTableShell,
     OcEmptyState,
     OcPageHeader,
-    OcStatusBadge,
+    OcStatusBadge, OcSheet, OcIcon,
   ],
   providers: [ClinicTaskStore],
   templateUrl: './clinic-task-list-page.html',
@@ -52,6 +55,7 @@ export class ClinicTaskListPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly detailPresentation = inject(TaskDetailPresentationService);
   readonly store = inject(ClinicTaskStore);
   private readonly queryParamMap = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
@@ -76,6 +80,8 @@ export class ClinicTaskListPage {
   readonly priorityLabel = clinicPriorityLabel;
   readonly taskReference = clinicTaskReference;
   readonly caseReference = clinicCaseReference;
+  readonly taskDeadlineOverdue = isTaskDeadlineOverdue;
+  readonly selectedTask = signal<ClinicTaskListItem | null>(null);
 
   constructor() {
     this.context.initialize({ route: false });
@@ -108,6 +114,20 @@ export class ClinicTaskListPage {
 
   nextPage(): void {
     if (this.store.hasNext()) void this.goToPage(this.page() + 1);
+  }
+
+  selectTask(task: ClinicTaskListItem): void {
+    if (this.kind === 'my' && this.detailPresentation.usePanel()) {
+      this.selectedTask.set(task);
+      return;
+    }
+    void this.router.navigate(['/clinic/tasks', task.taskId]);
+  }
+
+  closeTaskPanel(): void { this.selectedTask.set(null); }
+
+  acknowledgementDeadlineOverdue(task: ClinicTaskListItem): boolean {
+    return task.status === 'ASSIGNED' && isAcknowledgementOverdue({ ...task, acknowledgedAt: null });
   }
 
   private goToPage(page: number): Promise<boolean> {

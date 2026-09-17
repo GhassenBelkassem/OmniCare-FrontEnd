@@ -8,9 +8,9 @@
   --oc-color-brand-primary-active: #{brand.$oc-brand-primary-active};
   --oc-color-brand-secondary: #{brand.$oc-brand-secondary};
   --oc-color-brand-accent: #{brand.$oc-brand-accent};
-  --oc-color-surface-app: #{color.$oc-slate-100};
-  --oc-color-surface-sidebar: #{color.$oc-slate-900};
-  --oc-color-surface-page: #{color.$oc-slate-25};
+  --oc-color-surface-app: #{color.$oc-white};
+  --oc-color-surface-sidebar: #{color.$oc-white};
+  --oc-color-surface-page: #{color.$oc-white};
   --oc-color-surface-card: #{color.$oc-white};
   --oc-color-surface-subtle: #{color.$oc-slate-50};
   --oc-color-surface-hover: #{color.$oc-slate-100};
@@ -26,7 +26,7 @@
   --oc-color-border-subtle: #{color.$oc-slate-100};
   --oc-color-border-default: #{color.$oc-slate-200};
   --oc-color-border-strong: #{color.$oc-slate-300};
-  --oc-color-border-focus: #{color.$oc-blue};
+  --oc-color-border-focus: #{brand.$oc-brand-primary};
   --oc-color-information: #{color.$oc-blue};
   --oc-color-information-surface: #{color.$oc-blue-surface};
   --oc-color-success: #{color.$oc-green};
@@ -37,8 +37,37 @@
   --oc-color-critical-surface: #{color.$oc-red-surface};
   --oc-color-neutral: #{color.$oc-neutral};
   --oc-color-neutral-surface: #{color.$oc-neutral-surface};
+  --oc-color-coordination: #{color.$oc-violet};
+  --oc-color-coordination-surface: #{color.$oc-violet-surface};
   --oc-color-inverse-border: #{color.$oc-inverse-border};
   --oc-color-inverse-subtle: #{color.$oc-inverse-subtle};
   --oc-color-inverse-selected: #{color.$oc-inverse-selected};
   --oc-color-inverse-divider: #{color.$oc-inverse-divider};
+
+  // Spartan/Tailwind bridge. These variables deliberately alias OmniCare semantic
+  // tokens; they are not a second palette and must not be consumed by feature code.
+  --background: var(--oc-color-surface-page);
+  --foreground: var(--oc-color-text-primary);
+  --card: var(--oc-color-surface-card);
+  --card-foreground: var(--oc-color-text-primary);
+  --popover: var(--oc-color-surface-card);
+  --popover-foreground: var(--oc-color-text-primary);
+  --primary: var(--oc-color-brand-primary);
+  // The provisional primary green is too light for inverse text at AA; use
+  // the existing primary text token for the private Helm compatibility layer.
+  --primary-foreground: var(--oc-color-text-primary);
+  --secondary: var(--oc-color-surface-subtle);
+  --secondary-foreground: var(--oc-color-text-primary);
+  --muted: var(--oc-color-surface-subtle);
+  --muted-foreground: var(--oc-color-text-muted);
+  --accent: var(--oc-color-surface-selected);
+  --accent-foreground: var(--oc-color-text-primary);
+  --destructive: var(--oc-color-critical);
+  --destructive-foreground: var(--oc-color-text-inverse);
+  --border: var(--oc-color-border-default);
+  --input: var(--oc-color-border-strong);
+  --ring: var(--oc-color-border-focus);
+  --radius: var(--oc-radius-md);
+  --font-sans: var(--oc-font-family);
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
 }

@@ -10,6 +10,7 @@ import { RUNTIME_CONFIG } from '../../core/config/runtime-config';
 import { ClinicBootstrapResponse, ClinicTaskListItem } from './clinic-api.models';
 import { ClinicContextStore } from './clinic-context.store';
 import { ClinicTaskListPage } from './clinic-task-list-page';
+import { TaskDetailPresentationService } from './task-detail-presentation.service';
 
 const CLINIC_ID = 'clinic-a';
 const TASK_ID = 'a1b2c3d4-1111-2222-3333-444455556666';
@@ -34,6 +35,7 @@ describe('ClinicTaskListPage', () => {
         provideNzIcons(OMNICARE_ICONS),
         { provide: RUNTIME_CONFIG, useValue: { apiBaseUrl: '/api/v1' } },
         { provide: ClinicContextStore, useValue: context },
+        { provide: TaskDetailPresentationService, useValue: { usePanel: () => true } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -162,6 +164,19 @@ describe('ClinicTaskListPage', () => {
     queueRequest('my').flush({}, { status: 503, statusText: 'Unavailable' });
     fixture.detectChanges();
     expect(text()).toContain("We couldn't load tasks");
+  });
+
+  it('opens a read-only preview for My Tasks without changing the canonical detail route', () => {
+    createPage('my');
+    queueRequest('my').flush(page([task({ assignedMembershipId: 'membership-a' })]));
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectTask(task({ assignedMembershipId: 'membership-a' }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedTask()?.taskId).toBe(TASK_ID);
+    expect((document.querySelector('.cdk-overlay-container')?.textContent ?? '')).toContain('Task preview');
+    expect((document.querySelector('.cdk-overlay-container')?.textContent ?? '')).toContain('Open full task');
   });
 
   function createPage(kind: 'queue' | 'my'): void {

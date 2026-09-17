@@ -137,6 +137,65 @@ describe('ClinicRequestDetailPage', () => {
     expect(text()).not.toContain('Decline request');
   });
 
+  it('keeps Request Information open on failure, preserves the entered state, and prevents duplicate API requests', () => {
+    detailRequest().flush(detail({ availableActions: ['REQUEST_INFORMATION'] }));
+    fixture.detectChanges();
+    fixture.componentInstance.openInformationDialog();
+    fixture.componentInstance.informationReason.set('AVAILABILITY_INFORMATION');
+    fixture.componentInstance.patientInstruction.set('Please confirm a weekday.');
+
+    fixture.componentInstance.confirmInformation('AVAILABILITY_INFORMATION');
+    fixture.componentInstance.confirmInformation('AVAILABILITY_INFORMATION');
+    const requests = http.match(`${DETAIL_URL}/information-required`);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].request.body).toEqual({
+      expectedVersion: 3,
+      reasonCode: 'AVAILABILITY_INFORMATION',
+      patientInstruction: 'Please confirm a weekday.',
+    });
+
+    requests[0].flush({ errorCode: 'CLINIC_CASE_VERSION_CONFLICT' }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.informationDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.informationReason()).toBe('AVAILABILITY_INFORMATION');
+    expect(fixture.componentInstance.patientInstruction()).toBe('Please confirm a weekday.');
+    expect(fixture.componentInstance.actionError()).toContain('changed');
+    http.expectOne(DETAIL_URL).flush(detail());
+  });
+
+  it('closes Request Information only after the successful command and refresh', () => {
+    detailRequest().flush(detail({ availableActions: ['REQUEST_INFORMATION'] }));
+    fixture.componentInstance.openInformationDialog();
+    fixture.componentInstance.informationReason.set('CONTACT_INFORMATION');
+
+    fixture.componentInstance.confirmInformation('CONTACT_INFORMATION');
+    expect(fixture.componentInstance.informationDialogOpen()).toBe(true);
+    http.expectOne(`${DETAIL_URL}/information-required`).flush(detail({ administrativeStatus: 'INFORMATION_REQUIRED' }));
+    expect(fixture.componentInstance.informationDialogOpen()).toBe(false);
+    http.expectOne(DETAIL_URL).flush(detail({ administrativeStatus: 'INFORMATION_REQUIRED' }));
+  });
+
+  it('keeps Decline Request open on failure and closes it after success', () => {
+    detailRequest().flush(detail({ availableActions: ['DECLINE'] }));
+    fixture.componentInstance.openDeclineDialog();
+    fixture.componentInstance.declineReason.set('NO_CAPACITY');
+
+    fixture.componentInstance.confirmDecline('NO_CAPACITY');
+    expect(fixture.componentInstance.declineDialogOpen()).toBe(true);
+    http.expectOne(`${DETAIL_URL}/decline`).flush(
+      { errorCode: 'CLINIC_CASE_VERSION_CONFLICT' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    expect(fixture.componentInstance.declineDialogOpen()).toBe(true);
+    http.expectOne(DETAIL_URL).flush(detail());
+
+    fixture.componentInstance.confirmDecline('NO_CAPACITY');
+    http.expectOne(`${DETAIL_URL}/decline`).flush(detail({ administrativeStatus: 'DECLINED' }));
+    expect(fixture.componentInstance.declineDialogOpen()).toBe(false);
+    http.expectOne(DETAIL_URL).flush(detail({ administrativeStatus: 'DECLINED' }));
+  });
+
   function detailRequest() {
     return http.expectOne(DETAIL_URL);
   }

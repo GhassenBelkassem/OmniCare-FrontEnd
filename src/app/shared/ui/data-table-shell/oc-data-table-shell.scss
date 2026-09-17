@@ -1,3 +1,8 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
 .oc-table-shell {
   overflow: hidden;
   border: 1px solid var(--oc-color-border-subtle);
@@ -48,3 +53,4 @@
   min-height: 280px;
   padding: var(--oc-space-8);
 }
+.oc-table-shell__skeleton { display:grid; gap:var(--oc-space-3); }.oc-table-shell__skeleton i { display:block; height:var(--oc-space-5); border-radius:var(--oc-radius-sm); background:var(--oc-color-surface-subtle); }

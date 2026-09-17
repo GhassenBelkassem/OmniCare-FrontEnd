@@ -15,6 +15,7 @@ describe('AuthTokenStore', () => {
 
   it('keeps the opaque session in memory and clears it atomically', () => {
     const store = TestBed.inject(AuthTokenStore);
+    expect(store.authState()).toBe('unknown');
     store.setSession(session());
 
     expect(store.authenticated()).toBe(true);
@@ -29,18 +30,20 @@ describe('AuthTokenStore', () => {
     expect(store.user()).toBeNull();
   });
 
-  it('persists the session for same-tab reloads', () => {
+  it('restores a same-tab session for validation without treating it as authenticated yet', () => {
     TestBed.inject(AuthTokenStore).setSession(session({ accessToken: 'persisted-access' }));
 
     TestBed.resetTestingModule();
     const hydratedStore = TestBed.inject(AuthTokenStore);
 
-    expect(hydratedStore.authenticated()).toBe(true);
+    expect(hydratedStore.authState()).toBe('unknown');
+    expect(hydratedStore.restoreStoredSession()).toBe(true);
+    expect(hydratedStore.authenticated()).toBe(false);
     expect(hydratedStore.accessToken()).toBe('persisted-access');
     expect(hydratedStore.user()?.role).toBe('ADMIN');
   });
 
-  it('hydrates clinic staff sessions returned by the backend', () => {
+  it('restores clinic staff credentials without resolving the security context prematurely', () => {
     sessionStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(session({
       accessToken: 'clinic-staff-access',
       user: { id: 'clinic-user-1', role: 'CLINIC_ASSISTANT', mustChangePassword: false },
@@ -48,7 +51,8 @@ describe('AuthTokenStore', () => {
 
     const store = TestBed.inject(AuthTokenStore);
 
-    expect(store.authenticated()).toBe(true);
+    expect(store.restoreStoredSession()).toBe(true);
+    expect(store.authenticated()).toBe(false);
     expect(store.accessToken()).toBe('clinic-staff-access');
     expect(store.user()?.role).toBe('CLINIC_ASSISTANT');
   });
@@ -65,6 +69,7 @@ describe('AuthTokenStore', () => {
 
     const store = TestBed.inject(AuthTokenStore);
 
+    expect(store.restoreStoredSession()).toBe(false);
     expect(store.authenticated()).toBe(false);
     expect(sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull();
   });

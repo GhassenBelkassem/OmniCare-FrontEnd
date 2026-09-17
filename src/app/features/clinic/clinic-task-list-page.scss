@@ -5,6 +5,7 @@
 }
 .tasks-page {
   display: grid;
+  min-width: 0;
   gap: var(--oc-space-5);
 }
 .tasks-table-title h2,
@@ -31,7 +32,7 @@
 .tasks-table th {
   padding: var(--oc-space-3) var(--oc-space-4);
   border-block-end: 1px solid var(--oc-color-border-default);
-  background: var(--oc-color-surface-subtle);
+  background: var(--oc-color-surface-card);
   color: var(--oc-color-text-muted);
   font-size: 11px;
   letter-spacing: 0.04em;
@@ -47,6 +48,7 @@
 .tasks-table tbody tr:hover {
   background: var(--oc-color-surface-hover);
 }
+.tasks-table tbody tr:focus-visible { outline: 3px solid var(--oc-color-brand-primary); outline-offset: -3px; }
 .tasks-table td strong,
 .tasks-table td small,
 .tasks-table td time,
@@ -76,6 +78,11 @@
 }
 .task-priority--urgent {
   color: var(--oc-color-critical) !important;
+  font-weight: var(--oc-font-weight-semibold);
+}
+.task-deadline--overdue {
+  color: var(--oc-color-critical) !important;
+  font-size: 11px;
   font-weight: var(--oc-font-weight-semibold);
 }
 .tasks-footer,
@@ -115,8 +122,11 @@
   border-radius: var(--oc-radius-md);
 }
 @media (max-width: 640px) {
+  .tasks-table { min-width: 0; }.tasks-table thead { position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0); }.tasks-table,.tasks-table tbody,.tasks-table tr,.tasks-table td{display:block;width:100%;box-sizing:border-box}.tasks-table tr{position:relative;padding:var(--oc-space-4);border-block-end:1px solid var(--oc-color-border-subtle)}.tasks-table td{min-height:0;padding:var(--oc-space-1) 0;border:0}.tasks-table td:nth-child(6){display:none}.tasks-table__actions{justify-content:flex-start;min-height:0;margin-top:var(--oc-space-2)}
   .tasks-footer {
     align-items: flex-start;
     flex-direction: column;
   }
 }
+.task-panel{display:grid;gap:var(--oc-space-5)}.task-panel__signals{display:flex;align-items:center;justify-content:space-between;gap:var(--oc-space-3)}.task-panel dl{display:grid;gap:var(--oc-space-4);margin:0}.task-panel dt{color:var(--oc-color-text-muted);font-size:12px}.task-panel dd{margin:var(--oc-space-1) 0 0;color:var(--oc-color-text-primary)}.task-panel dd .task-deadline--overdue{display:block;margin-top:var(--oc-space-1)}
+.task-panel__open-full{display:inline-flex;align-items:center;justify-content:center;gap:var(--oc-space-2);min-height:40px;border-radius:var(--oc-radius-md);background:var(--oc-color-brand-primary);color:var(--oc-color-text-inverse);font-weight:var(--oc-font-weight-semibold);text-decoration:none}.task-panel__open-full:focus-visible{outline:3px solid var(--oc-color-brand-primary);outline-offset:2px}

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
@@ -35,13 +35,6 @@ export class LoginPage {
     }),
   });
   readonly otp = this.otpGroup.controls.otp;
-
-  constructor() {
-    effect(() => {
-      const user = this.auth.user();
-      if (user !== null) void this.router.navigateByUrl(this.auth.routeFor(user.role));
-    });
-  }
 
   submit(): void {
     if (this.form.invalid || this.submitting()) {

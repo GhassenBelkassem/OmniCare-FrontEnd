@@ -392,6 +392,7 @@
   [selectedReason]="informationReason()"
   [patientInstruction]="patientInstruction()"
   [loading]="store.command() === 'BLOCK'"
+  [error]="informationDialogOpen() ? store.commandError() : null"
   (reasonChanged)="informationReason.set($event)"
   (instructionChanged)="patientInstruction.set($event)"
   (confirmed)="confirmBlock($event)"

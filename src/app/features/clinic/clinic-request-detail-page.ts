@@ -128,7 +128,6 @@ export class ClinicRequestDetailPage {
     const request = this.store.detail();
     const clinicId = this.clinicId();
     if (request === null || clinicId === null) return;
-    this.informationDialogOpen.set(false);
     this.runAction(
       'REQUEST_INFORMATION',
       this.api.requestInformation(clinicId, request.clinicCaseId, {
@@ -136,6 +135,7 @@ export class ClinicRequestDetailPage {
         reasonCode,
         patientInstruction: this.patientInstruction().trim() || undefined,
       }),
+      () => this.informationDialogOpen.set(false),
     );
   }
 
@@ -149,13 +149,13 @@ export class ClinicRequestDetailPage {
     const request = this.store.detail();
     const clinicId = this.clinicId();
     if (request === null || clinicId === null) return;
-    this.declineDialogOpen.set(false);
     this.runAction(
       'DECLINE',
       this.api.declineCase(clinicId, request.clinicCaseId, {
         expectedVersion: request.version,
         declineReasonCode,
       }),
+      () => this.declineDialogOpen.set(false),
     );
   }
 
@@ -170,13 +170,18 @@ export class ClinicRequestDetailPage {
     return this.context.selectedClinicId() ?? '';
   }
 
-  private runAction(action: ClinicCaseAction, request$: Observable<ClinicCaseDetail>): void {
+  private runAction(
+    action: ClinicCaseAction,
+    request$: Observable<ClinicCaseDetail>,
+    onSuccess?: () => void,
+  ): void {
     if (this.actionLoading() !== null) return;
     this.actionError.set(null);
     this.actionLoading.set(action);
     request$.subscribe({
       next: () => {
         this.actionLoading.set(null);
+        onSuccess?.();
         this.store.refreshDetail();
       },
       error: (error: unknown) => {

@@ -22,12 +22,7 @@ import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
         </div>
       } @else if (state() === 'error') {
         <div class="oc-table-shell__state">
-          <nz-alert
-            nzType="error"
-            nzMessage="The table could not be loaded"
-            nzDescription="Try again or contact support if the issue continues."
-            nzShowIcon
-          />
+          <nz-alert nzType="error" nzMessage="The table could not be loaded" nzDescription="Try again or contact support if the issue continues." nzShowIcon />
         </div>
       } @else if (state() === 'empty') {
         <div class="oc-table-shell__state"><ng-content select="oc-empty-state,[ocTableEmpty]" /></div>

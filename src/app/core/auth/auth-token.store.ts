@@ -4,6 +4,7 @@ import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core
 import { AuthenticatedUser, LoginSession, isDashboardRole } from './auth.models';
 
 export const AUTH_SESSION_STORAGE_KEY = 'omnicare.dashboard.session';
+export type AuthState = 'unknown' | 'authenticated' | 'anonymous';
 
 @Injectable({ providedIn: 'root' })
 export class AuthTokenStore {
@@ -11,19 +12,19 @@ export class AuthTokenStore {
   private readonly accessTokenState = signal<string | null>(null);
   private readonly refreshTokenState = signal<string | null>(null);
   private readonly userState = signal<AuthenticatedUser | null>(null);
+  private readonly state = signal<AuthState>('unknown');
 
   readonly accessToken = this.accessTokenState.asReadonly();
   readonly refreshToken = this.refreshTokenState.asReadonly();
   readonly user = this.userState.asReadonly();
-  readonly authenticated = computed(() => this.accessTokenState() !== null && this.userState() !== null);
-
-  constructor() {
-    const session = this.readStoredSession();
-    if (session !== null) this.applySession(session);
-  }
+  readonly authState = this.state.asReadonly();
+  readonly authenticated = computed(
+    () => this.state() === 'authenticated' && this.accessTokenState() !== null && this.userState() !== null,
+  );
 
   setSession(session: LoginSession): void {
     this.applySession(session);
+    this.state.set('authenticated');
     this.writeStoredSession(session);
   }
 
@@ -31,7 +32,23 @@ export class AuthTokenStore {
     this.accessTokenState.set(null);
     this.refreshTokenState.set(null);
     this.userState.set(null);
+    this.state.set('anonymous');
     this.removeStoredSession();
+  }
+
+  /** Restores credentials for validation while retaining the unresolved auth state. */
+  restoreStoredSession(): boolean {
+    const session = this.readStoredSession();
+    if (session === null) return false;
+    this.applySession(session);
+    return true;
+  }
+
+  resolveAnonymous(): void {
+    this.accessTokenState.set(null);
+    this.refreshTokenState.set(null);
+    this.userState.set(null);
+    this.state.set('anonymous');
   }
 
   private applySession(session: LoginSession): void {

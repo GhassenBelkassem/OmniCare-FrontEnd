@@ -1,0 +1,39 @@
+:host { display: contents; }
+
+.oc-dialog {
+  display: grid;
+  width: min(34rem, calc(100vw - var(--oc-space-8)));
+  max-height: min(44rem, calc(100dvh - var(--oc-space-8)));
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-overlay);
+}
+
+.oc-dialog__header,
+.oc-dialog__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-4);
+  padding: var(--oc-space-5) var(--oc-space-6);
+}
+
+.oc-dialog__header { justify-content: space-between; border-block-end: 1px solid var(--oc-color-border-subtle); }
+.oc-dialog__header h2 { margin: 0; color: var(--oc-color-text-primary); font-size: 20px; line-height: 28px; }
+.oc-dialog__destructive-note { display: inline-flex; align-items: center; gap: var(--oc-space-2); margin: var(--oc-space-1) 0 0; color: var(--oc-color-critical); font-size: 12px; font-weight: var(--oc-font-weight-semibold); }
+.oc-dialog__destructive-note span { display: inline-grid; width: 16px; height: 16px; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 11px; }
+.oc-dialog__description { margin: var(--oc-space-4) var(--oc-space-6) 0; color: var(--oc-color-text-secondary); }
+.oc-dialog__body { min-width: 0; overflow: auto; padding: var(--oc-space-5) var(--oc-space-6); }
+.oc-dialog__footer { justify-content: flex-end; flex-wrap: wrap; border-block-start: 1px solid var(--oc-color-border-subtle); }
+.oc-dialog__close { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 0; border-radius: var(--oc-radius-md); background: transparent; color: var(--oc-color-text-secondary); font-size: 24px; line-height: 1; cursor: pointer; }
+.oc-dialog__close:hover { background: var(--oc-color-surface-hover); color: var(--oc-color-text-primary); }
+.oc-dialog__close:focus-visible { outline: 3px solid var(--oc-color-border-focus); outline-offset: 2px; }
+.oc-dialog__error { margin: 0 0 var(--oc-space-4); padding: var(--oc-space-3) var(--oc-space-4); border: 1px solid var(--oc-color-critical); border-radius: var(--oc-radius-md); background: var(--oc-color-critical-surface); color: var(--oc-color-text-danger); }
+@media (max-width: 767px) {
+  .oc-dialog { width: calc(100vw - var(--oc-space-4)); max-height: calc(100dvh - var(--oc-space-4)); }
+  .oc-dialog__header, .oc-dialog__footer { padding-inline: var(--oc-space-4); }
+  .oc-dialog__description { margin-inline: var(--oc-space-4); }
+  .oc-dialog__body { padding-inline: var(--oc-space-4); }
+}

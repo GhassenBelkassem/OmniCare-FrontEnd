@@ -1,0 +1,32 @@
+:host { display: block; }
+
+.oc-spartan-compat { margin-block-start: var(--oc-space-10); }
+.oc-spartan-compat__heading { display: flex; justify-content: space-between; gap: var(--oc-space-6); align-items: end; margin-block-end: var(--oc-space-5); }
+.oc-spartan-compat__heading h2, .oc-spartan-compat__card h3, .oc-spartan-compat__dialog h3, .oc-spartan-compat__sheet h3 { margin: 0; }
+.oc-spartan-compat__heading > p { max-width: 38rem; margin: 0; color: var(--oc-color-text-secondary); }
+.oc-spartan-compat__eyebrow { margin: 0 0 var(--oc-space-1); color: var(--oc-color-text-muted); font-size: 12px; font-weight: var(--oc-font-weight-semibold); text-transform: uppercase; }
+.oc-spartan-compat__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--oc-space-4); }
+.oc-spartan-compat__card { display: grid; gap: var(--oc-space-4); padding: var(--oc-space-5); border: 1px solid var(--oc-color-border-default); border-radius: var(--oc-radius-lg); background: var(--oc-color-surface-card); box-shadow: var(--oc-shadow-card); }
+.oc-spartan-compat__row, .oc-spartan-compat__dialog-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oc-space-3); }
+.oc-spartan-compat__field { display: grid; gap: var(--oc-space-2); color: var(--oc-color-text-secondary); font-size: 13px; font-weight: var(--oc-font-weight-semibold); }
+.oc-spartan-compat__control { min-width: 0; min-height: 40px; padding: 0 var(--oc-space-3); border: 1px solid var(--oc-color-border-strong); border-radius: var(--oc-radius-md); background: var(--oc-color-surface-card); color: var(--oc-color-text-primary); font: inherit; }
+.oc-spartan-compat__hint, .oc-spartan-compat__error { margin: calc(var(--oc-space-2) * -1) 0 0; font-size: 12px; }
+.oc-spartan-compat__hint { color: var(--oc-color-text-muted); }
+.oc-spartan-compat__error { color: var(--oc-color-critical); }
+.oc-spartan-compat__badge { display: inline-flex; min-height: 24px; align-items: center; padding-inline: var(--oc-space-3); border-radius: var(--oc-radius-pill); background: var(--oc-color-neutral-surface); color: var(--oc-color-text-secondary); font-size: 12px; font-weight: var(--oc-font-weight-semibold); }
+.oc-spartan-compat__badge--urgent { background: var(--oc-color-warning-surface); color: var(--oc-color-warning); }
+.oc-spartan-compat__alert { display: grid; gap: var(--oc-space-1); padding: var(--oc-space-4); border-inline-start: 4px solid var(--oc-color-information); border-radius: var(--oc-radius-md); background: var(--oc-color-information-surface); color: var(--oc-color-text-primary); }
+.oc-spartan-compat__skeleton { display: grid; gap: var(--oc-space-2); }
+.oc-spartan-compat__skeleton span { display: block; block-size: var(--oc-space-3); border-radius: var(--oc-radius-sm); background: var(--oc-color-surface-hover); }
+.oc-spartan-compat__skeleton span:nth-child(2) { inline-size: 78%; }
+.oc-spartan-compat__skeleton span:nth-child(3) { inline-size: 56%; }
+.oc-spartan-compat__table-scroll { overflow-x: auto; border: 1px solid var(--oc-color-border-default); border-radius: var(--oc-radius-md); }
+.oc-spartan-compat__table-scroll table { width: 100%; min-width: 28rem; border-collapse: collapse; }
+.oc-spartan-compat__table-scroll th, .oc-spartan-compat__table-scroll td { padding: var(--oc-space-3); border-block-end: 1px solid var(--oc-color-border-subtle); text-align: start; }
+.oc-spartan-compat__table-scroll th { color: var(--oc-color-text-secondary); font-size: 12px; }
+.oc-spartan-compat__table-scroll tbody tr:last-child td { border-block-end: 0; }
+.oc-spartan-compat__dialog, .oc-spartan-compat__sheet { display: grid; gap: var(--oc-space-5); padding: var(--oc-space-6); border: 1px solid var(--oc-color-border-default); border-radius: var(--oc-radius-lg); background: var(--oc-color-surface-card); color: var(--oc-color-text-primary); box-shadow: var(--oc-shadow-overlay); }
+.oc-spartan-compat__dialog { width: min(32rem, calc(100vw - var(--oc-space-8))); }
+.oc-spartan-compat__sheet { width: min(28rem, calc(100vw - var(--oc-space-8))); min-height: 100dvh; border-radius: 0; }
+
+@media (max-width: 767px) { .oc-spartan-compat__heading { align-items: start; flex-direction: column; gap: var(--oc-space-2); } .oc-spartan-compat__grid { grid-template-columns: 1fr; } .oc-spartan-compat__card, .oc-spartan-compat__dialog, .oc-spartan-compat__sheet { padding: var(--oc-space-4); } }

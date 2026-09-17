@@ -277,7 +277,6 @@ export class ClinicTaskDetailPage {
     const clinicId = this.context.selectedClinicId();
     const request = this.store.caseDetail();
     if (clinicId === null || request === null) return;
-    this.informationDialogOpen.set(false);
     this.store.runCaseCommand(
       'BLOCK',
       this.api.requestInformation(clinicId, request.clinicCaseId, {
@@ -286,6 +285,7 @@ export class ClinicTaskDetailPage {
         patientInstruction: this.patientInstruction().trim() || undefined,
       }),
       'Task blocked while waiting for patient information.',
+      () => this.informationDialogOpen.set(false),
     );
   }
 

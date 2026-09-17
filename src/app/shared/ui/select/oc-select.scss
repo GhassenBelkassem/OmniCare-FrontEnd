@@ -1,0 +1,15 @@
+:host { display: block; min-width: 0; }
+.oc-select { width: 100%; }
+.oc-select__trigger { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: space-between; gap: var(--oc-space-3); border: 1px solid var(--oc-color-border-strong); border-radius: var(--oc-radius-md); padding: 0 var(--oc-space-3); background: var(--oc-color-surface-card); color: var(--oc-color-text-primary); font: inherit; text-align: start; cursor: pointer; }
+.oc-select__trigger[data-placeholder] { color: var(--oc-color-text-muted); }
+.oc-select__trigger:hover:not(:disabled) { border-color: var(--oc-color-brand-primary); }
+.oc-select__trigger:focus-visible { border-color: var(--oc-color-brand-primary); outline: 3px solid var(--oc-color-brand-primary); outline-offset: 1px; }
+.oc-select__trigger[aria-invalid='true'] { border-color: var(--oc-color-critical); }
+.oc-select__trigger:disabled { cursor: not-allowed; background: var(--oc-color-surface-disabled); color: var(--oc-color-text-disabled); }
+.oc-select__chevron { color: currentColor; font-size: 18px; line-height: 1; }
+.oc-select__content { box-sizing: border-box; width: var(--brn-select-width, auto); min-width: 12rem; max-width: calc(100vw - var(--oc-space-4)); max-height: min(18rem, calc(100dvh - var(--oc-space-8))); overflow: auto; border: 1px solid var(--oc-color-border-default); border-radius: var(--oc-radius-md); background: var(--oc-color-surface-card); box-shadow: var(--oc-shadow-overlay); padding: var(--oc-space-1); }
+.oc-select__list { display: grid; gap: 2px; }
+.oc-select__option { width: 100%; min-height: 36px; border: 0; border-radius: var(--oc-radius-sm); padding: 0 var(--oc-space-3); background: transparent; color: var(--oc-color-text-primary); font: inherit; text-align: start; cursor: pointer; }
+.oc-select__option:hover:not([data-disabled]), .oc-select__option[data-highlighted] { background: var(--oc-color-surface-selected); color: var(--oc-color-brand-primary-active); }
+.oc-select__option[aria-selected='true'] { background: var(--oc-color-surface-selected); color: var(--oc-color-brand-primary-active); font-weight: var(--oc-font-weight-semibold); }
+.oc-select__option[data-disabled] { cursor: not-allowed; color: var(--oc-color-text-disabled); }

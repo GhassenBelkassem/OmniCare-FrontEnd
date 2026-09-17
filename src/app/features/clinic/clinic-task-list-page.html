@@ -1,10 +1,7 @@
 <div class="tasks-page">
   <oc-page-header [title]="pageTitle" [description]="description">
-    <span ocBreadcrumbs>Clinic workspace&nbsp; / &nbsp;Tasks&nbsp; / &nbsp;{{ pageTitle }}</span>
     <div ocSecondaryActions>
-      <oc-button variant="quiet" [loading]="store.refreshing()" (click)="refresh()"
-        >Refresh</oc-button
-      >
+      <oc-button variant="quiet" [loading]="store.refreshing()" (click)="refresh()">Refresh</oc-button>
     </div>
   </oc-page-header>
 
@@ -26,7 +23,7 @@
     <div ocTableEmpty>
       @if (tableState() === 'empty') {
         <oc-empty-state
-          icon="audit"
+          icon="tasks"
           [title]="isQueue ? 'No tasks in your position queue' : 'You have no active tasks'"
           [description]="
             isQueue
@@ -67,7 +64,7 @@
         </thead>
         <tbody>
           @for (task of store.items(); track task.taskId) {
-            <tr>
+            <tr tabindex="0" (click)="selectTask(task)" (keydown.enter)="selectTask(task)">
               <td>
                 <strong>{{ taskTypeLabel(task.taskType) }}</strong
                 ><small>{{ taskReference(task.taskId) }}</small>
@@ -99,11 +96,13 @@
                   ><time [attr.datetime]="task.acknowledgementDueAt">{{
                     task.acknowledgementDueAt | date: 'dd MMM, HH:mm'
                   }}</time>
+                  @if (acknowledgementDeadlineOverdue(task)) { <strong class="task-deadline--overdue">Overdue</strong> }
                 } @else if (task.dueAt) {
                   <span>Task due</span
                   ><time [attr.datetime]="task.dueAt">{{
                     task.dueAt | date: 'dd MMM, HH:mm'
                   }}</time>
+                  @if (taskDeadlineOverdue(task.status, task.dueAt)) { <strong class="task-deadline--overdue">Overdue</strong> }
                 } @else {
                   <span>Not set</span>
                 }
@@ -113,7 +112,7 @@
                   task.createdAt | date: 'dd MMM, HH:mm'
                 }}</time>
               </td>
-              <td class="tasks-table__actions">
+              <td class="tasks-table__actions" (click)="$event.stopPropagation()">
                 @if (isQueue && task.status === 'ASSIGNED' && task.assignedMembershipId === null) {
                   <oc-button
                     size="small"
@@ -123,7 +122,8 @@
                     >Acknowledge</oc-button
                   >
                 }
-                <a [routerLink]="['/clinic/tasks', task.taskId]">View task</a>
+                <oc-button variant="link" size="small" (click)="selectTask(task)">View task</oc-button>
+                <a class="oc-sr-only" [routerLink]="['/clinic/tasks', task.taskId]">Open full task</a>
               </td>
             </tr>
           }
@@ -151,4 +151,14 @@
       </div>
     </div>
   </oc-data-table-shell>
+
+  @if (selectedTask(); as task) {
+    <oc-sheet [open]="true" side="right" title="Task preview" [description]="taskTypeLabel(task.taskType)" (dismissed)="closeTaskPanel()">
+      <section class="task-panel" aria-label="Read-only task details">
+        <div class="task-panel__signals"><oc-status-badge [status]="statusTone(task.status)" [customLabel]="statusLabel(task.status)" /><strong>{{ priorityLabel(task.priority) }} priority</strong></div>
+        <dl><div><dt>Task</dt><dd>{{ taskReference(task.taskId) }}</dd></div><div><dt>Request</dt><dd><a [routerLink]="['/clinic/requests', task.caseId]">{{ caseReference(task.caseId) }}</a></dd></div><div><dt>Current position</dt><dd>{{ task.assignedPositionId ?? 'Not currently routed' }}</dd></div><div><dt>Current owner</dt><dd>{{ task.assignedMembershipId ? 'Assigned team member' : 'Position queue (unowned)' }}</dd></div><div><dt>ACK deadline</dt><dd>@if(task.acknowledgementDueAt){<time [attr.datetime]="task.acknowledgementDueAt">{{task.acknowledgementDueAt | date:'dd MMM, HH:mm'}}</time>@if(acknowledgementDeadlineOverdue(task)){ <strong class="task-deadline--overdue">Overdue</strong> }}@else{Not set}</dd></div><div><dt>Task deadline</dt><dd>@if(task.dueAt){<time [attr.datetime]="task.dueAt">{{task.dueAt | date:'dd MMM, HH:mm'}}</time>@if(taskDeadlineOverdue(task.status, task.dueAt)){ <strong class="task-deadline--overdue">Overdue</strong> }}@else{Not set}</dd></div><div><dt>Request context</dt><dd>{{ task.caseContext.situation }}</dd></div></dl>
+        <a class="task-panel__open-full" [routerLink]="['/clinic/tasks', task.taskId]" (click)="closeTaskPanel()">Open full task <oc-icon name="external" /></a>
+      </section>
+    </oc-sheet>
+  }
 </div>

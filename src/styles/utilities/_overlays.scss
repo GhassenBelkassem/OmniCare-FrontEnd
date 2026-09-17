@@ -1,3 +1,14 @@
 .cdk-overlay-container {
+  // NG-ZORRO and Spartan both use the single CDK overlay container. Retaining
+  // this established OmniCare stack level avoids competing overlay ownership.
   z-index: var(--oc-z-toast);
 }
+
+// Brain renders this class on a CDK backdrop outside of component style scopes.
+// Keeping it global makes the modal layer cover the entire viewport, including
+// fixed shell regions, without feature-level z-index overrides.
+.cdk-overlay-backdrop.oc-dialog-backdrop {
+  background: var(--oc-color-surface-overlay);
+  opacity: 1;
+}
+.cdk-overlay-backdrop.oc-sheet-backdrop { background: var(--oc-color-surface-overlay); opacity: 1; }
