@@ -53,7 +53,7 @@ export interface OcSelectOption<T extends string = string> {
 })
 export class OcSelect implements ControlValueAccessor {
   readonly controlId = input.required<string>();
-  readonly options = input.required<readonly OcSelectOption[]>();
+  readonly options = input<readonly OcSelectOption[]>([]);
   readonly placeholder = input('Select an option');
   readonly disabled = input(false);
   readonly invalid = input(false);
@@ -68,7 +68,8 @@ export class OcSelect implements ControlValueAccessor {
   private onChange: (value: string | null) => void = () => undefined;
   private onTouchedCallback: () => void = () => undefined;
 
-  readonly itemToString = (value: string): string => this.options().find((option) => option.value === value)?.label ?? value;
+  readonly itemToString = (value: string): string =>
+    (this.options() ?? []).find((option) => option.value === value)?.label ?? value;
 
   protected isDisabled(): boolean { return this.disabled() || this.controlDisabled(); }
   protected selectValue(value: string | null | undefined): void {
