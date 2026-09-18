@@ -7,15 +7,8 @@ import { AuthService } from './auth.service';
 
 const ANONYMOUS_AUTH_SUFFIXES = [
   '/auth/login',
-  '/auth/login/phone/initiate',
-  '/auth/login/phone/verify',
   '/auth/refresh',
-  '/auth/signup/phone/initiate',
-  '/auth/signup/phone/verify',
-  '/auth/signup/complete',
   '/auth/google/initiate',
-  '/auth/google/phone/initiate',
-  '/auth/google/phone/verify',
   '/auth/google/complete',
 ] as const;
 

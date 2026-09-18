@@ -54,16 +54,14 @@ describe('AuthService', () => {
       phone: null,
     });
 
-    expect(result).toEqual({ kind: 'authenticated', role: 'PATIENT' });
+    expect(result).toBe('PATIENT');
     expect(tokens.authenticated()).toBe(true);
     expect(tokens.user()?.role).toBe('PATIENT');
   });
 
-  it('surfaces the phone OTP step instead of failing for patient accounts', () => {
-    let result: unknown;
+  it('rejects an unexpected phone OTP challenge while verification is disabled', () => {
     let error: unknown;
     service.login('patient@omnicare.local', 'Password123!').subscribe({
-      next: (step) => (result = step),
       error: (err: unknown) => (error = err),
     });
 
@@ -73,35 +71,7 @@ describe('AuthService', () => {
       phone: '+21620123456',
     });
 
-    expect(error).toBeUndefined();
-    expect(result).toEqual({ kind: 'requires-otp', phone: '+21620123456' });
+    expect(error).toEqual(new Error('The server returned an invalid login response.'));
     expect(tokens.authenticated()).toBe(false);
-  });
-
-  it('completes login through the phone OTP verification endpoint', () => {
-    let result: unknown;
-    service.verifyPhoneOtp('+21620123456', '123456').subscribe((role) => (result = role));
-
-    const request = http.expectOne('/api/v1/auth/login/phone/verify');
-    expect(request.request.body).toEqual({
-      phone: '+21620123456',
-      otp: '123456',
-      deviceFingerprint: expect.any(String),
-      platform: 'WEB',
-      deviceLabel: 'OmniCare dashboard',
-      sharedDevice: false,
-      rememberDevice: true,
-    });
-    request.flush({
-      accessToken: 'patient-access',
-      tokenType: 'Bearer',
-      expiresAt: '2026-08-05T12:10:00Z',
-      refreshToken: 'patient-refresh',
-      refreshExpiresAt: '2026-08-06T00:00:00Z',
-      user: { id: 'patient-1', role: 'PATIENT', mustChangePassword: false },
-    });
-
-    expect(result).toBe('PATIENT');
-    expect(tokens.authenticated()).toBe(true);
   });
 });
