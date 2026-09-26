@@ -11,13 +11,8 @@
       <h2 id="create-doctor-title">Create an independent doctor</h2>
       <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
         <div class="field"><label for="doctor-email">Email</label><input id="doctor-email" type="email" formControlName="email" autocomplete="off" /></div>
-        <div class="field">
-          <label for="doctor-password">Initial password</label>
-          <div class="inline-control">
-            <input id="doctor-password" type="text" formControlName="password" autocomplete="new-password" minlength="16" />
-            <oc-button variant="secondary" type="button" (click)="generatePassword()">Generate</oc-button>
-          </div>
-        </div>
+        <div class="field"><label for="doctor-first-name">First name</label><input id="doctor-first-name" formControlName="firstName" autocomplete="given-name" maxlength="100" /></div>
+        <div class="field"><label for="doctor-last-name">Last name</label><input id="doctor-last-name" formControlName="lastName" autocomplete="family-name" maxlength="100" /></div>
         <div class="field"><label for="doctor-phone">Phone (optional)</label><input id="doctor-phone" type="tel" inputmode="tel" formControlName="phone" placeholder="+216 20 123 456 or 20 123 456" /></div>
         <div class="field"><label for="doctor-license">Professional license</label><input id="doctor-license" formControlName="professionalLicenseNumber" /></div>
         <div class="field"><label for="doctor-specialty">Specialty</label><input id="doctor-specialty" formControlName="specialty" /></div>
@@ -34,7 +29,7 @@
   </div>
 
   <oc-data-table-shell [state]="tableState()" density="compact">
-    <h2 ocTableTitle>Doctor and clinic-admin accounts</h2>
+    <h2 ocTableTitle>Professional accounts</h2>
     <oc-empty-state icon="team" title="No professionals found" description="Create a doctor or adjust the search." />
     <table>
       <thead><tr><th>Account</th><th>Role</th><th>Status</th><th>Specialty</th><th>Governorate</th><th>Last active</th></tr></thead>
@@ -42,7 +37,7 @@
         @for (item of page()?.items ?? []; track item.userId) {
           <tr>
             <td><a [routerLink]="[item.userId]">{{ item.email }}</a><div class="meta">{{ item.professionalLicenseNumber || 'No medical license' }}</div></td>
-            <td>{{ item.role === 'CLINIC_ADMIN' ? 'Clinic admin' : 'Doctor' }}</td>
+            <td>{{ roleLabel(item.role) }}</td>
             <td><oc-status-badge [status]="statusTone(item.status)" /></td>
             <td>{{ item.specialty || '—' }}</td><td>{{ item.governorate || '—' }}</td>
             <td>{{ item.lastActiveAt ? (item.lastActiveAt | date: 'medium') : 'Never' }}</td>

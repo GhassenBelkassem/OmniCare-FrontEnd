@@ -49,10 +49,11 @@ describe('AdminApiService', () => {
     request.flush({});
   });
 
-  it('sends the initial password and idempotency key when creating a doctor', () => {
+  it('sends the invitation profile and idempotency key when creating a doctor', () => {
     service.createDoctor({
       email: 'doctor@omnicare.local',
-      password: 'ChangeMe123!',
+      firstName: 'Amira',
+      lastName: 'Ben Salah',
       phone: '+21653332480',
       professionalLicenseNumber: 'FGJKHFF',
       specialty: 'GENERAL',
@@ -64,7 +65,8 @@ describe('AdminApiService', () => {
     expect(request.request.headers.get('Idempotency-Key')).toBeTruthy();
     expect(request.request.body).toEqual({
       email: 'doctor@omnicare.local',
-      password: 'ChangeMe123!',
+      firstName: 'Amira',
+      lastName: 'Ben Salah',
       phone: '+21653332480',
       professionalLicenseNumber: 'FGJKHFF',
       specialty: 'GENERAL',

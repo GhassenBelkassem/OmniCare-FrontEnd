@@ -1,7 +1,7 @@
 <div class="page-stack">
   <a class="back-link" routerLink="/admin/professionals">← Back to professionals</a>
   @if (professional(); as item) {
-    <oc-page-header [title]="item.email" [description]="item.role === 'CLINIC_ADMIN' ? 'Clinic administrator account' : 'Independent doctor account'">
+    <oc-page-header [title]="item.email" [description]="roleDescription(item.role)">
       @if (item.status === 'INVITED') { <oc-button ocPrimaryAction variant="primary" [loading]="busy()" (click)="resend()">Resend invitation</oc-button> }
     </oc-page-header>
     @if (successMessage()) { <div class="success-message" role="status">{{ successMessage() }}</div> }

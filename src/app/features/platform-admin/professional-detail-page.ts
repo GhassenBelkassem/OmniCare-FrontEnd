@@ -6,7 +6,7 @@ import { forkJoin } from 'rxjs';
 import { OcButton, OcPageHeader, OcStatusBadge } from '../../shared/ui';
 import { AccountStatus, AdminProfessional, ProfessionalSession } from './admin-api.models';
 import { AdminApiService } from './admin-api.service';
-import { apiMessage, statusTone } from './admin-page-utils';
+import { apiMessage, professionalRoleDescription, statusTone } from './admin-page-utils';
 
 @Component({
   selector: 'app-professional-detail-page',
@@ -28,6 +28,7 @@ export class ProfessionalDetailPage {
   readonly pendingStatus = signal<AccountStatus | null>(null);
   readonly pendingSessionRevocation = signal<string | null>(null);
   readonly statusTone = statusTone;
+  readonly roleDescription = professionalRoleDescription;
 
   constructor() { this.load(); }
 
