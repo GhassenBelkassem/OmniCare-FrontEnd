@@ -23,16 +23,7 @@ import {
 import { AppointmentApiService } from '../appointment-api.service';
 import { AvailabilityRuleDto, AvailabilityExceptionDto, DayOfWeekDto } from '../appointment-api.models';
 import { AvailabilityRuleDialog } from './availability-rule-dialog';
-
-interface ProfileForm {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  specialty: string;
-  governorate: string;
-  licenseNumber: string;
-}
+import { ProfessionalProfileSection } from './professional-profile-section';
 
 interface ServiceItem {
   readonly id: string;
@@ -71,6 +62,7 @@ const DAY_LABELS: Record<DayOfWeekDto, string> = {
     OcEmptyState,
     OcConfirmDialog,
     AvailabilityRuleDialog,
+    ProfessionalProfileSection,
   ],
   templateUrl: './settings-page.html',
   styleUrl: './settings-page.scss',
@@ -90,18 +82,6 @@ export class SettingsPage {
     { id: 'templates', label: 'Modeles', icon: 'file-text' },
     { id: 'preferences', label: 'Preferences', icon: 'setting' },
   ]);
-
-  readonly profile = signal<ProfileForm>({
-    firstName: 'Dr. Ahmed',
-    lastName: 'Ben Salah',
-    email: 'ahmed.bensalah@omnicare.tn',
-    phone: '+216 71 234 567',
-    specialty: 'Medecine generale',
-    governorate: 'Tunis',
-    licenseNumber: 'TN-2019-04821',
-  });
-
-  readonly profileSaved = signal(false);
 
   readonly availabilityRules = signal<readonly AvailabilityRuleDto[]>([]);
   readonly scheduleLoading = signal(false);
@@ -208,15 +188,6 @@ export class SettingsPage {
 
   onTabChange(id: string): void {
     this.activeTab.set(id);
-  }
-
-  onProfileFieldChange(field: keyof ProfileForm, value: string): void {
-    this.profile.update((p) => ({ ...p, [field]: value }));
-    this.profileSaved.set(false);
-  }
-
-  onSaveProfile(): void {
-    this.profileSaved.set(true);
   }
 
   onServiceToggle(serviceId: string): void {

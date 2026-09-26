@@ -296,6 +296,21 @@
                   <div>
                     <h3>{{ doctor.name }}</h3>
                     <p>{{ doctor.specialty ?? 'Medecin' }}</p>
+                    @if (doctorMode() === 'directory') {
+                      <p class="doctor-card__meta">
+                        @if (doctor.priceTnd !== null) {
+                          <span class="doctor-card__meta-item">
+                            {{ priceLabel(doctor.priceTnd) }}
+                          </span>
+                        }
+                        @if (doctorExperienceLabel(doctor.experienceYears); as experience) {
+                          <span class="doctor-card__meta-item">{{ experience }}</span>
+                        }
+                        @if (doctor.phoneNumber; as phone) {
+                          <span class="doctor-card__meta-item">{{ phone }}</span>
+                        }
+                      </p>
+                    }
                   </div>
                 </div>
                 <span class="badge badge--cabinet">Disponible</span>

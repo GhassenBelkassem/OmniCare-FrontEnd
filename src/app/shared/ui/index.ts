@@ -21,5 +21,6 @@ export * from './sidebar/oc-sidebar';
 export * from './stat-row/oc-stat-row';
 export * from './status-badge/oc-status-badge';
 export * from './tabs/oc-tabs';
+export * from './tag-input/oc-tag-input';
 export * from './timeline-item/oc-timeline-item';
 export * from './textarea/oc-textarea';

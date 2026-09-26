@@ -62,6 +62,17 @@ describe('PatientApiService', () => {
     const request = http.expectOne((candidate) => candidate.url === '/api/v1/doctors');
     expect(request.request.method).toBe('GET');
     expect(request.request.headers.get('Authorization')).toBe('Bearer patient-access-token');
+    expect(request.request.params.has('lat')).toBe(false);
+    expect(request.request.params.has('lng')).toBe(false);
+    request.flush([]);
+  });
+
+  it('loads the doctor directory with the patient location and search term', () => {
+    service.doctors('cardio', 36.8065, 10.1815).subscribe();
+    const request = http.expectOne((candidate) => candidate.url === '/api/v1/doctors');
+    expect(request.request.params.get('q')).toBe('cardio');
+    expect(request.request.params.get('lat')).toBe('36.8065');
+    expect(request.request.params.get('lng')).toBe('10.1815');
     request.flush([]);
   });
 

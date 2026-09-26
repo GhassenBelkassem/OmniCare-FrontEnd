@@ -1,0 +1,252 @@
+<div class="professional-profile">
+  @if (profile()) {
+    <form class="professional-profile__form" (ngSubmit)="save()">
+      @if (authError(); as message) {
+        <div class="professional-profile__notice professional-profile__notice--danger" role="alert">
+          <p class="professional-profile__notice-text">{{ message }}</p>
+          <oc-button variant="secondary" size="small" (click)="reAuthenticate()">Se reconnecter</oc-button>
+        </div>
+      }
+
+      @if (saveError(); as message) {
+        <div class="professional-profile__notice professional-profile__notice--danger" role="alert">
+          <p class="professional-profile__notice-text">{{ message }}</p>
+        </div>
+      }
+
+      @if (saved(); as message) {
+        <div class="professional-profile__notice professional-profile__notice--success" role="status">
+          <p class="professional-profile__notice-text">{{ message }}</p>
+        </div>
+      }
+
+      <oc-card title="Informations professionnelles" subtitle="Ces informations sont affichees dans l'annuaire des medecins">
+        <div class="professional-profile__grid">
+          <oc-field controlId="pp-specialty" label="Specialite" [error]="fieldErrors().specialty">
+            <input
+              id="pp-specialty"
+              class="professional-profile__input"
+              type="text"
+              name="pp-specialty"
+              [maxLength]="100"
+              [ngModel]="draft().specialty"
+              (ngModelChange)="updateScalar('specialty', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-price" label="Tarif de consultation (TND)" [error]="fieldErrors().consultationPriceTnd">
+            <input
+              id="pp-price"
+              class="professional-profile__input"
+              type="text"
+              name="pp-price"
+              inputmode="decimal"
+              autocomplete="off"
+              [ngModel]="draft().consultationPriceTnd"
+              (ngModelChange)="updateScalar('consultationPriceTnd', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-experience" label="Annees d'experience" [error]="fieldErrors().experienceYears">
+            <input
+              id="pp-experience"
+              class="professional-profile__input"
+              type="text"
+              name="pp-experience"
+              inputmode="numeric"
+              autocomplete="off"
+              [ngModel]="draft().experienceYears"
+              (ngModelChange)="updateScalar('experienceYears', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-city" label="Ville de pratique" [error]="fieldErrors().practiceCity">
+            <input
+              id="pp-city"
+              class="professional-profile__input"
+              type="text"
+              name="pp-city"
+              [maxLength]="100"
+              [ngModel]="draft().practiceCity"
+              (ngModelChange)="updateScalar('practiceCity', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-latitude" label="Latitude" hint="Exemple : 36.8065" [error]="fieldErrors().practiceLatitude">
+            <input
+              id="pp-latitude"
+              class="professional-profile__input"
+              type="text"
+              name="pp-latitude"
+              inputmode="decimal"
+              autocomplete="off"
+              [ngModel]="draft().practiceLatitude"
+              (ngModelChange)="updateScalar('practiceLatitude', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-longitude" label="Longitude" hint="Exemple : 10.1815" [error]="fieldErrors().practiceLongitude">
+            <input
+              id="pp-longitude"
+              class="professional-profile__input"
+              type="text"
+              name="pp-longitude"
+              inputmode="decimal"
+              autocomplete="off"
+              [ngModel]="draft().practiceLongitude"
+              (ngModelChange)="updateScalar('practiceLongitude', $event)"
+            />
+          </oc-field>
+        </div>
+
+        <div class="professional-profile__location-actions">
+          <oc-button
+            variant="secondary"
+            size="small"
+            leadingIcon="environment"
+            [loading]="locating()"
+            (click)="useCurrentLocation()"
+          >Utiliser ma position actuelle</oc-button>
+          @if (locationError(); as message) {
+            <p class="professional-profile__location-error" role="alert">{{ message }}</p>
+          }
+        </div>
+
+        <div class="professional-profile__toggle-row">
+          <div class="professional-profile__toggle-info">
+            <span class="professional-profile__toggle-label">Nouveaux patients acceptes</span>
+            <span class="professional-profile__toggle-description">Recevez de nouvelles demandes de consultation</span>
+          </div>
+          <button
+            type="button"
+            class="professional-profile__toggle"
+            [class.professional-profile__toggle--active]="draft().acceptingNewPatients"
+            [attr.aria-label]="'Nouveaux patients acceptes : ' + (draft().acceptingNewPatients ? 'oui' : 'non')"
+            [attr.aria-pressed]="draft().acceptingNewPatients"
+            (click)="updateBoolean(!draft().acceptingNewPatients)"
+          >
+            <span class="professional-profile__toggle-knob"></span>
+          </button>
+        </div>
+      </oc-card>
+
+      <oc-card title="Profil public" subtitle="Specialites, langues et details de pratique">
+        <div class="professional-profile__grid">
+          <oc-field controlId="pp-list-sub-specialties" label="Sous-specialites" hint="Entrez une valeur puis pressez Entree" [error]="fieldErrors().subSpecialties">
+            <oc-tag-input
+              controlId="pp-list-sub-specialties"
+              name="pp-list-sub-specialties"
+              [ngModel]="draft().subSpecialties"
+              (ngModelChange)="updateList('subSpecialties', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-list-languages" label="Langues" hint="Entrez une valeur puis pressez Entree" [error]="fieldErrors().languages">
+            <oc-tag-input
+              controlId="pp-list-languages"
+              name="pp-list-languages"
+              [placeholder]="'Ex. Francais'"
+              [ngModel]="draft().languages"
+              (ngModelChange)="updateList('languages', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-list-areas" label="Domaines de soins" hint="Entrez une valeur puis pressez Entree" [error]="fieldErrors().areasOfCare">
+            <oc-tag-input
+              controlId="pp-list-areas"
+              name="pp-list-areas"
+              [ngModel]="draft().areasOfCare"
+              (ngModelChange)="updateList('areasOfCare', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-list-expertise" label="Expertises" hint="Entrez une valeur puis pressez Entree" [error]="fieldErrors().expertise">
+            <oc-tag-input
+              controlId="pp-list-expertise"
+              name="pp-list-expertise"
+              [ngModel]="draft().expertise"
+              (ngModelChange)="updateList('expertise', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-list-reasons" label="Motifs de consultation" hint="Entrez une valeur puis pressez Entree" [error]="fieldErrors().visitReasons">
+            <oc-tag-input
+              controlId="pp-list-reasons"
+              name="pp-list-reasons"
+              [ngModel]="draft().visitReasons"
+              (ngModelChange)="updateList('visitReasons', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-list-ages" label="Tranches d'age" hint="Entrez une valeur puis pressez Entree" [error]="fieldErrors().patientAgeGroups">
+            <oc-tag-input
+              controlId="pp-list-ages"
+              name="pp-list-ages"
+              [placeholder]="'Ex. Adultes'"
+              [ngModel]="draft().patientAgeGroups"
+              (ngModelChange)="updateList('patientAgeGroups', $event)"
+            />
+          </oc-field>
+
+          <oc-field controlId="pp-list-types" label="Types de consultation" hint="Entrez une valeur puis pressez Entree" [error]="fieldErrors().consultationTypes">
+            <oc-tag-input
+              controlId="pp-list-types"
+              name="pp-list-types"
+              [placeholder]="'Ex. Consultation sur rendez-vous'"
+              [ngModel]="draft().consultationTypes"
+              (ngModelChange)="updateList('consultationTypes', $event)"
+            />
+          </oc-field>
+
+          <div class="professional-profile__field--full">
+            <oc-field
+              controlId="pp-biography"
+              label="Biographie"
+              hint="Resumez votre parcours et votre approche. 5000 caracteres maximum."
+              [error]="fieldErrors().biography"
+            >
+              <oc-textarea
+                controlId="pp-biography"
+                name="pp-biography"
+                [rows]="5"
+                [maxLength]="5000"
+                [showCount]="true"
+                placeholder="Medecin specialiste a... "
+                [ngModel]="draft().biography"
+                (ngModelChange)="updateScalar('biography', $event)"
+              />
+            </oc-field>
+          </div>
+        </div>
+      </oc-card>
+
+      <oc-card title="Informations administrees" subtitle="Ces informations sont gerees par l'administration">
+        <div class="professional-profile__readonly">
+          @for (field of managedFields; track field.key) {
+            <div class="professional-profile__readonly-row">
+              <span class="professional-profile__readonly-label">{{ field.label }}</span>
+              <span class="professional-profile__readonly-value">{{ managedValue(field.key) }}</span>
+            </div>
+          }
+        </div>
+      </oc-card>
+
+      <div class="professional-profile__form-actions">
+        <oc-button variant="primary" type="submit" [loading]="saving()">Enregistrer</oc-button>
+      </div>
+    </form>
+  } @else if (loading()) {
+    <div class="professional-profile__loading">
+      <span class="professional-profile__spinner" aria-label="Chargement..."></span>
+    </div>
+  } @else if (authError(); as message) {
+    <div class="professional-profile__notice professional-profile__notice--danger" role="alert">
+      <p class="professional-profile__notice-text">{{ message }}</p>
+      <oc-button variant="secondary" size="small" (click)="reAuthenticate()">Se reconnecter</oc-button>
+    </div>
+  } @else if (loadError(); as message) {
+    <oc-empty-state icon="warning" title="Erreur de chargement" [description]="message">
+      <oc-button variant="primary" size="small" (click)="loadProfile()">Reessayer</oc-button>
+    </oc-empty-state>
+  }
+</div>

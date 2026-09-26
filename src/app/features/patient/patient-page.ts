@@ -48,6 +48,9 @@ interface PatientDoctor {
   readonly id: string;
   readonly name: string;
   readonly specialty: string | null;
+  readonly priceTnd: number | null;
+  readonly phoneNumber: string | null;
+  readonly experienceYears: number | null;
   readonly distanceKm: number | null;
   readonly availableForUrgent: boolean;
 }
@@ -492,8 +495,9 @@ export class PatientPage {
   loadDirectory(): void {
     this.directoryLoading.set(true);
     this.directoryError.set(null);
+    const { lat, lng } = this.patientPosition();
     this.api
-      .doctors()
+      .doctors('', lat, lng)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (dtos) => {
@@ -978,6 +982,27 @@ export class PatientPage {
     return doctor.distanceKm === null ? '' : `${doctor.distanceKm.toLocaleString('fr-FR')} km`;
   }
 
+  doctorExperienceLabel(experience: number | null): string {
+    if (experience === null) return '';
+    return `${experience.toLocaleString('fr-FR')} an${experience === 1 ? '' : 's'} d'experience`;
+  }
+
+  private patientPosition(): { lat: number; lng: number } {
+    const lat = Number(this.urgentLat());
+    const lng = Number(this.urgentLng());
+    if (
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    ) {
+      return { lat, lng };
+    }
+    return { lat: DEFAULT_LAT, lng: DEFAULT_LNG };
+  }
+
   dateLabel(iso: string): string {
     return new Intl.DateTimeFormat('fr-FR', {
       weekday: 'long',
@@ -1084,6 +1109,9 @@ function toPatientDoctor(dto: AvailableDoctorDtoLike): PatientDoctor {
     id: dto.doctorId,
     name: sanitizeDoctorName(dto.name),
     specialty: dto.specialty,
+    priceTnd: null,
+    phoneNumber: null,
+    experienceYears: null,
     distanceKm: dto.distanceKm,
     availableForUrgent: true,
   };
@@ -1101,7 +1129,10 @@ function toDirectoryDoctor(dto: DoctorDirectoryDto): PatientDoctor {
     id: dto.doctorId,
     name: sanitizeDoctorName(dto.displayName),
     specialty: dto.specialty,
-    distanceKm: null,
+    priceTnd: dto.consultationPriceTnd,
+    phoneNumber: dto.phoneNumber,
+    experienceYears: dto.experienceYears,
+    distanceKm: dto.distanceKm,
     availableForUrgent: dto.availableForUrgent,
   };
 }
