@@ -13,10 +13,6 @@ import {
 } from './auth.models';
 import { AuthTokenStore } from './auth-token.store';
 
-export type LoginStep =
-  | { readonly kind: 'authenticated'; readonly role: DashboardRole }
-  | { readonly kind: 'requires-otp'; readonly phone: string };
-
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -29,7 +25,7 @@ export class AuthService {
 
   private refreshInFlight: Observable<LoginSession> | null = null;
 
-  login(email: string, password: string): Observable<LoginStep> {
+  login(email: string, password: string): Observable<DashboardRole> {
     return this.http
       .post<EmailPasswordLoginResponse>(`${this.config.apiBaseUrl}/auth/login`, {
         identifier: email,
@@ -38,29 +34,12 @@ export class AuthService {
       })
       .pipe(
         map((response) => {
-          if (response.status === 'REQUIRES_PHONE_OTP') {
-            return { kind: 'requires-otp' as const, phone: response.phone ?? '' };
-          }
-          if (response.session == null) {
+          if (response.status !== 'AUTHENTICATED' || response.session == null) {
             throw new Error('The server returned an invalid login response.');
           }
           this.tokens.setSession(response.session);
-          return { kind: 'authenticated' as const, role: response.session.user.role };
+          return response.session.user.role;
         }),
-        catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
-      );
-  }
-
-  verifyPhoneOtp(phone: string, otp: string): Observable<DashboardRole> {
-    return this.http
-      .post<LoginSession>(`${this.config.apiBaseUrl}/auth/login/phone/verify`, {
-        phone,
-        otp,
-        ...devicePayload(),
-      })
-      .pipe(
-        tap((session) => this.tokens.setSession(session)),
-        map((session) => session.user.role),
         catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
       );
   }

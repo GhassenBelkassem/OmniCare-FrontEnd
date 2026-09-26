@@ -1,11 +1,18 @@
 export type AccountStatus = 'INVITED' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+export type ManagedProfessionalRole =
+  | 'DOCTOR'
+  | 'CLINIC_ADMIN'
+  | 'CLINIC_ASSISTANT'
+  | 'CLINIC_MEDECIN'
+  | 'CLINIC_INFIRMIERE'
+  | 'CLINIC_KINE';
 
 export interface AdminProfessional {
   readonly userId: string;
   readonly email: string;
   readonly phone: string | null;
-  readonly role: 'DOCTOR' | 'CLINIC_ADMIN';
+  readonly role: ManagedProfessionalRole;
   readonly status: AccountStatus;
   readonly specialty: string | null;
   readonly governorate: string | null;
@@ -29,7 +36,8 @@ export interface ProfessionalPage {
 
 export interface CreateDoctorInput {
   readonly email: string;
-  readonly password: string;
+  readonly firstName: string;
+  readonly lastName: string;
   readonly phone: string | null;
   readonly professionalLicenseNumber: string;
   readonly specialty: string;

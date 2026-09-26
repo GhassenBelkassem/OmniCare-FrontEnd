@@ -6,7 +6,7 @@ import { RouterLink } from '@angular/router';
 import { OcButton, OcDataTableShell, OcEmptyState, OcPageHeader, OcStatusBadge } from '../../shared/ui';
 import { AdminProfessional, ProfessionalPage } from './admin-api.models';
 import { AdminApiService } from './admin-api.service';
-import { apiMessage, statusTone } from './admin-page-utils';
+import { apiMessage, professionalRoleLabel, statusTone } from './admin-page-utils';
 
 @Component({
   selector: 'app-professionals-page',
@@ -26,13 +26,15 @@ export class ProfessionalsPage {
   readonly search = new FormControl('', { nonNullable: true });
   readonly form = new FormGroup({
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
-    password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(16)] }),
+    firstName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(100)] }),
+    lastName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(100)] }),
     phone: new FormControl('', { nonNullable: true }),
     professionalLicenseNumber: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     specialty: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     governorate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   readonly statusTone = statusTone;
+  readonly roleLabel = professionalRoleLabel;
 
   constructor() { this.load(); }
 
@@ -50,9 +52,18 @@ export class ProfessionalsPage {
     this.submitting.set(true);
     this.errorMessage.set(null);
     const value = this.form.getRawValue();
-    this.api.createDoctor({ ...value, phone: value.phone.trim() || null }).subscribe({
+    this.api.createDoctor({
+      ...value,
+      email: value.email.trim(),
+      firstName: value.firstName.trim(),
+      lastName: value.lastName.trim(),
+      phone: value.phone.trim() || null,
+      professionalLicenseNumber: value.professionalLicenseNumber.trim(),
+      specialty: value.specialty.trim(),
+      governorate: value.governorate.trim(),
+    }).subscribe({
       next: () => {
-        this.successMessage.set('Doctor created. Share the initial password through your approved secure channel.');
+        this.successMessage.set('Doctor created. An invitation was sent so they can create their password.');
         this.submitting.set(false);
         this.createOpen.set(false);
         this.form.reset();
@@ -62,11 +73,6 @@ export class ProfessionalsPage {
     });
   }
 
-  generatePassword(): void {
-    this.form.controls.password.setValue(generateStrongPassword());
-    this.form.controls.password.markAsDirty();
-  }
-
   tableState(): 'loading' | 'empty' | 'error' | 'default' {
     if (this.loading()) return 'loading';
     if (this.errorMessage() && !this.page()) return 'error';
@@ -74,13 +80,4 @@ export class ProfessionalsPage {
   }
 
   trackProfessional(_index: number, item: AdminProfessional): string { return item.userId; }
-}
-
-function generateStrongPassword(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-  const symbols = '!@#$%&*?';
-  const bytes = new Uint32Array(18);
-  globalThis.crypto.getRandomValues(bytes);
-  const core = Array.from(bytes, (value) => alphabet[value % alphabet.length]).join('');
-  return `${core}${symbols[bytes[0] % symbols.length]}${bytes[1] % 10}`;
 }

@@ -47,15 +47,8 @@ describe('authInterceptor', () => {
     tokens.setSession(session({ accessToken: 'stale-token' }));
     const urls = [
       '/api/v1/auth/login',
-      '/api/v1/auth/login/phone/initiate',
-      '/api/v1/auth/login/phone/verify',
       '/api/v1/auth/refresh',
-      '/api/v1/auth/signup/phone/initiate',
-      '/api/v1/auth/signup/phone/verify',
-      '/api/v1/auth/signup/complete',
       '/api/v1/auth/google/initiate',
-      '/api/v1/auth/google/phone/initiate',
-      '/api/v1/auth/google/phone/verify',
       '/api/v1/auth/google/complete',
     ];
 
