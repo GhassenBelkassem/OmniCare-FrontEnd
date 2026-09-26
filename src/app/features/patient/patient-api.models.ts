@@ -48,6 +48,11 @@ export interface DoctorDirectoryDto {
   readonly photoUrl: string | null;
   readonly affiliatedClinicId: string | null;
   readonly availableForUrgent: boolean;
+  readonly consultationPriceTnd: number | null;
+  readonly phoneNumber: string | null;
+  readonly isActive: boolean;
+  readonly experienceYears: number | null;
+  readonly distanceKm: number | null;
 }
 
 export interface UrgentRequestDto {

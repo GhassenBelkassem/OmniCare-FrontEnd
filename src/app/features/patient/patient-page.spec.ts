@@ -58,6 +58,11 @@ const DIRECTORY = [
     photoUrl: null,
     affiliatedClinicId: null,
     availableForUrgent: true,
+    consultationPriceTnd: 60,
+    phoneNumber: '+21698123456',
+    isActive: true,
+    experienceYears: 12,
+    distanceKm: 2.5,
   },
   {
     doctorId: 'd-2',
@@ -66,6 +71,11 @@ const DIRECTORY = [
     photoUrl: null,
     affiliatedClinicId: null,
     availableForUrgent: false,
+    consultationPriceTnd: null,
+    phoneNumber: null,
+    isActive: true,
+    experienceYears: null,
+    distanceKm: null,
   },
   {
     doctorId: 'd-3',
@@ -74,6 +84,11 @@ const DIRECTORY = [
     photoUrl: null,
     affiliatedClinicId: null,
     availableForUrgent: true,
+    consultationPriceTnd: null,
+    phoneNumber: null,
+    isActive: true,
+    experienceYears: null,
+    distanceKm: null,
   },
 ];
 
@@ -164,7 +179,10 @@ describe('PatientPage', () => {
     http
       .match((request) => request.url === '/api/v1/urgent-requests/available-doctors')
       .forEach((request) => request.flush(DOCTORS));
-    http.expectOne((request) => request.url === '/api/v1/doctors').flush(DIRECTORY);
+    const directory = http.expectOne((request) => request.url === '/api/v1/doctors');
+    expect(directory.request.params.get('lat')).toBe(String(36.8065));
+    expect(directory.request.params.get('lng')).toBe(String(10.1815));
+    directory.flush(DIRECTORY);
     http.expectOne((request) => request.url === '/api/v1/appointments').flush(appointments);
   }
 
@@ -205,6 +223,32 @@ describe('PatientPage', () => {
     expect(page.directoryDoctors().length).toBe(3);
     page.doctorQuery.set('trabelsi');
     expect(page.filteredDoctors().map((doctor) => doctor.id)).toEqual(['d-1']);
+  });
+
+  it('maps the directory price, phone, experience and distance fields, and nulls them for urgent doctors', () => {
+    const { page, http } = create({ tab: 'doctors' });
+    flushInitial(http);
+
+    const amira = page.directoryDoctors()[0];
+    expect(amira.priceTnd).toBe(60);
+    expect(amira.phoneNumber).toBe('+21698123456');
+    expect(amira.experienceYears).toBe(12);
+    expect(amira.distanceKm).toBe(2.5);
+
+    const kareem = page.directoryDoctors()[1];
+    expect(kareem.priceTnd).toBeNull();
+    expect(kareem.phoneNumber).toBeNull();
+    expect(kareem.experienceYears).toBeNull();
+    expect(kareem.distanceKm).toBeNull();
+
+    page.setDoctorMode('urgent');
+    http
+      .expectOne((request) => request.url === '/api/v1/urgent-requests/available-doctors')
+      .flush(DOCTORS);
+    expect(page.doctors()[0].priceTnd).toBeNull();
+    expect(page.doctors()[0].phoneNumber).toBeNull();
+    expect(page.doctors()[0].experienceYears).toBeNull();
+    expect(page.doctors()[0].distanceKm).toBe(3.2);
   });
 
   it('filters directory doctors by specialty', () => {

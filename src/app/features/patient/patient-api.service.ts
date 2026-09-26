@@ -43,13 +43,14 @@ export class PatientApiService {
     );
   }
 
-  doctors(query = ''): Observable<readonly DoctorDirectoryDto[]> {
+  doctors(query = '', lat?: number, lng?: number): Observable<readonly DoctorDirectoryDto[]> {
     const trimmed = query.trim();
-    const params = trimmed ? new HttpParams().set('q', trimmed) : undefined;
-    return this.http.get<readonly DoctorDirectoryDto[]>(
-      `${this.baseUrl}/doctors`,
-      params ? { params } : undefined,
-    );
+    let params = trimmed ? new HttpParams().set('q', trimmed) : new HttpParams();
+    const hasLocation = lat !== undefined && lng !== undefined && Number.isFinite(lat) && Number.isFinite(lng);
+    if (hasLocation) params = params.set('lat', String(lat)).set('lng', String(lng));
+    return this.http.get<readonly DoctorDirectoryDto[]>(`${this.baseUrl}/doctors`, {
+      params,
+    });
   }
 
   slots(doctorId: string, from: string, to: string): Observable<readonly SlotDto[]> {

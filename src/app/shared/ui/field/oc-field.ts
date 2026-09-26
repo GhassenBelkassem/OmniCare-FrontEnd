@@ -22,7 +22,7 @@ export class OcField {
   readonly label = input.required<string>();
   readonly required = input(false);
   readonly hint = input<string>();
-  readonly error = input<string | null>(null);
+  readonly error = input<string | null | undefined>(null);
   readonly disabled = input(false);
   readonly density = input<'default' | 'compact'>('default');
   readonly labelId = computed(() => `${this.controlId()}-label`);
