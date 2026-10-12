@@ -1,0 +1,160 @@
+<section class="cabinet-gallery" [attr.aria-label]="'Galerie de ' + locationName()">
+  <div class="cabinet-gallery__header">
+    <div>
+      <h4><oc-icon name="image" />Galerie</h4>
+      <p>{{ media().length }} / {{ maximum }} photos</p>
+    </div>
+    @if (media().length > previewLimit) {
+      <oc-button variant="ghost" size="small" (click)="galleryOpen.set(true)">
+        Voir les {{ media().length }} photos
+      </oc-button>
+    }
+  </div>
+  @if (media().length >= maximum) {
+    <p class="cabinet-gallery__limit" role="status">
+      La limite de {{ maximum }} photos est atteinte.
+    </p>
+  }
+  @if (error(); as message) {
+    <p class="cabinet-gallery__error" role="alert">{{ message }}</p>
+  }
+  @if (success(); as message) {
+    <p class="cabinet-gallery__success" role="status">{{ message }}</p>
+  }
+
+  <ul class="cabinet-gallery__grid">
+    @for (item of previewMedia(); track item.id; let index = $index) {
+      <li class="cabinet-gallery__thumbnail">
+        @if (brokenImages().has(item.id)) {
+          <div
+            class="cabinet-gallery__fallback"
+            role="img"
+            [attr.aria-label]="'Photo ' + (index + 1) + ' indisponible'"
+          >
+            Photo indisponible
+          </div>
+        } @else {
+          <img
+            [src]="item.url"
+            [alt]="'Photo ' + (index + 1) + ' de ' + locationName()"
+            loading="lazy"
+            (error)="markBroken(item.id)"
+          />
+        }
+        @if (index === 0) {
+          <span class="cabinet-gallery__primary">Principale</span>
+        }
+        <button
+          type="button"
+          class="cabinet-gallery__delete"
+          [disabled]="deletingId() !== null"
+          [attr.aria-label]="'Supprimer la photo ' + (index + 1)"
+          [title]="'Supprimer la photo ' + (index + 1)"
+          (click)="requestDelete(item)"
+        >
+          <oc-icon name="trash" />
+        </button>
+      </li>
+    }
+
+    @if (hiddenCount() > 0) {
+      <li>
+        <button
+          type="button"
+          class="cabinet-gallery__more"
+          [attr.aria-label]="'Voir les ' + media().length + ' photos de ' + locationName()"
+          (click)="galleryOpen.set(true)"
+        >
+          <strong>+{{ hiddenCount() }}</strong>
+          <span>Voir tout</span>
+        </button>
+      </li>
+    }
+
+    @if (!uploadDisabled()) {
+      <li>
+        <label class="cabinet-gallery__upload">
+          <oc-icon [name]="uploading() ? 'image' : 'upload'" />
+          <span>{{ uploading() ? 'Envoi…' : 'Ajouter' }}</span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png"
+            [disabled]="uploadDisabled()"
+            (change)="selectFile($event)"
+          />
+        </label>
+      </li>
+    }
+  </ul>
+
+  <p class="cabinet-gallery__hint">JPEG ou PNG · 8 Mo max. · la première photo est principale.</p>
+
+  <oc-dialog
+    [open]="galleryOpen()"
+    [title]="'Galerie de ' + locationName()"
+    [description]="media().length + ' / ' + maximum + ' photos'"
+    size="wide"
+    [backdropDismissible]="true"
+    (dismissed)="galleryOpen.set(false)"
+  >
+    <ul class="cabinet-gallery__grid cabinet-gallery__grid--expanded">
+      @for (item of media(); track item.id; let index = $index) {
+        <li class="cabinet-gallery__thumbnail">
+          @if (brokenImages().has(item.id)) {
+            <div
+              class="cabinet-gallery__fallback"
+              role="img"
+              [attr.aria-label]="'Photo ' + (index + 1) + ' indisponible'"
+            >
+              Photo indisponible
+            </div>
+          } @else {
+            <img
+              [src]="item.url"
+              [alt]="'Photo ' + (index + 1) + ' de ' + locationName()"
+              loading="lazy"
+              (error)="markBroken(item.id)"
+            />
+          }
+          @if (index === 0) {
+            <span class="cabinet-gallery__primary">Principale</span>
+          }
+          <button
+            type="button"
+            class="cabinet-gallery__delete"
+            [disabled]="deletingId() !== null"
+            [attr.aria-label]="'Supprimer la photo ' + (index + 1)"
+            (click)="requestDelete(item)"
+          >
+            <oc-icon name="trash" />
+          </button>
+        </li>
+      }
+      @if (!uploadDisabled()) {
+        <li>
+          <label class="cabinet-gallery__upload">
+            <oc-icon name="upload" />
+            <span>{{ uploading() ? 'Envoi…' : 'Ajouter une photo' }}</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png"
+              [disabled]="uploadDisabled()"
+              (change)="selectFile($event)"
+            />
+          </label>
+        </li>
+      }
+    </ul>
+  </oc-dialog>
+
+  <oc-alert-dialog
+    [open]="deleteTarget() !== null"
+    title="Supprimer cette photo ?"
+    [message]="'La photo sera retirée de la galerie de « ' + locationName() + ' ».'"
+    confirmLabel="Supprimer"
+    cancelLabel="Annuler"
+    [loading]="deletingId() !== null"
+    (confirm)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+</section>

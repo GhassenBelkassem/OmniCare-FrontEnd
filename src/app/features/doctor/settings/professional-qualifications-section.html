@@ -1,0 +1,221 @@
+<div class="qualifications">
+  @if (authError(); as message) {
+    <div class="qualifications__notice qualifications__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      <oc-button variant="secondary" size="small" (click)="reAuthenticate()">
+        Se reconnecter
+      </oc-button>
+    </div>
+  }
+
+  @if (success(); as message) {
+    <p class="qualifications__notice qualifications__notice--success" role="status">
+      {{ message }}
+    </p>
+  }
+
+  <oc-card
+    class="qualifications__section"
+    title="Formation"
+    subtitle="Diplômes et parcours académique présentés sur votre profil"
+  >
+    <oc-button
+      ocCardActions
+      variant="secondary"
+      size="small"
+      leadingIcon="plus"
+      (click)="add('education')"
+    >
+      Ajouter une formation
+    </oc-button>
+
+    @if (educationLoading()) {
+      <div
+        class="qualifications__skeleton-list"
+        role="status"
+        aria-label="Chargement des formations"
+      >
+        <oc-skeleton variant="block" />
+        <oc-skeleton variant="block" />
+      </div>
+    } @else if (educationError(); as message) {
+      <div class="qualifications__inline-error" role="alert">
+        <p>{{ message }}</p>
+        <oc-button variant="secondary" size="small" (click)="loadEducation()">
+          Réessayer
+        </oc-button>
+      </div>
+    } @else if (education().length === 0) {
+      <oc-empty-state
+        icon="requests"
+        title="Aucune formation renseignée"
+        description="Ajoutez vos diplômes et votre parcours académique."
+      >
+        <oc-button variant="secondary" size="small" leadingIcon="plus" (click)="add('education')">
+          Ajouter une formation
+        </oc-button>
+      </oc-empty-state>
+    } @else {
+      <ul class="qualifications__list" aria-label="Formations">
+        @for (entry of education(); track entry.id) {
+          <li class="qualifications__item">
+            <span class="qualifications__item-icon" aria-hidden="true">
+              <oc-icon name="requests" />
+            </span>
+            <div class="qualifications__content">
+              <h3>{{ entry.qualification }}</h3>
+              <p>{{ entry.institution }}</p>
+              @if (entry.fieldOfStudy || entry.completionYear) {
+                <p class="qualifications__meta">
+                  @if (entry.fieldOfStudy) {
+                    <span>{{ entry.fieldOfStudy }}</span>
+                  }
+                  @if (entry.fieldOfStudy && entry.completionYear) {
+                    <span aria-hidden="true">·</span>
+                  }
+                  @if (entry.completionYear) {
+                    <span>Obtenu en {{ entry.completionYear }}</span>
+                  }
+                </p>
+              }
+            </div>
+            <div class="qualifications__actions">
+              <oc-button variant="quiet" size="small" (click)="edit('education', entry)">
+                Modifier
+              </oc-button>
+              <oc-action-menu
+                [label]="'Actions pour ' + entry.qualification"
+                deleteLabel="Supprimer la formation"
+                (deleteRequested)="requestDelete('education', entry)"
+              />
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </oc-card>
+
+  <oc-card
+    class="qualifications__section"
+    title="Certifications"
+    subtitle="Accréditations et certifications utiles à votre activité"
+  >
+    <oc-button
+      ocCardActions
+      variant="secondary"
+      size="small"
+      leadingIcon="plus"
+      (click)="add('certification')"
+    >
+      Ajouter une certification
+    </oc-button>
+
+    @if (certificationLoading()) {
+      <div
+        class="qualifications__skeleton-list"
+        role="status"
+        aria-label="Chargement des certifications"
+      >
+        <oc-skeleton variant="block" />
+        <oc-skeleton variant="block" />
+      </div>
+    } @else if (certificationError(); as message) {
+      <div class="qualifications__inline-error" role="alert">
+        <p>{{ message }}</p>
+        <oc-button variant="secondary" size="small" (click)="loadCertifications()">
+          Réessayer
+        </oc-button>
+      </div>
+    } @else if (certifications().length === 0) {
+      <oc-empty-state
+        icon="coverage"
+        title="Aucune certification renseignée"
+        description="Ajoutez les certifications utiles à votre activité professionnelle."
+      >
+        <oc-button
+          variant="secondary"
+          size="small"
+          leadingIcon="plus"
+          (click)="add('certification')"
+        >
+          Ajouter une certification
+        </oc-button>
+      </oc-empty-state>
+    } @else {
+      <ul class="qualifications__list" aria-label="Certifications">
+        @for (entry of certifications(); track entry.id) {
+          <li class="qualifications__item">
+            <span class="qualifications__item-icon" aria-hidden="true">
+              <oc-icon name="coverage" />
+            </span>
+            <div class="qualifications__content">
+              <h3>{{ entry.name }}</h3>
+              @if (entry.issuer) {
+                <p>{{ entry.issuer }}</p>
+              }
+              @if (entry.issuedYear || entry.expiryDate) {
+                <p class="qualifications__meta">
+                  @if (entry.issuedYear) {
+                    <span>Délivrée en {{ entry.issuedYear }}</span>
+                  }
+                  @if (entry.issuedYear && entry.expiryDate) {
+                    <span aria-hidden="true">·</span>
+                  }
+                  @if (entry.expiryDate) {
+                    <span>Expire le {{ entry.expiryDate }}</span>
+                  }
+                </p>
+              }
+            </div>
+            <div class="qualifications__actions">
+              <oc-button variant="quiet" size="small" (click)="edit('certification', entry)">
+                Modifier
+              </oc-button>
+              <oc-action-menu
+                [label]="'Actions pour ' + entry.name"
+                deleteLabel="Supprimer la certification"
+                (deleteRequested)="requestDelete('certification', entry)"
+              />
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </oc-card>
+
+  <app-professional-qualification-dialog
+    [open]="dialogOpen()"
+    [kind]="dialogKind()"
+    [entry]="dialogEntry()"
+    [nextDisplayOrder]="nextDisplayOrder(dialogKind())"
+    [submitting]="dialogSaving()"
+    [error]="dialogError()"
+    [conflict]="dialogConflict()"
+    (dismissed)="closeDialog()"
+    (submitted)="saveQualification($event)"
+    (refreshRequested)="refreshAfterConflict()"
+  />
+
+  <oc-confirm-dialog
+    [open]="deleteTarget() !== null"
+    [title]="deleteTitle()"
+    [message]="deleteMessage()"
+    confirmLabel="Supprimer"
+    cancelLabel="Annuler"
+    [destructive]="true"
+    [loading]="deleting()"
+    (confirm)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+
+  @if (deleteError(); as message) {
+    <div class="qualifications__notice qualifications__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      @if (deleteConflict() !== null) {
+        <oc-button variant="secondary" size="small" (click)="refreshAfterDeleteConflict()">
+          Recharger les données
+        </oc-button>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,111 @@
+<section class="services-settings" aria-labelledby="services-settings-title">
+  <header class="services-settings__intro">
+    <h2 id="services-settings-title">Services</h2>
+    <p>
+      Configurez vos modes de prise en charge, vos équipements et les informations de couverture.
+    </p>
+  </header>
+
+  <app-care-capabilities-settings [activeCabinetStatus]="activeCabinetStatus()" />
+
+  @if (equipmentLoading()) {
+    <section class="services-settings__state" aria-labelledby="mobile-loading-title">
+      <header class="services-settings__section-header">
+        <span class="services-settings__section-icon" aria-hidden="true">
+          <oc-icon name="equipment" />
+        </span>
+        <div>
+          <h3 id="mobile-loading-title">Matériel mobile</h3>
+          <p>Équipements que vous pouvez emporter lors de vos déplacements.</p>
+        </div>
+      </header>
+      <div
+        class="services-settings__equipment-skeleton"
+        role="status"
+        aria-label="Chargement du catalogue et du matériel mobile"
+      >
+        <oc-skeleton variant="block" />
+        <oc-skeleton variant="block" />
+      </div>
+    </section>
+  } @else if (equipmentError(); as message) {
+    <section class="services-settings__state" aria-labelledby="mobile-error-title">
+      <h3 id="mobile-error-title">Matériel mobile</h3>
+      <div class="services-settings__notice" role="alert">
+        <p>{{ message }}</p>
+        @if (equipmentAuthenticationError()) {
+          <oc-button variant="secondary" size="small" (click)="reAuthenticate()">
+            Se reconnecter
+          </oc-button>
+        } @else {
+          <oc-button variant="secondary" size="small" (click)="loadEquipmentOverview()">
+            Réessayer
+          </oc-button>
+        }
+      </div>
+    </section>
+  } @else if (equipmentOverview(); as overview) {
+    <app-mobile-equipment-settings
+      [overview]="overview"
+      (reloadRequested)="loadEquipmentOverview()"
+    />
+  }
+
+  <section class="services-settings__cabinets" aria-labelledby="cabinet-services-title">
+    <header class="services-settings__section-header">
+      <span class="services-settings__section-icon" aria-hidden="true">
+        <oc-icon name="building" />
+      </span>
+      <div>
+        <h3 id="cabinet-services-title">Configuration des cabinets</h3>
+        <p>Le matériel et la couverture sont configurés séparément pour chaque cabinet.</p>
+      </div>
+    </header>
+
+    @if (locationsLoading()) {
+      <div
+        class="services-settings__cabinet-skeletons"
+        role="status"
+        aria-label="Chargement des cabinets"
+      >
+        @for (item of [1, 2]; track item) {
+          <div class="services-settings__cabinet-skeleton" aria-hidden="true">
+            <oc-skeleton variant="circle" />
+            <div>
+              <oc-skeleton />
+              <oc-skeleton />
+            </div>
+          </div>
+        }
+      </div>
+    } @else if (locationsError(); as message) {
+      <div class="services-settings__notice" role="alert">
+        <p>{{ message }}</p>
+        @if (locationsAuthenticationError()) {
+          <oc-button variant="secondary" size="small" (click)="reAuthenticate()">
+            Se reconnecter
+          </oc-button>
+        } @else {
+          <oc-button variant="secondary" size="small" (click)="loadLocations()">
+            Réessayer
+          </oc-button>
+        }
+      </div>
+    } @else if (locations().length === 0) {
+      <oc-empty-state
+        icon="environment"
+        title="Aucun cabinet actif"
+        description="Ajoutez ou activez un cabinet pour configurer son matériel et sa couverture."
+      />
+    } @else {
+      <div class="services-settings__cabinet-list">
+        @for (location of locations(); track location.id) {
+          <app-cabinet-service-config
+            [location]="location"
+            [catalog]="equipmentOverview()?.catalog ?? []"
+          />
+        }
+      </div>
+    }
+  </section>
+</section>

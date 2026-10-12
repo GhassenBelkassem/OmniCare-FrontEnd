@@ -1,0 +1,130 @@
+<section class="care-capabilities" aria-labelledby="care-capabilities-title">
+  <header class="care-capabilities__header">
+    <span class="care-capabilities__section-icon" aria-hidden="true">
+      <oc-icon name="building" />
+    </span>
+    <div class="care-capabilities__heading-copy">
+      <h3 id="care-capabilities-title">Modes de prise en charge</h3>
+      <p>Choisissez les types de prise en charge que vous proposez durablement.</p>
+    </div>
+  </header>
+
+  <div class="care-capabilities__context">
+    <oc-icon name="info" />
+    <p>
+      Ces réglages ne représentent ni vos horaires, ni votre disponibilité actuelle, ni votre statut
+      en ligne pour les urgences.
+    </p>
+  </div>
+
+  @if (activeCabinetStatus() === 'none') {
+    <p class="care-capabilities__guidance" role="status">
+      Ajoutez d’abord un cabinet actif pour proposer une consultation ou une urgence au cabinet.
+    </p>
+  } @else if (activeCabinetStatus() === 'unknown') {
+    <p class="care-capabilities__guidance" role="status">
+      La présence d’un cabinet actif n’a pas pu être vérifiée. Les modes au cabinet ne peuvent pas
+      être ajoutés pour le moment.
+    </p>
+  }
+
+  @if (error(); as message) {
+    <div class="care-capabilities__notice care-capabilities__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      @if (authenticationError()) {
+        <oc-button variant="secondary" size="small" (click)="reAuthenticate()">
+          Se reconnecter
+        </oc-button>
+      } @else if (conflict()) {
+        <oc-button variant="secondary" size="small" (click)="load()">
+          Recharger les données
+        </oc-button>
+      } @else if (revision() === null) {
+        <oc-button variant="secondary" size="small" (click)="load()">Réessayer</oc-button>
+      }
+    </div>
+  }
+
+  @if (loading()) {
+    <div
+      class="care-capabilities__loading"
+      role="status"
+      aria-label="Chargement des modes proposés"
+    >
+      @for (item of options; track item.value) {
+        <div class="care-capabilities__skeleton-row" aria-hidden="true">
+          <oc-skeleton variant="circle" />
+          <div>
+            <oc-skeleton />
+            <oc-skeleton />
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (revision() !== null) {
+    <div
+      class="care-capabilities__list"
+      role="group"
+      aria-label="Modes de prise en charge proposés"
+    >
+      @for (option of options; track option.value) {
+        <div
+          class="care-capabilities__option"
+          [class.care-capabilities__option--disabled]="isDisabled(option)"
+        >
+          <span class="care-capabilities__option-icon" aria-hidden="true">
+            <oc-icon [name]="option.icon" />
+          </span>
+          <span class="care-capabilities__copy">
+            <strong
+              class="care-capabilities__label"
+              [id]="'capability-' + option.value + '-label'"
+              >{{ option.label }}</strong
+            >
+            <span
+              class="care-capabilities__description"
+              [id]="'capability-' + option.value + '-description'"
+            >
+              {{ option.description }}
+            </span>
+            @if (option.requiresActiveCabinet) {
+              <oc-status-badge status="draft" customLabel="Cabinet actif requis" />
+            }
+          </span>
+          <oc-switch
+            [controlId]="'capability-' + option.value"
+            [labelledBy]="'capability-' + option.value + '-label'"
+            [describedBy]="'capability-' + option.value + '-description'"
+            [checked]="isSelected(option.value)"
+            [disabled]="isDisabled(option)"
+            (checkedChange)="toggle(option)"
+          />
+        </div>
+      }
+    </div>
+
+    @if (hasUnavailableCabinetSelection()) {
+      <p class="care-capabilities__notice care-capabilities__notice--danger" role="alert">
+        Un mode au cabinet reste sélectionné alors qu’aucun cabinet actif n’est disponible.
+        Désactivez ce mode ou ajoutez un cabinet actif avant d’enregistrer.
+      </p>
+    }
+
+    <footer class="care-capabilities__actions">
+      @if (success(); as message) {
+        <span role="status">{{ message }}</span>
+      } @else if (dirty()) {
+        <span>Modifications non enregistrées.</span>
+      }
+      <oc-button
+        variant="primary"
+        size="small"
+        [loading]="saving()"
+        [disabled]="!dirty() || hasUnavailableCabinetSelection()"
+        (click)="save()"
+      >
+        Enregistrer les modes
+      </oc-button>
+    </footer>
+  }
+</section>

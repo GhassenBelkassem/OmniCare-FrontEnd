@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import { RUNTIME_CONFIG } from '../../core/config/runtime-config';
@@ -11,8 +12,13 @@ export class DoctorNotificationApiService {
   private readonly config = inject(RUNTIME_CONFIG);
   private readonly notificationsUrl = `${this.config.apiBaseUrl}/notifications`;
 
-  list(): Observable<NotificationListResponseDto> {
-    return this.http.get<NotificationListResponseDto>(this.notificationsUrl);
+  list(page = 0, pageSize = 20, category?: string, unreadOnly = false): Observable<NotificationListResponseDto> {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('pageSize', pageSize)
+      .set('unreadOnly', unreadOnly);
+    if (category) params = params.set('category', category);
+    return this.http.get<NotificationListResponseDto>(this.notificationsUrl, { params });
   }
 
   unreadCount(): Observable<UnreadCountResponseDto> {

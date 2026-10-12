@@ -5,18 +5,28 @@
 
   &__chips {
     display: flex;
+    min-height: 42px;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--oc-space-xxs);
-    padding: var(--oc-space-xxs) var(--oc-space-sm);
-    border: 1px solid var(--oc-color-border-default);
+    gap: var(--oc-space-1);
+    padding: var(--oc-space-1) var(--oc-space-2);
+    border: 1px solid var(--oc-color-border-subtle);
     border-radius: var(--oc-radius-md);
-    background-color: var(--oc-color-surface-default);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    background: var(--oc-color-surface-subtle);
+    transition:
+      border-color var(--oc-motion-fast) var(--oc-ease-standard),
+      background-color var(--oc-motion-fast) var(--oc-ease-standard),
+      box-shadow var(--oc-motion-fast) var(--oc-ease-standard);
+
+    &:hover {
+      border-color: var(--oc-color-border-default);
+      background: var(--oc-color-surface-card);
+    }
 
     &:focus-within {
-      border-color: var(--oc-color-border-focus);
-      box-shadow: 0 0 0 3px var(--oc-color-focus-ring);
+      border-color: var(--oc-color-brand-primary);
+      background: var(--oc-color-surface-card);
+      box-shadow: 0 0 0 3px var(--oc-color-surface-selected);
     }
   }
 
@@ -31,14 +41,19 @@
 
   &__chip {
     display: inline-flex;
+    max-width: 100%;
+    min-height: 26px;
     align-items: center;
-    gap: var(--oc-space-xxs);
-    padding: 2px var(--oc-space-xs);
-    border-radius: var(--oc-radius-sm);
-    background-color: var(--oc-color-primary-subtle);
-    color: var(--oc-color-text-primary);
-    font-size: var(--oc-font-size-sm);
-    line-height: 1.6;
+    gap: var(--oc-space-1);
+    padding: 1px var(--oc-space-1) 1px var(--oc-space-2);
+    overflow: hidden;
+    border: 1px solid var(--oc-tag-chip-border, var(--oc-color-border-subtle));
+    border-radius: var(--oc-radius-md);
+    background: var(--oc-tag-chip-background, var(--oc-color-surface-selected));
+    color: var(--oc-tag-chip-foreground, var(--oc-color-brand-primary-active));
+    font-size: 12px;
+    font-weight: var(--oc-font-weight-medium);
+    line-height: 18px;
   }
 
   &__tag-list {
@@ -49,19 +64,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
     padding: 0;
     border: none;
     border-radius: 50%;
     background-color: transparent;
-    color: var(--oc-color-text-secondary);
-    font-size: 12px;
+    color: inherit;
+    font-size: 11px;
+    opacity: 0.7;
     cursor: pointer;
 
     &:hover {
-      background-color: var(--oc-color-surface-hover);
-      color: var(--oc-color-text-primary);
+      background: var(--oc-color-surface-hover);
+      opacity: 1;
     }
 
     &:focus-visible {
@@ -71,22 +88,60 @@
   }
 
   &__text {
-    flex: 1 1 120px;
-    min-width: 120px;
+    min-width: min(150px, 100%);
+    min-height: 32px;
+    flex: 1 1 150px;
     border: none;
     outline: none;
     background-color: transparent;
     color: var(--oc-color-text-primary);
-    font-size: var(--oc-font-size-sm);
-    padding: var(--oc-space-xxs) var(--oc-space-xs);
+    font-size: 13px;
+    padding: 0 var(--oc-space-2);
 
     &::placeholder {
       color: var(--oc-color-text-muted);
+      opacity: 0.72;
     }
 
     &:disabled {
       cursor: not-allowed;
     }
+  }
+
+  &--emerald {
+    --oc-tag-chip-background: var(--oc-color-success-surface);
+    --oc-tag-chip-border: color-mix(
+      in srgb,
+      var(--oc-color-success) 22%,
+      var(--oc-color-border-subtle)
+    );
+    --oc-tag-chip-foreground: var(--oc-color-success);
+  }
+
+  &--teal {
+    --oc-tag-chip-background: var(--oc-color-surface-selected);
+    --oc-tag-chip-border: color-mix(
+      in srgb,
+      var(--oc-color-brand-primary) 22%,
+      var(--oc-color-border-subtle)
+    );
+    --oc-tag-chip-foreground: var(--oc-color-brand-primary-active);
+  }
+
+  &--aqua {
+    --oc-tag-chip-background: var(--oc-color-information-surface);
+    --oc-tag-chip-border: color-mix(
+      in srgb,
+      var(--oc-color-information) 20%,
+      var(--oc-color-border-subtle)
+    );
+    --oc-tag-chip-foreground: var(--oc-color-information);
+  }
+
+  &--neutral {
+    --oc-tag-chip-background: var(--oc-color-neutral-surface);
+    --oc-tag-chip-border: var(--oc-color-border-subtle);
+    --oc-tag-chip-foreground: var(--oc-color-brand-secondary);
   }
 
   &__hint {

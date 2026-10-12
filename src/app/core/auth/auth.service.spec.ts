@@ -1,6 +1,7 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
 import { authInterceptor } from './auth.interceptor';
 import { AuthService } from './auth.service';
@@ -11,6 +12,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let tokens: AuthTokenStore;
   let http: HttpTestingController;
+  const router = { navigateByUrl: vi.fn(() => Promise.resolve(true)) };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -18,8 +20,10 @@ describe('AuthService', () => {
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         { provide: RUNTIME_CONFIG, useValue: { apiBaseUrl: '/api/v1' } },
+        { provide: Router, useValue: router },
       ],
     });
+    router.navigateByUrl.mockClear();
     service = TestBed.inject(AuthService);
     tokens = TestBed.inject(AuthTokenStore);
     http = TestBed.inject(HttpTestingController);
@@ -73,5 +77,29 @@ describe('AuthService', () => {
 
     expect(error).toEqual(new Error('The server returned an invalid login response.'));
     expect(tokens.authenticated()).toBe(false);
+  });
+
+  it('clears the complete local session after logout-all succeeds', () => {
+    tokens.setSession({
+      accessToken: 'doctor-access',
+      tokenType: 'Bearer',
+      expiresAt: '2027-08-05T12:10:00Z',
+      refreshToken: 'doctor-refresh',
+      refreshExpiresAt: '2027-08-06T00:00:00Z',
+      user: { id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false },
+    });
+
+    service.logoutAll().subscribe();
+
+    const request = http.expectOne('/api/v1/auth/logout-all');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush(null);
+
+    expect(tokens.authenticated()).toBe(false);
+    expect(tokens.accessToken()).toBeNull();
+    expect(tokens.refreshToken()).toBeNull();
+    expect(tokens.user()).toBeNull();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
 });

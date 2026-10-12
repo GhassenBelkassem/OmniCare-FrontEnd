@@ -1,0 +1,90 @@
+<article class="cabinet-card" [attr.aria-labelledby]="'cabinet-' + location().id + '-title'">
+  <header class="cabinet-card__header">
+    <div class="cabinet-card__identity">
+      <div class="cabinet-card__title-row">
+        <h3 [id]="'cabinet-' + location().id + '-title'">{{ location().name }}</h3>
+        <div class="cabinet-card__badges" aria-label="Statut du cabinet">
+          @if (location().primary) {
+            <oc-status-badge status="confirmed" customLabel="Cabinet principal" />
+          }
+          <oc-status-badge
+            [status]="location().active ? 'completed' : 'draft'"
+            [customLabel]="location().active ? 'Actif' : 'Inactif'"
+          />
+        </div>
+      </div>
+      <p class="cabinet-card__place">{{ location().city }}, {{ location().governorate }}</p>
+    </div>
+
+    <div class="cabinet-card__actions">
+      <oc-button variant="secondary" size="small" (click)="editRequested.emit(location())">
+        Modifier
+      </oc-button>
+      <oc-action-menu
+        [label]="'Plus d’actions pour ' + location().name"
+        (deleteRequested)="deleteRequested.emit(location())"
+      />
+    </div>
+  </header>
+
+  <div class="cabinet-card__content">
+    <div class="cabinet-card__information">
+      <dl class="cabinet-card__details">
+        <div>
+          <dt>
+            <span class="cabinet-card__detail-icon" aria-hidden="true">
+              <oc-icon name="location" />
+            </span>
+            <span class="cabinet-card__detail-label">Adresse</span>
+          </dt>
+          <dd>{{ location().address }}</dd>
+        </div>
+        @if (location().publicPhone) {
+          <div>
+            <dt>
+              <span class="cabinet-card__detail-icon" aria-hidden="true">
+                <oc-icon name="phone" />
+              </span>
+              <span class="cabinet-card__detail-label">Téléphone public</span>
+            </dt>
+            <dd>{{ location().publicPhone }}</dd>
+          </div>
+        }
+        <div>
+          <dt>
+            <span class="cabinet-card__detail-icon" aria-hidden="true">
+              <oc-icon name="accessibility" />
+            </span>
+            <span class="cabinet-card__detail-label">Accessibilité</span>
+          </dt>
+          <dd>
+            {{
+              location().wheelchairAccessible
+                ? 'Accessible aux personnes à mobilité réduite'
+                : 'Accessibilité PMR non indiquée'
+            }}
+          </dd>
+        </div>
+      </dl>
+
+      @if (location().patientInstructions) {
+        <aside class="cabinet-card__instructions">
+          <span class="cabinet-card__instructions-icon" aria-hidden="true">
+            <oc-icon name="info" />
+          </span>
+          <div>
+            <strong>Informations d’arrivée</strong>
+            <p>{{ location().patientInstructions }}</p>
+          </div>
+        </aside>
+      }
+    </div>
+
+    <app-cabinet-gallery
+      [locationId]="location().id"
+      [locationName]="location().name"
+      [media]="location().gallery"
+      (mediaChange)="galleryChange.emit($event)"
+    />
+  </div>
+</article>

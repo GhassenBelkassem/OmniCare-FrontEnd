@@ -1,0 +1,103 @@
+<section class="cabinet-settings" aria-labelledby="cabinet-settings-title">
+  <header class="cabinet-settings__intro">
+    <div>
+      <h2 id="cabinet-settings-title">Cabinets</h2>
+      <p>
+        Gérez vos lieux de consultation indépendants et les informations visibles par vos patients.
+      </p>
+    </div>
+    <oc-button variant="primary" leadingIcon="plus" [disabled]="atLimit()" (click)="add()"
+      >Ajouter un cabinet</oc-button
+    >
+  </header>
+
+  @if (atLimit()) {
+    <p class="cabinet-settings__limit" role="status">
+      Vous avez atteint la limite de {{ limit }} cabinets.
+    </p>
+  }
+  @if (authError(); as message) {
+    <div class="cabinet-settings__notice cabinet-settings__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      <oc-button variant="secondary" size="small" (click)="reAuthenticate()"
+        >Se reconnecter</oc-button
+      >
+    </div>
+  }
+  @if (success(); as message) {
+    <p class="cabinet-settings__notice cabinet-settings__notice--success" role="status">
+      {{ message }}
+    </p>
+  }
+  @if (actionError(); as message) {
+    <div class="cabinet-settings__notice cabinet-settings__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      @if (deleteConflict()) {
+        <oc-button variant="secondary" size="small" (click)="refreshAfterDeleteConflict()"
+          >Recharger les données</oc-button
+        >
+      }
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="cabinet-settings__loading" role="status" aria-label="Chargement des cabinets">
+      @for (item of [1, 2]; track item) {
+        <article class="cabinet-settings__skeleton-card" aria-hidden="true">
+          <div class="cabinet-settings__skeleton-copy">
+            <oc-skeleton />
+            <oc-skeleton />
+            <oc-skeleton variant="block" />
+          </div>
+          <oc-skeleton variant="block" />
+        </article>
+      }
+    </div>
+  } @else if (loadError(); as message) {
+    <div class="cabinet-settings__load-error" role="alert">
+      <p>{{ message }}</p>
+      <oc-button variant="secondary" size="small" (click)="load()">Réessayer</oc-button>
+    </div>
+  } @else if (locations().length === 0) {
+    <oc-empty-state
+      icon="environment"
+      title="Aucun cabinet"
+      description="Ajoutez votre premier lieu de consultation pour le rendre visible aux patients."
+    >
+      <oc-button variant="primary" (click)="add()">Ajouter un cabinet</oc-button>
+    </oc-empty-state>
+  } @else {
+    <div class="cabinet-settings__list">
+      @for (location of locations(); track location.id) {
+        <app-cabinet-card
+          [location]="location"
+          (editRequested)="edit($event)"
+          (deleteRequested)="requestDelete($event)"
+          (galleryChange)="updateGallery(location.id, $event)"
+        />
+      }
+    </div>
+  }
+
+  <app-cabinet-form-dialog
+    [open]="formOpen()"
+    [location]="editing()"
+    [submitting]="saving()"
+    [error]="formError()"
+    [conflict]="formConflict()"
+    (dismissed)="closeForm()"
+    (submitted)="save($event)"
+    (refreshRequested)="refreshAfterConflict()"
+  />
+
+  <oc-alert-dialog
+    [open]="deleteTarget() !== null"
+    title="Supprimer ce cabinet ?"
+    [message]="deleteMessage()"
+    confirmLabel="Supprimer"
+    cancelLabel="Annuler"
+    [loading]="deleting()"
+    (confirm)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+</section>

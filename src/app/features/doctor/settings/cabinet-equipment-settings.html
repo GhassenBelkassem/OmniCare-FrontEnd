@@ -1,0 +1,104 @@
+<section
+  class="equipment-settings equipment-settings--embedded"
+  aria-label="Matériel disponible dans ce cabinet"
+>
+  <header class="equipment-settings__header">
+    <span class="equipment-settings__section-icon" aria-hidden="true">
+      <oc-icon name="equipment" />
+    </span>
+    <div class="equipment-settings__heading-copy">
+      <h3>Matériel disponible</h3>
+      <p>Indiquez uniquement la disponibilité du matériel, sans quantité ni suivi de stock.</p>
+    </div>
+  </header>
+
+  @if (error(); as message) {
+    <div class="equipment-settings__notice equipment-settings__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      @if (authenticationError()) {
+        <oc-button variant="secondary" size="small" (click)="reAuthenticate()">
+          Se reconnecter
+        </oc-button>
+      } @else if (conflict() || revision() === null) {
+        <oc-button variant="secondary" size="small" (click)="load()">
+          Recharger les données
+        </oc-button>
+      }
+    </div>
+  }
+
+  @if (loading()) {
+    <div
+      class="equipment-settings__loading"
+      role="status"
+      aria-label="Chargement du matériel du cabinet"
+    >
+      <oc-skeleton variant="block" />
+      <oc-skeleton variant="block" />
+    </div>
+  } @else if (revision() !== null && options().length === 0) {
+    <p class="equipment-settings__empty" role="status">
+      Aucun matériel n’est actuellement disponible dans le catalogue.
+    </p>
+  } @else if (revision() !== null) {
+    <fieldset class="equipment-settings__fieldset">
+      <legend class="oc-sr-only">Matériel disponible dans ce cabinet</legend>
+      @for (definition of options(); track definition.code) {
+        <div
+          class="equipment-settings__option"
+          [class.equipment-settings__option--disabled]="
+            !definition.active && !isSelected(definition.code)
+          "
+        >
+          <oc-checkbox
+            [controlId]="'cabinet-equipment-' + locationId() + '-' + definition.code"
+            [labelledBy]="'cabinet-equipment-' + locationId() + '-' + definition.code + '-label'"
+            [describedBy]="
+              'cabinet-equipment-' + locationId() + '-' + definition.code + '-description'
+            "
+            [checked]="isSelected(definition.code)"
+            [disabled]="saving() || (!definition.active && !isSelected(definition.code))"
+            (checkedChange)="toggle(definition)"
+          />
+          <span class="equipment-settings__copy">
+            <strong
+              class="equipment-settings__label"
+              [id]="'cabinet-equipment-' + locationId() + '-' + definition.code + '-label'"
+              >{{ definition.displayName }}</strong
+            >
+            <span
+              class="equipment-settings__description"
+              [id]="'cabinet-equipment-' + locationId() + '-' + definition.code + '-description'"
+            >
+              {{
+                definition.portable ? 'Portable ou utilisable au cabinet' : 'Utilisable au cabinet'
+              }}
+              @if (!definition.active) {
+                · Indisponible pour une nouvelle sélection
+              }
+            </span>
+          </span>
+        </div>
+      }
+    </fieldset>
+  }
+
+  @if (revision() !== null) {
+    <footer class="equipment-settings__actions">
+      @if (success(); as message) {
+        <span role="status">{{ message }}</span>
+      } @else if (dirty()) {
+        <span>Modifications non enregistrées.</span>
+      }
+      <oc-button
+        variant="primary"
+        size="small"
+        [loading]="saving()"
+        [disabled]="!dirty()"
+        (click)="save()"
+      >
+        Enregistrer le matériel
+      </oc-button>
+    </footer>
+  }
+</section>

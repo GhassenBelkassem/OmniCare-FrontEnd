@@ -1,0 +1,168 @@
+<oc-card
+  title="Notifications"
+  subtitle="Choisissez vos canaux préférés pour chaque catégorie de notification."
+>
+  <p class="notification-settings__channel-note">
+    Ces réglages expriment vos préférences de réception. Ils ne garantissent pas l’envoi d’un SMS
+    pour chaque événement.
+  </p>
+
+  @if (loadState() === 'loading' || loadState() === 'notLoaded') {
+    <div class="notification-settings__loading" role="status" aria-busy="true">
+      <span class="oc-sr-only">Chargement des préférences de notification</span>
+      <oc-skeleton variant="block" />
+      <oc-skeleton variant="block" />
+      <oc-skeleton variant="block" />
+    </div>
+  } @else if (loadState() === 'error') {
+    <div class="notification-settings__load-error" role="alert">
+      <p>Impossible de charger vos préférences de notification.</p>
+      <oc-button variant="secondary" size="small" (click)="load()">Réessayer</oc-button>
+    </div>
+  } @else if (preferences().length === 0) {
+    <div class="notification-settings__empty" role="status">
+      <h3>Aucune préférence disponible</h3>
+      <p>Le serveur n’a retourné aucune catégorie de notification pour votre compte.</p>
+      <oc-button variant="secondary" size="small" (click)="load()">Actualiser</oc-button>
+    </div>
+  } @else {
+    <div class="notification-settings__categories">
+      @for (preference of preferences(); track preference.category) {
+        @let draft = draftFor(preference.category);
+        @let metadata = presentation(preference.category);
+        <section
+          class="notification-settings__category"
+          [attr.aria-labelledby]="'notification-category-' + $index"
+        >
+          <div class="notification-settings__category-heading">
+            <h3 [id]="'notification-category-' + $index">{{ metadata.label }}</h3>
+            <p>{{ metadata.description }}</p>
+          </div>
+
+          <div class="notification-settings__channels">
+            <div class="notification-settings__control-row">
+              <div>
+                <span class="notification-settings__control-label" [id]="'push-label-' + $index"
+                  >Notifications push</span
+                >
+                <span
+                  class="notification-settings__control-description"
+                  [id]="'push-description-' + $index"
+                >
+                  @if (metadata.pushRequired) {
+                    Toujours actives pour les informations critiques de cette catégorie.
+                  } @else {
+                    Recevoir cette catégorie dans l’application et sur les appareils autorisés.
+                  }
+                </span>
+              </div>
+              <oc-switch
+                [controlId]="'push-' + $index"
+                [labelledBy]="'push-label-' + $index"
+                [describedBy]="'push-description-' + $index"
+                [checked]="draft.pushEnabled"
+                [disabled]="metadata.pushRequired || isSaving(preference.category)"
+                (checkedChange)="updateBoolean(preference.category, 'pushEnabled', $event)"
+              />
+            </div>
+
+            <div class="notification-settings__control-row">
+              <div>
+                <span class="notification-settings__control-label" [id]="'sms-label-' + $index"
+                  >SMS</span
+                >
+                <span
+                  class="notification-settings__control-description"
+                  [id]="'sms-description-' + $index"
+                  >Autoriser le SMS comme canal préféré lorsque la politique d’envoi le
+                  permet.</span
+                >
+              </div>
+              <oc-switch
+                [controlId]="'sms-' + $index"
+                [labelledBy]="'sms-label-' + $index"
+                [describedBy]="'sms-description-' + $index"
+                [checked]="draft.smsEnabled"
+                [disabled]="isSaving(preference.category)"
+                (checkedChange)="updateBoolean(preference.category, 'smsEnabled', $event)"
+              />
+            </div>
+
+            <div class="notification-settings__control-row">
+              <div>
+                <span class="notification-settings__control-label" [id]="'dnd-label-' + $index"
+                  >Ne pas déranger</span
+                >
+                <span
+                  class="notification-settings__control-description"
+                  [id]="'dnd-description-' + $index"
+                  >Mettre en attente les notifications non critiques pendant une plage horaire
+                  locale en Tunisie.</span
+                >
+              </div>
+              <oc-switch
+                [controlId]="'dnd-' + $index"
+                [labelledBy]="'dnd-label-' + $index"
+                [describedBy]="'dnd-description-' + $index"
+                [checked]="draft.dndEnabled"
+                [disabled]="isSaving(preference.category)"
+                (checkedChange)="updateBoolean(preference.category, 'dndEnabled', $event)"
+              />
+            </div>
+
+            @if (draft.dndEnabled) {
+              <div
+                class="notification-settings__dnd-times"
+                [attr.aria-describedby]="'dnd-time-help-' + $index"
+              >
+                <label>
+                  <span>Début</span>
+                  <input
+                    type="time"
+                    [value]="draft.dndStart ?? ''"
+                    [disabled]="isSaving(preference.category)"
+                    [attr.aria-invalid]="!draft.dndStart"
+                    (input)="updateTime(preference.category, 'dndStart', $any($event.target).value)"
+                  />
+                </label>
+                <label>
+                  <span>Fin</span>
+                  <input
+                    type="time"
+                    [value]="draft.dndEnd ?? ''"
+                    [disabled]="isSaving(preference.category)"
+                    [attr.aria-invalid]="!draft.dndEnd"
+                    (input)="updateTime(preference.category, 'dndEnd', $any($event.target).value)"
+                  />
+                </label>
+                <p [id]="'dnd-time-help-' + $index">
+                  La plage peut traverser minuit, par exemple de 22:00 à 07:00.
+                </p>
+                @if (!hasValidDndWindow(preference.category)) {
+                  <p class="notification-settings__validation-error" role="alert">
+                    Indiquez une heure de début et une heure de fin.
+                  </p>
+                }
+              </div>
+            }
+          </div>
+
+          @if (mutationErrors()[preference.category]; as error) {
+            <p class="notification-settings__mutation-error" role="alert">{{ error }}</p>
+          }
+
+          <div class="notification-settings__actions">
+            <oc-button
+              variant="primary"
+              size="small"
+              [loading]="isSaving(preference.category)"
+              [disabled]="!isDirty(preference.category) || !hasValidDndWindow(preference.category)"
+              (click)="save(preference.category)"
+              >Enregistrer</oc-button
+            >
+          </div>
+        </section>
+      }
+    </div>
+  }
+</oc-card>

@@ -1,0 +1,39 @@
+:host {
+  display: block;
+}
+
+.oc-skeleton {
+  display: block;
+  border-radius: var(--oc-radius-sm);
+  background: var(--oc-color-surface-hover);
+  animation: oc-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.oc-skeleton--line {
+  width: 70%;
+  height: 12px;
+}
+
+.oc-skeleton--block {
+  width: 100%;
+  height: 88px;
+  border-radius: var(--oc-radius-md);
+}
+
+.oc-skeleton--circle {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--oc-radius-pill);
+}
+
+@keyframes oc-skeleton-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oc-skeleton {
+    animation: none;
+  }
+}

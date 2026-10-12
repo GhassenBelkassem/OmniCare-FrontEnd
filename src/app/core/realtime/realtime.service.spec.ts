@@ -3,7 +3,11 @@ import { TestBed } from '@angular/core/testing';
 
 import { AuthTokenStore } from '../auth/auth-token.store';
 import { RUNTIME_CONFIG } from '../config/runtime-config';
-import { RealtimeService, type UrgentLiveEvent } from './realtime.service';
+import {
+  REALTIME_CLIENT_FACTORY,
+  RealtimeService,
+  type UrgentLiveEvent,
+} from './realtime.service';
 
 interface MockClientConfig {
   connectHeaders: Record<string, string>;
@@ -16,7 +20,7 @@ interface MockClientConfig {
 
 type FrameHandler = (message: { body: string }) => void;
 
-const stomp = vi.hoisted(() => {
+const stomp = (() => {
   class MockClient {
     static instances: MockClient[] = [];
 
@@ -65,10 +69,7 @@ const stomp = vi.hoisted(() => {
   }
 
   return { MockClient };
-});
-
-vi.mock('@stomp/stompjs', () => ({ Client: stomp.MockClient }));
-vi.mock('sockjs-client', () => ({ default: class MockSockJS {} }));
+})();
 
 function session(token: string): Parameters<AuthTokenStore['setSession']>[0] {
   return {
@@ -91,7 +92,11 @@ describe('RealtimeService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: RUNTIME_CONFIG, useValue: { apiBaseUrl: '/api/v1' } },
-        ...(options.platformId ? [{ provide: PLATFORM_ID, useValue: options.platformId }] : []),
+        { provide: PLATFORM_ID, useValue: options.platformId ?? 'browser' },
+        {
+          provide: REALTIME_CLIENT_FACTORY,
+          useValue: (config: MockClientConfig) => new stomp.MockClient(config),
+        },
       ],
     });
     const tokens = TestBed.inject(AuthTokenStore);
@@ -114,7 +119,7 @@ describe('RealtimeService', () => {
     vi.useRealTimers();
   });
 
-  it('connects with the Bearer header and subscribes to both queues', () => {
+  it('connects with the Bearer header and subscribes to every user queue', () => {
     const { service } = create({ token: 'token-a' });
 
     expect(stomp.MockClient.instances).toHaveLength(1);
@@ -127,7 +132,10 @@ describe('RealtimeService', () => {
     expect(client.subscriptions.map((sub) => sub.destination)).toEqual([
       '/user/queue/urgent-requests',
       '/user/queue/appointments',
+      '/user/queue/scheduled-care',
+      '/user/queue/notifications',
     ]);
+    expect(service.connectionEpoch()).toBe(1);
   });
 
   it('does not connect without a session', () => {
@@ -190,6 +198,48 @@ describe('RealtimeService', () => {
     });
 
     expect(appointments).toEqual(['APPOINTMENT_STARTED']);
+  });
+
+  it('emits a scheduled-care invalidation once for duplicate event IDs', () => {
+    const { service } = create({ token: 'token-a' });
+    const client = lastClient()!;
+    client.config.onConnect?.();
+    const received: string[] = [];
+    service.scheduledCareEvents$.subscribe((event) => received.push(event.eventId));
+    const frame = {
+      body: JSON.stringify({
+        eventId: 'event-1',
+        eventType: 'BOOKING_REQUEST_PROPOSED',
+        resourceType: 'BOOKING_REQUEST',
+        resourceId: 'request-1',
+        version: 2,
+        occurredAt: '2026-08-21T10:00:00Z',
+      }),
+    };
+
+    client.subscriptions[2].handler(frame);
+    client.subscriptions[2].handler(frame);
+
+    expect(received).toEqual(['event-1']);
+  });
+
+  it('emits typed notification invalidations and drops malformed frames', () => {
+    const { service } = create({ token: 'token-a' });
+    const client = lastClient()!;
+    client.config.onConnect?.();
+    const received: string[] = [];
+    service.notificationEvents$.subscribe((event) => received.push(event.notificationId));
+
+    client.subscriptions[3].handler({
+      body: JSON.stringify({
+        eventType: 'NOTIFICATION_CREATED',
+        notificationId: 'notification-1',
+        occurredAt: '2026-10-09T10:00:00Z',
+      }),
+    });
+    client.subscriptions[3].handler({ body: JSON.stringify({ eventType: 'UNKNOWN' }) });
+
+    expect(received).toEqual(['notification-1']);
   });
 
   it('reconnects with a fresh token when the access token changes', () => {

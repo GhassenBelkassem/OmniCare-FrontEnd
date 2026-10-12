@@ -25,16 +25,30 @@ export type OcDialogIntent = 'standard' | 'destructive';
     >
       <span brnDialogOverlay class="oc-dialog-backdrop" aria-hidden="true"></span>
       <ng-template brnDialogContent class="oc-dialog-panel">
-        <section class="oc-dialog" [class.oc-dialog--destructive]="intent() === 'destructive'" [attr.aria-busy]="submitting()">
+        <section
+          class="oc-dialog"
+          [class.oc-dialog--wide]="size() === 'wide'"
+          [class.oc-dialog--destructive]="intent() === 'destructive'"
+          [attr.aria-busy]="submitting()"
+        >
           <header class="oc-dialog__header">
             <div>
               <h2 brnDialogTitle>{{ title() }}</h2>
               @if (intent() === 'destructive') {
-                <p class="oc-dialog__destructive-note"><span aria-hidden="true">!</span> Destructive action</p>
+                <p class="oc-dialog__destructive-note">
+                  <span aria-hidden="true">!</span> Destructive action
+                </p>
               }
             </div>
             @if (!dismissalDisabled()) {
-              <button type="button" class="oc-dialog__close" [attr.aria-label]="'Close ' + title()" (click)="requestDismiss()">×</button>
+              <button
+                type="button"
+                class="oc-dialog__close"
+                [attr.aria-label]="'Close ' + title()"
+                (click)="requestDismiss()"
+              >
+                ×
+              </button>
             }
           </header>
           @if (description(); as text) {
@@ -64,6 +78,7 @@ export class OcDialog {
   readonly description = input<string>();
   readonly error = input<string | null>(null);
   readonly intent = input<OcDialogIntent>('standard');
+  readonly size = input<'standard' | 'wide'>('standard');
   readonly initialFocus = input<string | 'first-tabbable'>('first-tabbable');
   readonly backdropDismissible = input(false);
   readonly submitting = input(false);

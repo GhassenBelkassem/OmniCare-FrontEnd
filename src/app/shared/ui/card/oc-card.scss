@@ -5,6 +5,35 @@
   box-shadow: var(--oc-shadow-card);
 }
 
+.oc-card--information {
+  overflow: hidden;
+  border-color: var(--oc-color-information);
+  border-block-start-width: 3px;
+}
+
+.oc-card--success {
+  overflow: hidden;
+  border-color: var(--oc-color-success);
+  border-block-start-width: 3px;
+}
+
+.oc-card--information .oc-card__header {
+  padding-block-end: var(--oc-space-4);
+  background: var(--oc-color-information-surface);
+  border-block-end: 1px solid var(--oc-color-information);
+}
+
+.oc-card--success .oc-card__header {
+  padding-block-end: var(--oc-space-4);
+  background: var(--oc-color-success-surface);
+  border-block-end: 1px solid var(--oc-color-success);
+}
+
+.oc-card--information .oc-card__subtitle,
+.oc-card--success .oc-card__subtitle {
+  color: var(--oc-color-text-secondary);
+}
+
 .oc-card__header {
   display: flex;
   align-items: flex-start;

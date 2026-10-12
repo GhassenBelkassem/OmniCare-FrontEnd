@@ -1,6 +1,6 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 
 import { RUNTIME_CONFIG } from '../../core/config/runtime-config';
 import {
@@ -53,15 +53,14 @@ export class PatientApiService {
     });
   }
 
-  slots(doctorId: string, from: string, to: string): Observable<readonly SlotDto[]> {
-    const params = new HttpParams().set('doctorId', doctorId).set('from', from).set('to', to);
-    return this.http.get<readonly SlotDto[]>(`${this.baseUrl}/appointments/availability/slots`, {
-      params,
-    });
+  /** @deprecated The Angular Patient workspace is development-only and direct booking is retired. */
+  slots(_doctorId: string, _from: string, _to: string): Observable<readonly SlotDto[]> {
+    return throwError(legacyPatientSchedulingRetired);
   }
 
-  book(input: BookingRequestDto): Observable<AppointmentDto> {
-    return this.http.post<AppointmentDto>(`${this.baseUrl}/appointments`, input);
+  /** @deprecated New Patient scheduling is available only through the Flutter P2 request flow. */
+  book(_input: BookingRequestDto): Observable<AppointmentDto> {
+    return throwError(legacyPatientSchedulingRetired);
   }
 
   appointments(from: string, to: string): Observable<readonly AppointmentDto[]> {
@@ -116,4 +115,18 @@ export class PatientApiService {
   changePassword(input: ChangePasswordRequestDto): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/auth/password/change`, input);
   }
+}
+
+export const LEGACY_PATIENT_SCHEDULING_RETIRED_MESSAGE =
+  'La réservation Patient Angular est retirée. Utilisez le parcours mobile OmniCare.';
+
+function legacyPatientSchedulingRetired(): HttpErrorResponse {
+  return new HttpErrorResponse({
+    status: 410,
+    statusText: 'Gone',
+    error: {
+      code: 'LEGACY_BOOKING_RETIRED',
+      message: LEGACY_PATIENT_SCHEDULING_RETIRED_MESSAGE,
+    },
+  });
 }

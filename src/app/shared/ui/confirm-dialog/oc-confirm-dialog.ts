@@ -10,10 +10,11 @@ import { OcButton } from '../button/oc-button';
     <nz-modal
       [nzVisible]="open()"
       [nzTitle]="title()"
-      [nzClosable]="true"
-      [nzMaskClosable]="true"
-      [nzKeyboard]="true"
-      [nzFooter]="null"
+      [nzCentered]="true"
+      [nzWidth]="460"
+      [nzClosable]="!loading()"
+      [nzMaskClosable]="!loading()"
+      [nzKeyboard]="!loading()"
       (nzOnCancel)="close()"
     >
       <ng-template nzModalContent>
@@ -21,12 +22,15 @@ import { OcButton } from '../button/oc-button';
       </ng-template>
       <ng-template nzModalFooter>
         <div class="oc-confirm-dialog__actions">
-          <oc-button variant="secondary" (click)="close()">{{ cancelLabel() }}</oc-button>
+          <oc-button variant="secondary" [disabled]="loading()" (click)="close()">
+            {{ cancelLabel() }}
+          </oc-button>
           <oc-button
             [variant]="destructive() ? 'destructive' : 'primary'"
             [loading]="loading()"
             (click)="confirm.emit()"
-          >{{ confirmLabel() }}</oc-button>
+            >{{ confirmLabel() }}</oc-button
+          >
         </div>
       </ng-template>
     </nz-modal>
@@ -46,6 +50,7 @@ export class OcConfirmDialog {
   readonly cancelled = output<void>();
 
   close(): void {
+    if (this.loading()) return;
     this.open.set(false);
     this.cancelled.emit();
   }
