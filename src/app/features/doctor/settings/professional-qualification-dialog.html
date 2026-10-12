@@ -1,0 +1,144 @@
+<oc-dialog
+  [open]="open()"
+  [title]="title"
+  description="Les informations enregistrées seront visibles sur votre profil professionnel."
+  [error]="error()"
+  [initialFocus]="'#qualification-primary'"
+  [backdropDismissible]="true"
+  [submitting]="submitting()"
+  [hasFooter]="true"
+  (dismissed)="dismissed.emit()"
+>
+  <form
+    id="professional-qualification-form"
+    class="qualification-dialog__form"
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+  >
+    <oc-field
+      controlId="qualification-primary"
+      [label]="primaryLabel"
+      [required]="true"
+      [error]="errorFor('primary')"
+    >
+      <input
+        id="qualification-primary"
+        class="qualification-dialog__input"
+        type="text"
+        maxlength="200"
+        formControlName="primary"
+        [attr.aria-invalid]="invalid('primary')"
+        [attr.aria-describedby]="invalid('primary') ? 'qualification-primary-error' : null"
+      />
+    </oc-field>
+
+    <oc-field
+      controlId="qualification-secondary"
+      [label]="kind() === 'education' ? 'Établissement' : 'Organisme émetteur'"
+      [required]="kind() === 'education'"
+      [error]="errorFor('secondary')"
+    >
+      <input
+        id="qualification-secondary"
+        class="qualification-dialog__input"
+        type="text"
+        maxlength="200"
+        formControlName="secondary"
+        [attr.aria-invalid]="invalid('secondary')"
+        [attr.aria-describedby]="invalid('secondary') ? 'qualification-secondary-error' : null"
+      />
+    </oc-field>
+
+    @if (kind() === 'education') {
+      <oc-field
+        controlId="qualification-tertiary"
+        label="Domaine d’études"
+        [error]="errorFor('tertiary')"
+      >
+        <input
+          id="qualification-tertiary"
+          class="qualification-dialog__input"
+          type="text"
+          maxlength="200"
+          formControlName="tertiary"
+          [attr.aria-invalid]="invalid('tertiary')"
+          [attr.aria-describedby]="invalid('tertiary') ? 'qualification-tertiary-error' : null"
+        />
+      </oc-field>
+    }
+
+    <oc-field
+      controlId="qualification-year"
+      [label]="kind() === 'education' ? 'Année d’obtention' : 'Année de délivrance'"
+      hint="Facultatif · 1900 à 2100"
+      [error]="errorFor('year')"
+    >
+      <input
+        id="qualification-year"
+        class="qualification-dialog__input"
+        type="text"
+        inputmode="numeric"
+        maxlength="4"
+        formControlName="year"
+        [attr.aria-invalid]="invalid('year')"
+        [attr.aria-describedby]="
+          invalid('year') ? 'qualification-year-error' : 'qualification-year-hint'
+        "
+      />
+    </oc-field>
+
+    @if (kind() === 'certification') {
+      <oc-field
+        controlId="qualification-expiry"
+        label="Date d’expiration"
+        hint="Facultatif"
+        [error]="
+          form.hasError('expiryBeforeIssue') && form.touched
+            ? 'La date d’expiration ne peut pas précéder l’année de délivrance.'
+            : null
+        "
+      >
+        <input
+          id="qualification-expiry"
+          class="qualification-dialog__input"
+          type="date"
+          formControlName="expiryDate"
+          [attr.aria-invalid]="form.hasError('expiryBeforeIssue') && form.touched"
+          [attr.aria-describedby]="
+            form.hasError('expiryBeforeIssue') && form.touched
+              ? 'qualification-expiry-error'
+              : 'qualification-expiry-hint'
+          "
+        />
+      </oc-field>
+    }
+
+    @if (conflict()) {
+      <div class="qualification-dialog__conflict" role="alert">
+        <p>Rechargez la liste avant de reprendre cette modification.</p>
+        <oc-button type="button" variant="secondary" size="small" (click)="refreshRequested.emit()">
+          Recharger les données
+        </oc-button>
+      </div>
+    }
+  </form>
+
+  <oc-button
+    ocDialogFooter
+    type="button"
+    variant="secondary"
+    [disabled]="submitting()"
+    (click)="dismissed.emit()"
+  >
+    Annuler
+  </oc-button>
+  <oc-button
+    ocDialogFooter
+    type="submit"
+    form="professional-qualification-form"
+    [loading]="submitting()"
+    [disabled]="form.invalid || submitting() || conflict()"
+  >
+    Enregistrer
+  </oc-button>
+</oc-dialog>

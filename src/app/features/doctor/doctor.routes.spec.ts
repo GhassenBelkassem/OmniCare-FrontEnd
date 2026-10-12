@@ -1,10 +1,19 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRouteSnapshot, CanActivateFn, provideRouter, RouterStateSnapshot, UrlTree } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  CanActivateFn,
+  provideRouter,
+  RouterStateSnapshot,
+  UrlTree,
+} from '@angular/router';
 
 import { authenticatedGuard } from '../../core/auth/auth.guards';
 import { AuthBootstrapService } from '../../core/auth/auth-bootstrap.service';
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import type { DashboardRole } from '../../core/auth/auth.models';
+import { CalendarPage } from './calendar/calendar-page';
 import { DOCTOR_ROUTES } from './doctor.routes';
+import { UrgentReadinessPage } from './urgent-readiness/urgent-readiness-page';
 import { unsavedChangesGuard } from './unsaved-changes.guard';
 
 describe('doctor routes', () => {
@@ -45,7 +54,25 @@ describe('doctor routes', () => {
     expect(consultation?.canDeactivate).toEqual([unsavedChangesGuard]);
   });
 
-  it('only allows a DOCTOR session into the workspace', async () => {
+  it('exposes only the production Calendar route after FullCalendar cutover', async () => {
+    const children = DOCTOR_ROUTES[0].children ?? [];
+    const calendar = children.find((route) => route.path === 'calendar');
+
+    expect(calendar).toBeDefined();
+    expect(children.some((route) => route.path === 'calendar-preview')).toBe(false);
+    await expect(calendar?.loadComponent?.()).resolves.toBe(CalendarPage);
+  });
+
+  it('exposes the urgent readiness page inside the guarded Doctor shell', async () => {
+    const urgentReadiness = DOCTOR_ROUTES[0].children?.find(
+      (route) => route.path === 'urgent-readiness',
+    );
+
+    expect(urgentReadiness?.title).toBe('Préparation aux urgences | OmniCare');
+    await expect(urgentReadiness?.loadComponent?.()).resolves.toBe(UrgentReadinessPage);
+  });
+
+  it('allows a DOCTOR session into the workspace', async () => {
     const tokens = TestBed.inject(AuthTokenStore);
     const roleCheck = DOCTOR_ROUTES[0].canActivate?.[1] as CanActivateFn;
     const emptySnapshot = {} as ActivatedRouteSnapshot;
@@ -59,16 +86,50 @@ describe('doctor routes', () => {
       refreshExpiresAt: '2999-08-06T23:59:59Z',
       user: { id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false },
     });
-    await expect(TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState))).resolves.toBe(true);
+    await expect(
+      TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState)),
+    ).resolves.toBe(true);
+  });
 
-    tokens.setSession({
-      accessToken: 'admin-access-token',
-      tokenType: 'Bearer',
-      expiresAt: '2999-08-06T12:00:00Z',
-      refreshToken: 'admin-refresh-token',
-      refreshExpiresAt: '2999-08-06T23:59:59Z',
-      user: { id: 'admin-1', role: 'ADMIN', mustChangePassword: false },
-    });
-    await expect(TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState))).resolves.toBeInstanceOf(UrlTree);
+  it.each(['PATIENT', 'ADMIN'] satisfies DashboardRole[])(
+    'rejects a %s session from the Doctor workspace',
+    async (role) => {
+      const tokens = TestBed.inject(AuthTokenStore);
+      const roleCheck = DOCTOR_ROUTES[0].canActivate?.[1] as CanActivateFn;
+      const emptySnapshot = {} as ActivatedRouteSnapshot;
+      const emptyState = {} as RouterStateSnapshot;
+
+      tokens.setSession(sessionFor(role));
+      const result = await TestBed.runInInjectionContext(() =>
+        roleCheck(emptySnapshot, emptyState),
+      );
+
+      expect(result).toBeInstanceOf(UrlTree);
+      expect((result as UrlTree).toString()).toBe('/forbidden');
+    },
+  );
+
+  it('rejects an unsupported SECRETARY session before the lazy Doctor shell can load', async () => {
+    const tokens = TestBed.inject(AuthTokenStore);
+    const roleCheck = DOCTOR_ROUTES[0].canActivate?.[1] as CanActivateFn;
+    const emptySnapshot = {} as ActivatedRouteSnapshot;
+    const emptyState = {} as RouterStateSnapshot;
+
+    tokens.setSession(sessionFor('SECRETARY' as DashboardRole));
+    const result = await TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState));
+
+    expect(result).toBeInstanceOf(UrlTree);
+    expect((result as UrlTree).toString()).toBe('/forbidden');
   });
 });
+
+function sessionFor(role: DashboardRole) {
+  return {
+    accessToken: `${role.toLowerCase()}-access-token`,
+    tokenType: 'Bearer' as const,
+    expiresAt: '2999-08-06T12:00:00Z',
+    refreshToken: `${role.toLowerCase()}-refresh-token`,
+    refreshExpiresAt: '2999-08-06T23:59:59Z',
+    user: { id: `${role.toLowerCase()}-1`, role, mustChangePassword: false },
+  };
+}

@@ -1,0 +1,282 @@
+<div class="account-security">
+  @if (summaryState() === 'loading' || summaryState() === 'notLoaded') {
+    <oc-card title="Compte & sécurité" subtitle="Chargement des informations du compte">
+      <div class="account-security__loading" role="status" aria-busy="true">
+        <span class="oc-sr-only">Chargement des informations de sécurité</span>
+        <oc-skeleton variant="block" />
+        <oc-skeleton variant="block" />
+        <oc-skeleton variant="block" />
+      </div>
+    </oc-card>
+  } @else if (summaryState() === 'error') {
+    <oc-card title="Compte & sécurité">
+      <div class="account-security__state" role="alert">
+        <p>Impossible de charger les informations du compte.</p>
+        <oc-button variant="secondary" size="small" (click)="loadSummary()">Réessayer</oc-button>
+      </div>
+    </oc-card>
+  } @else if (summary(); as account) {
+    <oc-card title="Compte" subtitle="Identité de connexion et coordonnées vérifiées">
+      <dl class="account-security__details">
+        <div class="account-security__detail-row">
+          <dt>Type de compte</dt>
+          <dd>{{ accountTypeLabel(account.accountType) }}</dd>
+        </div>
+        <div class="account-security__detail-row">
+          <dt>Email</dt>
+          <dd>
+            <span>{{ account.email || 'Non renseigné' }}</span>
+            <oc-status-badge
+              [status]="account.emailVerified ? 'confirmed' : 'requires-attention'"
+              [customLabel]="account.emailVerified ? 'Vérifié' : 'Non vérifié'"
+            />
+          </dd>
+        </div>
+        <div class="account-security__detail-row">
+          <dt>Téléphone</dt>
+          <dd>
+            <span>{{ account.phone || 'Non renseigné' }}</span>
+            <oc-status-badge
+              [status]="account.phoneVerified ? 'confirmed' : 'requires-attention'"
+              [customLabel]="account.phoneVerified ? 'Vérifié' : 'Non vérifié'"
+            />
+          </dd>
+        </div>
+      </dl>
+      <p class="account-security__read-only-note">
+        L’email et le téléphone sont affichés en lecture seule. Leur modification nécessite un
+        parcours de vérification dédié qui n’est pas disponible ici.
+      </p>
+    </oc-card>
+
+    <oc-card title="Mot de passe" subtitle="Protégez l’accès à votre compte OmniCare">
+      @if (account.mustChangePassword) {
+        <div class="account-security__notice account-security__notice--warning" role="alert">
+          <strong>Modification requise</strong>
+          <p>Votre mot de passe actuel doit être remplacé avant de poursuivre son utilisation.</p>
+        </div>
+      }
+
+      @if (passwordSuccess(); as message) {
+        <p class="account-security__success" role="status">{{ message }}</p>
+      }
+
+      @if (!account.hasPassword) {
+        <div class="account-security__notice">
+          <strong>Aucun mot de passe local configuré</strong>
+          <p>
+            L’ajout d’un mot de passe nécessite une nouvelle vérification Google. Ce parcours n’est
+            pas disponible dans ces paramètres.
+          </p>
+        </div>
+      } @else if (!passwordFormOpen()) {
+        <oc-button variant="secondary" (click)="openPasswordForm()">
+          Modifier le mot de passe
+        </oc-button>
+      } @else {
+        <form
+          class="account-security__password-form"
+          [formGroup]="passwordForm"
+          aria-label="Modifier le mot de passe"
+          (ngSubmit)="changePassword()"
+        >
+          <oc-field
+            controlId="account-current-password"
+            label="Mot de passe actuel"
+            [required]="true"
+            [error]="passwordFieldError('currentPassword')"
+          >
+            <input
+              id="account-current-password"
+              class="account-security__input"
+              type="password"
+              formControlName="currentPassword"
+              autocomplete="current-password"
+              maxlength="128"
+              [disabled]="passwordSaving()"
+              [attr.aria-invalid]="passwordFieldError('currentPassword') ? 'true' : null"
+              [attr.aria-describedby]="
+                passwordFieldError('currentPassword') ? 'account-current-password-error' : null
+              "
+            />
+          </oc-field>
+
+          <oc-field
+            controlId="account-new-password"
+            label="Nouveau mot de passe"
+            hint="12 caractères minimum."
+            [required]="true"
+            [error]="passwordFieldError('newPassword')"
+          >
+            <input
+              id="account-new-password"
+              class="account-security__input"
+              type="password"
+              formControlName="newPassword"
+              autocomplete="new-password"
+              minlength="12"
+              maxlength="128"
+              [disabled]="passwordSaving()"
+              [attr.aria-invalid]="passwordFieldError('newPassword') ? 'true' : null"
+              [attr.aria-describedby]="
+                passwordFieldError('newPassword')
+                  ? 'account-new-password-hint account-new-password-error'
+                  : 'account-new-password-hint'
+              "
+            />
+          </oc-field>
+
+          <oc-field
+            controlId="account-confirm-password"
+            label="Confirmer le nouveau mot de passe"
+            [required]="true"
+            [error]="passwordFieldError('confirmation')"
+          >
+            <input
+              id="account-confirm-password"
+              class="account-security__input"
+              type="password"
+              formControlName="confirmation"
+              autocomplete="new-password"
+              maxlength="128"
+              [disabled]="passwordSaving()"
+              [attr.aria-invalid]="passwordFieldError('confirmation') ? 'true' : null"
+              [attr.aria-describedby]="
+                passwordFieldError('confirmation') ? 'account-confirm-password-error' : null
+              "
+            />
+          </oc-field>
+
+          @if (passwordError(); as message) {
+            <p class="account-security__error" role="alert">{{ message }}</p>
+          }
+
+          <div class="account-security__form-actions">
+            @if (!account.mustChangePassword) {
+              <oc-button
+                type="button"
+                variant="secondary"
+                [disabled]="passwordSaving()"
+                (click)="closePasswordForm()"
+                >Annuler</oc-button
+              >
+            }
+            <oc-button type="submit" variant="primary" [loading]="passwordSaving()">
+              Enregistrer le mot de passe
+            </oc-button>
+          </div>
+        </form>
+      }
+    </oc-card>
+
+    <oc-card
+      title="Authentification à deux facteurs"
+      subtitle="État de la protection supplémentaire du compte"
+    >
+      <div class="account-security__mfa-state">
+        <span>{{ mfaLabel(account.mfaMethod) }}</span>
+        <oc-status-badge
+          [status]="account.mfaMethod === 'NONE' ? 'draft' : 'confirmed'"
+          [customLabel]="account.mfaMethod === 'NONE' ? 'Non configurée' : 'Configurée'"
+        />
+      </div>
+      <p class="account-security__read-only-note">
+        Cette information est en lecture seule. Aucun parcours sécurisé d’activation, de
+        désactivation ou de récupération MFA n’est disponible actuellement.
+      </p>
+    </oc-card>
+  }
+
+  <oc-card title="Appareils et sessions" subtitle="Appareils connus et état de leurs sessions">
+    @if (devicesState() === 'loading' || devicesState() === 'notLoaded') {
+      <div class="account-security__loading" role="status" aria-busy="true">
+        <span class="oc-sr-only">Chargement des appareils actifs</span>
+        <oc-skeleton variant="block" />
+        <oc-skeleton variant="block" />
+      </div>
+    } @else if (devicesState() === 'error') {
+      <div class="account-security__state" role="alert">
+        <p>Impossible de charger les appareils actifs.</p>
+        <oc-button variant="secondary" size="small" (click)="loadDevices()">Réessayer</oc-button>
+      </div>
+    } @else if (devices().length === 0) {
+      <div class="account-security__state" role="status">
+        <p>Aucun appareil actif n’a été retourné par le serveur.</p>
+        <oc-button variant="secondary" size="small" (click)="loadDevices()">Actualiser</oc-button>
+      </div>
+    } @else {
+      <ul class="account-security__device-list">
+        @for (device of devices(); track device.deviceId) {
+          <li class="account-security__device">
+            <div class="account-security__device-main">
+              <div class="account-security__device-heading">
+                <strong>{{ device.label || 'Appareil sans nom' }}</strong>
+                @if (device.current) {
+                  <oc-status-badge status="confirmed" customLabel="Session actuelle" />
+                }
+              </div>
+              <span>{{ devicePlatformLabel(device.platform) }}</span>
+              <span>
+                @if (device.lastSeenAt) {
+                  Dernière activité le {{ device.lastSeenAt | date: 'dd/MM/yyyy, HH:mm' }}
+                } @else {
+                  Dernière activité non disponible
+                }
+                · {{ device.activeSessionCount }}
+                {{ device.activeSessionCount > 1 ? 'sessions actives' : 'session active' }}
+              </span>
+            </div>
+            @if (!device.current) {
+              <oc-button variant="secondary" size="small" (click)="requestDeviceLogout(device)">
+                Déconnecter
+              </oc-button>
+            }
+          </li>
+        }
+      </ul>
+
+      @if (deviceMutationError(); as message) {
+        <p class="account-security__error" role="alert">{{ message }}</p>
+      }
+      @if (logoutAllError(); as message) {
+        <p class="account-security__error" role="alert">{{ message }}</p>
+      }
+
+      <div class="account-security__session-actions">
+        <div>
+          <strong>Déconnexion globale</strong>
+          <p>Cette action déconnecte tous les appareils, y compris celui-ci.</p>
+        </div>
+        <oc-button variant="destructive" (click)="logoutAllConfirmOpen.set(true)">
+          Tout déconnecter
+        </oc-button>
+      </div>
+    }
+  </oc-card>
+
+  <oc-confirm-dialog
+    [open]="deviceBeingRevoked() !== null"
+    title="Déconnecter cet appareil"
+    [message]="
+      'Déconnecter ' + (deviceBeingRevoked()?.label || 'cet appareil') + ' de votre compte ?'
+    "
+    confirmLabel="Déconnecter"
+    cancelLabel="Annuler"
+    [destructive]="true"
+    [loading]="deviceRevoking()"
+    (confirm)="confirmDeviceLogout()"
+    (cancelled)="cancelDeviceLogout()"
+  />
+
+  <oc-confirm-dialog
+    [open]="logoutAllConfirmOpen()"
+    title="Déconnecter tous les appareils"
+    message="Toutes les sessions seront révoquées, y compris celle utilisée actuellement. Vous serez redirigé vers la connexion."
+    confirmLabel="Tout déconnecter"
+    cancelLabel="Annuler"
+    [destructive]="true"
+    [loading]="logoutAllPending()"
+    (confirm)="confirmLogoutAll()"
+    (cancelled)="logoutAllConfirmOpen.set(false)"
+  />
+</div>

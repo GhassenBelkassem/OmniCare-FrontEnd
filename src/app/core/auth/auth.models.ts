@@ -30,7 +30,10 @@ export function isDashboardRole(value: unknown): value is DashboardRole {
 export function dashboardRouteFor(role: DashboardRole): string {
   if (role === 'ADMIN') return '/admin';
   if (role === 'DOCTOR') return '/doctor';
-  if (role === 'PATIENT') return '/patient';
+  // Patient care is delivered by the Flutter mobile application. The legacy
+  // Angular Patient workspace is development-only and must never become the
+  // authenticated production landing page.
+  if (role === 'PATIENT') return '/forbidden';
   if (role.startsWith('CLINIC_')) return '/clinic';
   return '/forbidden';
 }

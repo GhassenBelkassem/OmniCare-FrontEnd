@@ -2,14 +2,16 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  afterNextRender,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { interval, switchMap, catchError, of } from 'rxjs';
 
 import { ApiErrorBody } from '../../../core/auth/auth.models';
@@ -24,17 +26,17 @@ import {
   OcPageHeader,
   OcTab,
 } from '../../../shared/ui';
-import { AppointmentApiService } from '../appointment-api.service';
 import { DoctorUrgentApiService } from '../doctor-urgent-api.service';
-import {
-  AppointmentDto,
-  UrgentOfferDto,
-} from '../appointment-api.models';
+import { UrgentOfferDto } from '../appointment-api.models';
 import { RealtimeService } from '../../../core/realtime/realtime.service';
-import { AppointmentDetailPanel } from '../shared/appointment-detail-panel';
 import { UrgentRequestDetailPanel } from '../shared/urgent-request-detail-panel';
 import { PatientSummaryPanel } from '../shared/patient-summary-panel';
 import { UrgentAcceptedStore } from '../urgent-accepted.store';
+import { BookingRequestDetailPanel } from '../scheduled-care/booking-request-detail-panel';
+import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
+import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
+import type { DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.models';
+import { formatScheduledInstant } from '../scheduled-care/scheduled-care-time';
 
 const URGENT_POLL_SAFETY_NET_MS = 120_000;
 const URGENT_LATITUDE = 36.8065;
@@ -46,7 +48,7 @@ type RequestTab = 'appointments' | 'urgent';
   selector: 'app-requests-page',
   imports: [
     OcPageHeader, OcTabs, OcButton, OcAvatar, OcCard, OcEmptyState,
-    OcStatusBadge, AppointmentDetailPanel, UrgentRequestDetailPanel,
+    OcStatusBadge, BookingRequestDetailPanel, UrgentRequestDetailPanel,
     PatientSummaryPanel,
   ],
   templateUrl: './requests-page.html',
@@ -55,13 +57,15 @@ type RequestTab = 'appointments' | 'urgent';
 })
 export class RequestsPage {
   private readonly router = inject(Router);
-  private readonly appointmentApi = inject(AppointmentApiService);
+  private readonly route = inject(ActivatedRoute, { optional: true });
+  private readonly scheduledCareApi = inject(ScheduledCareApiService);
+  private readonly scheduledCare = inject(ScheduledCareFacade);
   private readonly urgentApi = inject(DoctorUrgentApiService);
   private readonly acceptedStore = inject(UrgentAcceptedStore);
   private readonly realtime = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly aptPanel = viewChild.required<AppointmentDetailPanel>('aptPanel');
+  readonly requestPanel = viewChild.required<BookingRequestDetailPanel>('requestPanel');
   readonly urgentPanel = viewChild.required<UrgentRequestDetailPanel>('urgentPanel');
   readonly patientPanel = viewChild.required<PatientSummaryPanel>('patientPanel');
 
@@ -72,12 +76,12 @@ export class RequestsPage {
     { id: 'urgent', label: 'Demandes urgentes' },
   ];
 
-  readonly appointmentRequests = signal<readonly AppointmentDto[]>([]);
+  readonly appointmentRequests = signal<readonly DoctorScheduledCareItem[]>([]);
   readonly appointmentsLoading = signal(false);
   readonly appointmentsError = signal<string | null>(null);
 
   readonly pendingAppointments = computed(() =>
-    this.appointmentRequests().filter((r) => r.status === 'CONFIRMED').length,
+    this.appointmentRequests().filter((r) => r.status === 'PENDING_DOCTOR').length,
   );
 
   readonly urgentOffers = signal<readonly UrgentOfferDto[]>([]);
@@ -106,23 +110,25 @@ export class RequestsPage {
     this.realtime.urgentEvents$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.refreshUrgentOffers());
-    this.realtime.appointmentEvents$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loadAppointments());
+    let observedProjectionEpoch = this.scheduledCare.projectionInvalidationEpoch();
+    effect(() => {
+      const epoch = this.scheduledCare.projectionInvalidationEpoch();
+      if (epoch === observedProjectionEpoch) return;
+      observedProjectionEpoch = epoch;
+      this.loadAppointments(true);
+    });
+    afterNextRender(() => {
+      const requestId = this.route?.snapshot.queryParamMap.get('requestId');
+      if (requestId) this.requestPanel().openWith(requestId);
+    });
   }
 
   onTabChange(tabId: string): void {
     this.activeTab.set(tabId as RequestTab);
   }
 
-  openAptDetail(appointment: AppointmentDto): void {
-    this.aptPanel().openWith(appointment);
-  }
-
-  onAppointmentUpdated(updated: AppointmentDto): void {
-    this.appointmentRequests.update((list) =>
-      list.map((a) => (a.id === updated.id ? updated : a)),
-    );
+  openRequestDetail(request: DoctorScheduledCareItem): void {
+    if (request.requestId) this.requestPanel().openWith(request.requestId);
   }
 
   openUrgentDetail(offer: UrgentOfferDto): void {
@@ -153,22 +159,24 @@ export class RequestsPage {
     }
   }
 
-  loadAppointments(): void {
-    this.appointmentsLoading.set(true);
+  loadAppointments(silent = false): void {
+    if (!silent) this.appointmentsLoading.set(true);
     this.appointmentsError.set(null);
     const today = new Date();
     const from = new Date(today);
-    from.setDate(from.getDate() - 30);
+    from.setDate(from.getDate() - 1);
     const to = new Date(today);
-    to.setDate(to.getDate() + 30);
+    to.setDate(to.getDate() + 60);
     const fromStr = from.toISOString();
     const toStr = to.toISOString();
 
-    this.appointmentApi.listAppointments(fromStr, toStr).pipe(
+    this.scheduledCareApi.getDoctorScheduledCare(fromStr, toStr).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (appointments) => {
-        this.appointmentRequests.set(appointments);
+      next: (agenda) => {
+        this.appointmentRequests.set(
+          agenda.items.filter((item) => item.resourceType === 'BOOKING_REQUEST'),
+        );
         this.appointmentsLoading.set(false);
       },
       error: () => {
@@ -180,21 +188,6 @@ export class RequestsPage {
 
   retryAppointments(): void {
     this.loadAppointments();
-  }
-
-  cancelAppointment(appointment: AppointmentDto): void {
-    this.appointmentApi.cancelAppointment(appointment.id).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (updated) => {
-        this.appointmentRequests.update((list) =>
-          list.map((a) => (a.id === updated.id ? updated : a)),
-        );
-      },
-      error: () => {
-        this.appointmentsError.set("Impossible d'annuler le rendez-vous.");
-      },
-    });
   }
 
   acceptUrgent(offer: UrgentOfferDto): void {
@@ -261,25 +254,26 @@ export class RequestsPage {
     void this.router.navigate(['/doctor/patient', patientId]);
   }
 
-  appointmentStatusLabel(status: AppointmentDto['status']): string {
+  appointmentStatusLabel(status: string): string {
     switch (status) {
-      case 'CONFIRMED': return 'En attente';
-      case 'IN_PROGRESS': return 'En cours';
-      case 'CANCELLED': return 'Annule';
-      case 'COMPLETED': return 'Termine';
-      case 'NO_SHOW': return 'Absent';
+      case 'PENDING_DOCTOR': return 'Réponse attendue';
+      case 'PENDING_PATIENT_TIME_CONFIRMATION': return 'Réponse patient attendue';
+      case 'FULFILLED': return 'Confirmée';
+      case 'CANCELLED_BY_PATIENT': return 'Annulée par le patient';
+      case 'CANCELLED_BY_DOCTOR': return 'Refusée';
+      case 'EXPIRED': return 'Expirée';
       default: return status;
     }
   }
 
   appointmentStatusOc(
-    status: AppointmentDto['status'],
-  ): 'pending' | 'confirmed' | 'cancelled' | 'in-progress' {
+    status: string,
+  ): 'pending' | 'confirmed' | 'cancelled' | 'expired' {
     switch (status) {
-      case 'CONFIRMED': return 'pending';
-      case 'IN_PROGRESS': return 'in-progress';
-      case 'COMPLETED': return 'confirmed';
-      case 'CANCELLED': return 'cancelled';
+      case 'FULFILLED': return 'confirmed';
+      case 'EXPIRED': return 'expired';
+      case 'CANCELLED_BY_PATIENT':
+      case 'CANCELLED_BY_DOCTOR': return 'cancelled';
       default: return 'pending';
     }
   }
@@ -325,8 +319,12 @@ export class RequestsPage {
     }
   }
 
-  trackByAppointmentId(_index: number, appointment: AppointmentDto): string {
-    return appointment.id;
+  trackByAppointmentId(_index: number, request: DoctorScheduledCareItem): string {
+    return request.requestId ?? `${request.resourceType}:${request.sortAt}`;
+  }
+
+  scheduledTime(request: DoctorScheduledCareItem): string {
+    return formatScheduledInstant(request.start, request.timezone, { year: undefined });
   }
 
   trackByOfferId(_index: number, offer: UrgentOfferDto): string {

@@ -124,8 +124,13 @@
 }
 
 @keyframes urgent-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .urgent-row__info {
@@ -175,6 +180,11 @@
 .appointment-row--urgent {
   border-color: var(--oc-color-critical);
   background: var(--oc-color-critical-surface);
+}
+
+.appointment-row--pending-scheduled {
+  border-color: var(--oc-color-warning);
+  background: var(--oc-color-warning-surface);
 }
 
 .appointment-row__time {
@@ -247,8 +257,9 @@
   font-size: 13px;
   font-weight: var(--oc-font-weight-medium);
   cursor: pointer;
-  transition: border-color var(--oc-motion-fast) var(--oc-ease-standard),
-              background var(--oc-motion-fast) var(--oc-ease-standard);
+  transition:
+    border-color var(--oc-motion-fast) var(--oc-ease-standard),
+    background var(--oc-motion-fast) var(--oc-ease-standard);
 }
 
 .quick-action:hover {

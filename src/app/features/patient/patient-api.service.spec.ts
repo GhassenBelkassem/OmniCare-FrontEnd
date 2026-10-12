@@ -1,4 +1,4 @@
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
@@ -46,15 +46,15 @@ describe('PatientApiService', () => {
     request.flush([]);
   });
 
-  it('loads slots for a doctor over a window', () => {
-    service.slots('doctor-1', '2026-08-13T00:00:00.000Z', '2026-08-20T00:00:00.000Z').subscribe();
-    const request = http.expectOne(
-      (candidate) => candidate.url === '/api/v1/appointments/availability/slots',
-    );
-    expect(request.request.params.get('doctorId')).toBe('doctor-1');
-    expect(request.request.params.get('from')).toBe('2026-08-13T00:00:00.000Z');
-    expect(request.request.params.get('to')).toBe('2026-08-20T00:00:00.000Z');
-    request.flush([]);
+  it('rejects obsolete no-Cabinet slot lookup without sending a request', () => {
+    let failure!: HttpErrorResponse;
+    service
+      .slots('doctor-1', '2026-08-13T00:00:00.000Z', '2026-08-20T00:00:00.000Z')
+      .subscribe({ error: (error: HttpErrorResponse) => (failure = error) });
+
+    expect(failure.status).toBe(410);
+    expect(failure.error.message).toContain('réservation Patient Angular est retirée');
+    http.expectNone('/api/v1/appointments/availability/slots');
   });
 
   it('loads the doctor directory with the access token', () => {
@@ -76,7 +76,8 @@ describe('PatientApiService', () => {
     request.flush([]);
   });
 
-  it('books an appointment by posting the exact slot instants', () => {
+  it('rejects obsolete direct booking without sending a request', () => {
+    let failure!: HttpErrorResponse;
     service
       .book({
         doctorId: 'doctor-1',
@@ -84,16 +85,11 @@ describe('PatientApiService', () => {
         endTime: '2026-08-13T09:30:00',
         notes: 'Suivi',
       })
-      .subscribe();
-    const request = http.expectOne('/api/v1/appointments');
-    expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({
-      doctorId: 'doctor-1',
-      startTime: '2026-08-13T09:00:00',
-      endTime: '2026-08-13T09:30:00',
-      notes: 'Suivi',
-    });
-    request.flush({});
+      .subscribe({ error: (error: HttpErrorResponse) => (failure = error) });
+
+    expect(failure.status).toBe(410);
+    expect(failure.error.code).toBe('LEGACY_BOOKING_RETIRED');
+    http.expectNone('/api/v1/appointments');
   });
 
   it('loads the patient appointments for a period', () => {

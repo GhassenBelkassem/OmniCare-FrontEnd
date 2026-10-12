@@ -1,12 +1,14 @@
-import { DestroyRef, Injectable, PLATFORM_ID, computed, effect, inject, signal, type Signal } from '@angular/core';
+import { DestroyRef, Injectable, InjectionToken, PLATFORM_ID, computed, effect, inject, signal, type Signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Subject } from 'rxjs';
-import { Client, type IMessage } from '@stomp/stompjs';
+import { Client, type IMessage, type StompConfig } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { AuthTokenStore } from '../auth/auth-token.store';
 import { RUNTIME_CONFIG } from '../config/runtime-config';
 import {
   APPOINTMENTS_QUEUE,
+  NOTIFICATIONS_QUEUE,
+  SCHEDULED_CARE_QUEUE,
   URGENT_REQUESTS_QUEUE,
   type AppointmentIdData,
   type AppointmentLiveEvent,
@@ -16,13 +18,17 @@ import {
   type DoctorLocationUpdateData,
   type LiveEventEnvelope,
   type NewOfferData,
+  type NotificationInvalidation,
   type OfferAcceptedData,
   type OfferDeclinedData,
   type RequestIdData,
   type RequestMatchedData,
+  type ScheduledCareEvent,
   type UrgentLiveEvent,
   type UrgentLiveEventName,
 } from './live-event.models';
+import { isScheduledCareEvent } from './live-event.models';
+import { isNotificationInvalidation } from './live-event.models';
 
 export type RealtimeStatus = 'connecting' | 'connected' | 'disconnected';
 export type RealtimeHealth = 'live' | 'stale' | 'down';
@@ -30,6 +36,12 @@ export type RealtimeHealth = 'live' | 'stale' | 'down';
 const RECONNECT_DELAY_MS = 5_000;
 const STALE_AFTER_MS = 90_000;
 const HEALTH_TICK_MS = 15_000;
+const SCHEDULED_EVENT_DEDUPE_LIMIT = 256;
+
+export const REALTIME_CLIENT_FACTORY = new InjectionToken<(config: StompConfig) => Client>(
+  'REALTIME_CLIENT_FACTORY',
+  { providedIn: 'root', factory: () => (config) => new Client(config) },
+);
 
 const URGENT_EVENT_NAMES: ReadonlySet<string> = new Set<string>([
   'NEW_OFFER',
@@ -67,19 +79,27 @@ export class RealtimeService {
   private readonly runtimeConfig = inject(RUNTIME_CONFIG);
   private readonly tokens = inject(AuthTokenStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly clientFactory = inject(REALTIME_CLIENT_FACTORY);
 
   private client: Client | null = null;
   private readonly urgentSubject = new Subject<UrgentLiveEvent>();
   private readonly appointmentSubject = new Subject<AppointmentLiveEvent>();
+  private readonly scheduledCareSubject = new Subject<ScheduledCareEvent>();
+  private readonly notificationSubject = new Subject<NotificationInvalidation>();
+  private readonly scheduledEventIds = new Set<string>();
 
   private readonly connectedAt = signal<number | null>(null);
   /** Re-evaluation clock so `health()` recomputes without incoming events. */
   private readonly healthTick = signal(0);
 
   readonly status = signal<RealtimeStatus>('disconnected');
+  /** Increments on every successful connection, including reconnects. */
+  readonly connectionEpoch = signal(0);
   readonly lastEventAt = signal<number | null>(null);
   readonly urgentEvents$ = this.urgentSubject.asObservable();
   readonly appointmentEvents$ = this.appointmentSubject.asObservable();
+  readonly scheduledCareEvents$ = this.scheduledCareSubject.asObservable();
+  readonly notificationEvents$ = this.notificationSubject.asObservable();
 
   constructor() {
     if (!isPlatformBrowser(this.platformId)) {
@@ -143,18 +163,25 @@ export class RealtimeService {
     }
 
     const url = `${this.runtimeConfig.apiBaseUrl}/ws`;
-    const client = new Client({
+    const client = this.clientFactory({
       webSocketFactory: () => new SockJS(url) as unknown as WebSocket,
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: RECONNECT_DELAY_MS,
       onConnect: () => {
         this.connectedAt.set(Date.now());
         this.status.set('connected');
+        this.connectionEpoch.update((value) => value + 1);
         client.subscribe(URGENT_REQUESTS_QUEUE, (message) =>
           this.onMessage(message, this.urgentSubject, URGENT_EVENT_NAMES),
         );
         client.subscribe(APPOINTMENTS_QUEUE, (message) =>
           this.onMessage(message, this.appointmentSubject, APPOINTMENT_EVENT_NAMES),
+        );
+        client.subscribe(SCHEDULED_CARE_QUEUE, (message) =>
+          this.onScheduledCareMessage(message),
+        );
+        client.subscribe(NOTIFICATIONS_QUEUE, (message) =>
+          this.onNotificationMessage(message),
         );
       },
       onWebSocketClose: () => {
@@ -208,6 +235,36 @@ export class RealtimeService {
       timestamp: envelope.timestamp,
     } as T);
   }
+
+  private onScheduledCareMessage(message: IMessage): void {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(message.body) as unknown;
+    } catch {
+      return;
+    }
+    if (!isScheduledCareEvent(parsed) || this.scheduledEventIds.has(parsed.eventId)) return;
+
+    this.scheduledEventIds.add(parsed.eventId);
+    if (this.scheduledEventIds.size > SCHEDULED_EVENT_DEDUPE_LIMIT) {
+      const oldest = this.scheduledEventIds.values().next().value;
+      if (typeof oldest === 'string') this.scheduledEventIds.delete(oldest);
+    }
+    this.lastEventAt.set(Date.now());
+    this.scheduledCareSubject.next(parsed);
+  }
+
+  private onNotificationMessage(message: IMessage): void {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(message.body) as unknown;
+    } catch {
+      return;
+    }
+    if (!isNotificationInvalidation(parsed)) return;
+    this.lastEventAt.set(Date.now());
+    this.notificationSubject.next(parsed);
+  }
 }
 
 export type {
@@ -224,3 +281,4 @@ export type {
   UrgentLiveEvent,
 };
 export type { AppointmentLiveEventName, UrgentLiveEventName };
+export type { ScheduledCareEvent };

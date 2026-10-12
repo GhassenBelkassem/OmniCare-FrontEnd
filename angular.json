@@ -50,10 +50,7 @@
             "security": {
               "allowedHosts": []
             },
-            "allowedCommonJsDependencies": [
-              "@stomp/stompjs",
-              "sockjs-client"
-            ]
+            "allowedCommonJsDependencies": ["@stomp/stompjs", "sockjs-client"]
           },
           "configurations": {
             "production": {

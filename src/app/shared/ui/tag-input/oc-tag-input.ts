@@ -1,9 +1,19 @@
-import { ChangeDetectionStrategy, Component, ElementRef, forwardRef, input, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  forwardRef,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 const MAX_TAGS_DEFAULT = 50;
 const MAX_TAG_LENGTH_DEFAULT = 100;
+
+export type OcTagInputTone = 'default' | 'emerald' | 'teal' | 'aqua' | 'neutral';
 
 /**
  * Reusable chip/tag input for ordered string lists (languages, specialities...).
@@ -13,18 +23,21 @@ const MAX_TAG_LENGTH_DEFAULT = 100;
 @Component({
   selector: 'oc-tag-input',
   imports: [NzIconModule],
-  providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => OcTagInput), multi: true }],
+  providers: [
+    { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => OcTagInput), multi: true },
+  ],
   template: `
     <div
       class="oc-tag-input"
       [class.oc-tag-input--invalid]="invalid()"
       [class.oc-tag-input--disabled]="isDisabled()"
+      [class.oc-tag-input--emerald]="tone() === 'emerald'"
+      [class.oc-tag-input--teal]="tone() === 'teal'"
+      [class.oc-tag-input--aqua]="tone() === 'aqua'"
+      [class.oc-tag-input--neutral]="tone() === 'neutral'"
     >
       <div class="oc-tag-input__chips">
-        <span
-          class="oc-tag-input__tag-list"
-          [attr.role]="value().length > 0 ? 'list' : null"
-        >
+        <span class="oc-tag-input__tag-list" [attr.role]="value().length > 0 ? 'list' : null">
           @for (tag of value(); track tag) {
             <span class="oc-tag-input__chip" role="listitem">
               {{ tag }}
@@ -70,6 +83,7 @@ const MAX_TAG_LENGTH_DEFAULT = 100;
 export class OcTagInput implements ControlValueAccessor {
   readonly controlId = input.required<string>();
   readonly placeholder = input('Ajouter');
+  readonly tone = input<OcTagInputTone>('default');
   readonly invalid = input(false);
   readonly disabled = input(false);
   readonly maxTags = input(MAX_TAGS_DEFAULT);
@@ -84,9 +98,13 @@ export class OcTagInput implements ControlValueAccessor {
   private onChange: (value: readonly string[]) => void = () => undefined;
   private onTouchedCallback: () => void = () => undefined;
 
-  protected atCapacity(): boolean { return this.value().length >= this.maxTags(); }
+  protected atCapacity(): boolean {
+    return this.value().length >= this.maxTags();
+  }
 
-  protected isDisabled(): boolean { return this.disabled() || this.controlDisabled(); }
+  protected isDisabled(): boolean {
+    return this.disabled() || this.controlDisabled();
+  }
 
   protected onTextInput(event: Event): void {
     this.text.set((event.target as HTMLInputElement).value);
@@ -149,7 +167,9 @@ export class OcTagInput implements ControlValueAccessor {
       return merged;
     });
     if (added > 0) {
-      this.inputStatus.set(`${added} element${added > 1 ? 's' : ''} ajoute${added > 1 ? 's' : ''}.`);
+      this.inputStatus.set(
+        `${added} element${added > 1 ? 's' : ''} ajoute${added > 1 ? 's' : ''}.`,
+      );
       this.emit();
     }
   }
@@ -159,7 +179,9 @@ export class OcTagInput implements ControlValueAccessor {
     this.onTouchedCallback();
   }
 
-  protected onTouched(): void { this.onTouchedCallback(); }
+  protected onTouched(): void {
+    this.onTouchedCallback();
+  }
 
   writeValue(value: readonly string[] | null | undefined): void {
     this.value.set(value ?? []);
@@ -167,9 +189,15 @@ export class OcTagInput implements ControlValueAccessor {
     this.clearTextInput();
   }
 
-  registerOnChange(onChange: (value: readonly string[]) => void): void { this.onChange = onChange; }
-  registerOnTouched(onTouched: () => void): void { this.onTouchedCallback = onTouched; }
-  setDisabledState(disabled: boolean): void { this.controlDisabled.set(disabled); }
+  registerOnChange(onChange: (value: readonly string[]) => void): void {
+    this.onChange = onChange;
+  }
+  registerOnTouched(onTouched: () => void): void {
+    this.onTouchedCallback = onTouched;
+  }
+  setDisabledState(disabled: boolean): void {
+    this.controlDisabled.set(disabled);
+  }
   focus(): void {
     const native = this.nativeInput();
     if (native !== undefined) native.nativeElement.focus();

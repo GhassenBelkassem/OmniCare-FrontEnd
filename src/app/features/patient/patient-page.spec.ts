@@ -287,48 +287,31 @@ describe('PatientPage', () => {
     expect(page.filteredDoctors().length).toBe(3);
   });
 
-  it('requires a slot before confirming a booking', () => {
+  it('reports that the development-only legacy availability flow is retired', () => {
     const { page, http } = create({ tab: 'doctors' });
     flushInitial(http);
     page.startBooking(page.doctors()[0]);
-    http
-      .expectOne((request) => request.url === '/api/v1/appointments/availability/slots')
-      .flush([{ start: `${todayIso()}T09:00:00`, end: `${todayIso()}T09:30:00` }]);
 
     expect(page.bookingDoctor()?.id).toBe('d-1');
-    expect(page.visibleBookingSlots().length).toBe(1);
-
-    page.bookAppointment();
-    expect(page.bookingError()).toBe('Selectionnez un creneau avant de confirmer.');
+    expect(page.visibleBookingSlots()).toEqual([]);
+    expect(page.slotsError()).toContain('réservation Patient Angular est retirée');
+    http.expectNone('/api/v1/appointments/availability/slots');
   });
 
-  it('books an appointment, closes the panel and switches to appointments', () => {
+  it('never posts a direct appointment from the obsolete development page', () => {
     const { page, http } = create({ tab: 'doctors' });
     flushInitial(http);
-    page.startBooking(page.doctors()[0]);
     const slot = { start: `${todayIso()}T09:00:00`, end: `${todayIso()}T09:30:00` };
-    http
-      .expectOne((request) => request.url === '/api/v1/appointments/availability/slots')
-      .flush([slot]);
-    page.selectBookingSlot(page.visibleBookingSlots()[0]);
+    page.bookingDoctor.set(page.doctors()[0]);
+    page.bookingSlot.set(slot);
     page.bookingNotes.set('Suivi');
 
     page.bookAppointment();
-    const book = http.expectOne('/api/v1/appointments');
-    expect(book.request.method).toBe('POST');
-    expect(book.request.body).toEqual({
-      doctorId: 'd-1',
-      startTime: slot.start,
-      endTime: slot.end,
-      notes: 'Suivi',
-    });
-    book.flush(bookedAppointment('a-9', todayIso(), '09:00'));
-    http.expectOne((request) => request.url === '/api/v1/appointments').flush(APPOINTMENTS);
 
-    expect(page.bookingDoctor()).toBeNull();
-    expect(page.bookingMessage()).toContain('confirme');
-    expect(page.activeTab()).toBe('appointments');
-    expect(page.appointments()[0].notes).toBe('Suivi');
+    http.expectNone('/api/v1/appointments');
+    expect(page.bookingDoctor()?.id).toBe('d-1');
+    expect(page.bookingMessage()).toBeNull();
+    expect(page.bookingError()).toContain('réservation Patient Angular est retirée');
   });
 
   it('lists only booked appointments in the upcoming period', () => {

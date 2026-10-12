@@ -28,12 +28,19 @@ describe('application routes', () => {
       'platform-admin',
       'doctor',
       'clinic',
-      'patient',
       '',
       '**',
     ]);
     expect(children.find((route) => route.path === 'platform-admin')?.redirectTo).toBe('admin');
     expect(children.find((route) => route.path === '')?.redirectTo).toEqual(expect.any(Function));
     expect(children.find((route) => route.path === '**')?.redirectTo).toBe('login');
+  });
+
+  it('keeps the legacy patient workspace out of production and explicit in development', () => {
+    const productionShell = createAppRoutes(false).find((route) => route.path === '');
+    const developmentShell = createAppRoutes(true).find((route) => route.path === '');
+
+    expect(productionShell?.children?.some((route) => route.path === 'patient')).toBe(false);
+    expect(developmentShell?.children?.some((route) => route.path === 'patient')).toBe(true);
   });
 });

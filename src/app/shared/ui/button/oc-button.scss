@@ -30,8 +30,8 @@
 }
 
 .oc-button--large { min-height: 44px; padding-inline: var(--oc-space-5); }
-.oc-button--primary { border-color: var(--oc-color-brand-primary); background: var(--oc-color-brand-primary); color: var(--oc-color-text-inverse); }
-.oc-button--primary:hover:not(:disabled) { border-color: var(--oc-color-brand-primary-hover); background: var(--oc-color-brand-primary-hover); }
+.oc-button--primary { border-color: var(--oc-color-brand-primary); background: var(--oc-color-brand-primary); color: var(--oc-color-text-primary); }
+.oc-button--primary:hover:not(:disabled) { border-color: var(--oc-color-brand-primary-hover); background: var(--oc-color-brand-primary-hover); color: var(--oc-color-text-inverse); }
 .oc-button--secondary,
 .oc-button--outline { border-color: var(--oc-color-border-default); background: var(--oc-color-surface-card); color: var(--oc-color-text-primary); }
 .oc-button--secondary:hover:not(:disabled),

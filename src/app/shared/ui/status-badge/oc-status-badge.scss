@@ -1,21 +1,27 @@
 .oc-status {
   display: inline-flex;
   align-items: center;
-  gap: var(--oc-space-2);
+  gap: var(--oc-space-1);
   width: fit-content;
-  padding: var(--oc-space-1) var(--oc-space-3);
+  min-height: 22px;
+  padding: 2px var(--oc-space-2);
+  border: 1px solid var(--oc-color-border-subtle);
   border-radius: var(--oc-radius-pill);
   background: var(--oc-color-neutral-surface);
   color: var(--oc-color-neutral);
   font-size: 12px;
-  font-weight: var(--oc-font-weight-semibold);
+  font-weight: var(--oc-font-weight-medium);
   line-height: 16px;
   white-space: nowrap;
 }
 
+.oc-status__label {
+  display: inline;
+}
+
 .oc-status__dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: var(--oc-radius-pill);
   background: currentColor;
 }
@@ -35,4 +41,14 @@
 .oc-status--information {
   background: var(--oc-color-information-surface);
   color: var(--oc-color-information);
+}
+
+.oc-status--strong {
+  border-color: currentColor;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.oc-status--strong .oc-status__dot {
+  width: 7px;
+  height: 7px;
 }

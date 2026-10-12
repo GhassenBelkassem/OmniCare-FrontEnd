@@ -18,30 +18,27 @@
       </div>
     } @else {
       <div class="requests-page__list">
-        @for (appointment of appointmentRequests(); track trackByAppointmentId($index, appointment)) {
-          <oc-card [title]="appointment.patientId" [compact]="true">
-            <article class="request-row" (click)="openAptDetail(appointment)">
+        @for (request of appointmentRequests(); track trackByAppointmentId($index, request)) {
+          <oc-card [title]="request.subject.displayName" [compact]="true">
+            <article class="request-row" (click)="openRequestDetail(request)">
               <div class="request-row__main">
-                <oc-avatar [name]="appointment.patientId" size="small" />
+                <oc-avatar [name]="request.subject.displayName" size="small" />
                 <div class="request-row__info">
                   <span class="request-row__reason">
-                    {{ appointment.notes || 'Consultation' }}
+                    {{ request.cabinet.name }}
                   </span>
-                  <time class="request-row__date">{{ appointment.startTime }}</time>
+                  <time class="request-row__date">{{ scheduledTime(request) }}</time>
                   <div class="request-row__meta">
-                    <span class="request-row__source">{{ appointment.source }}</span>
+                    <span class="request-row__source">{{ request.subject.relationship || 'Patient' }}</span>
                   </div>
                 </div>
-                <oc-status-badge [status]="appointmentStatusOc(appointment.status)" />
+                <oc-status-badge [status]="appointmentStatusOc(request.status)" [customLabel]="appointmentStatusLabel(request.status)" />
               </div>
 
               <div class="request-row__actions" (click)="$event.stopPropagation()">
-                @if (appointment.status === 'BOOKED') {
-                  <oc-button variant="primary" size="small" (click)="startConsultation()">
-                    Consultation
-                  </oc-button>
-                  <oc-button variant="secondary" size="small" (click)="cancelAppointment(appointment)">
-                    Annuler
+                @if (request.availableActions.length > 0) {
+                  <oc-button variant="primary" size="small" (click)="openRequestDetail(request)">
+                    Répondre
                   </oc-button>
                 }
               </div>
@@ -196,7 +193,7 @@
     }
   }
 
-  <app-appointment-detail-panel #aptPanel (updated)="onAppointmentUpdated($event)" />
+  <app-booking-request-detail-panel #requestPanel />
   <app-urgent-request-detail-panel #urgentPanel (accepted)="onUrgentAccepted($event)" />
   <app-patient-summary-panel #patientPanel />
 </section>

@@ -1,0 +1,96 @@
+<section class="coverage-settings" aria-label="Couverture et paiement du cabinet">
+  <header class="coverage-settings__header">
+    <span class="coverage-settings__section-icon" aria-hidden="true">
+      <oc-icon name="coverage" />
+    </span>
+    <div class="coverage-settings__heading-copy">
+      <h3>Couverture &amp; paiement</h3>
+      <p>Déclarez les modalités acceptées dans ce cabinet.</p>
+    </div>
+  </header>
+
+  @if (error(); as message) {
+    <div class="coverage-settings__notice coverage-settings__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      @if (authenticationError()) {
+        <oc-button variant="secondary" size="small" (click)="reAuthenticate()">
+          Se reconnecter
+        </oc-button>
+      } @else if (conflict() || revision() === null) {
+        <oc-button variant="secondary" size="small" (click)="load()">
+          Recharger les données
+        </oc-button>
+      }
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="coverage-settings__loading" role="status" aria-label="Chargement de la couverture">
+      <oc-skeleton variant="block" />
+      <oc-skeleton variant="block" />
+      <oc-skeleton variant="block" />
+    </div>
+  } @else if (revision() !== null) {
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div class="coverage-settings__groups">
+        <fieldset class="coverage-settings__group">
+          <legend [id]="'coverage-cnam-' + locationId() + '-label'">CNAM</legend>
+          <oc-radio-group
+            [name]="'coverage-cnam-' + locationId()"
+            [labelledBy]="'coverage-cnam-' + locationId() + '-label'"
+            [describedBy]="'coverage-note-' + locationId()"
+            [options]="choices"
+            formControlName="cnam"
+          />
+        </fieldset>
+
+        <fieldset class="coverage-settings__group">
+          <legend [id]="'coverage-insurance-' + locationId() + '-label'">Assurance privée</legend>
+          <oc-radio-group
+            [name]="'coverage-insurance-' + locationId()"
+            [labelledBy]="'coverage-insurance-' + locationId() + '-label'"
+            [describedBy]="'coverage-note-' + locationId()"
+            [options]="choices"
+            formControlName="privateInsurance"
+          />
+        </fieldset>
+
+        <fieldset class="coverage-settings__group">
+          <legend [id]="'coverage-self-pay-' + locationId() + '-label'">Paiement direct</legend>
+          <oc-radio-group
+            [name]="'coverage-self-pay-' + locationId()"
+            [labelledBy]="'coverage-self-pay-' + locationId() + '-label'"
+            [describedBy]="'coverage-note-' + locationId()"
+            [options]="choices"
+            formControlName="selfPay"
+          />
+        </fieldset>
+      </div>
+
+      <div class="coverage-settings__truth-note" [id]="'coverage-note-' + locationId()">
+        <oc-icon name="info" />
+        <p>
+          Informations déclarées par le professionnel. Elles ne constituent ni une attestation de
+          conventionnement CNAM, ni une vérification OmniCare, ni une garantie de remboursement.
+        </p>
+      </div>
+
+      <footer class="coverage-settings__actions">
+        @if (success(); as message) {
+          <span role="status">{{ message }}</span>
+        } @else if (form.dirty) {
+          <span>Modifications non enregistrées.</span>
+        }
+        <oc-button
+          type="submit"
+          variant="primary"
+          size="small"
+          [loading]="saving()"
+          [disabled]="!form.dirty"
+        >
+          Enregistrer la couverture
+        </oc-button>
+      </footer>
+    </form>
+  }
+</section>

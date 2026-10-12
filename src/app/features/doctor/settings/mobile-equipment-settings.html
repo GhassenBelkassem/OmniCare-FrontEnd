@@ -1,0 +1,90 @@
+<section class="equipment-settings" aria-labelledby="mobile-equipment-title">
+  <header class="equipment-settings__header">
+    <span class="equipment-settings__section-icon" aria-hidden="true">
+      <oc-icon name="equipment" />
+    </span>
+    <div class="equipment-settings__heading-copy">
+      <h3 id="mobile-equipment-title">Matériel mobile</h3>
+      <p>Équipements que vous pouvez emporter lors de vos déplacements.</p>
+    </div>
+  </header>
+
+  <p class="equipment-settings__context">
+    Sélection de disponibilité uniquement — aucun stock, quantité ou suivi d’inventaire.
+  </p>
+
+  @if (error(); as message) {
+    <div class="equipment-settings__notice equipment-settings__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      @if (authenticationError()) {
+        <oc-button variant="secondary" size="small" (click)="reAuthenticate()">
+          Se reconnecter
+        </oc-button>
+      } @else if (conflict()) {
+        <oc-button variant="secondary" size="small" (click)="reload()">
+          Recharger les données
+        </oc-button>
+      }
+    </div>
+  }
+
+  @if (options().length === 0) {
+    <p class="equipment-settings__empty" role="status">
+      Aucun matériel portable n’est actuellement disponible dans le catalogue.
+    </p>
+  } @else {
+    <fieldset class="equipment-settings__fieldset">
+      <legend class="oc-sr-only">Matériel mobile disponible</legend>
+      @for (definition of options(); track definition.code) {
+        <div
+          class="equipment-settings__option"
+          [class.equipment-settings__option--disabled]="
+            !definition.active && !isSelected(definition.code)
+          "
+        >
+          <oc-checkbox
+            [controlId]="'mobile-equipment-' + definition.code"
+            [labelledBy]="'mobile-equipment-' + definition.code + '-label'"
+            [describedBy]="'mobile-equipment-' + definition.code + '-description'"
+            [checked]="isSelected(definition.code)"
+            [disabled]="saving() || (!definition.active && !isSelected(definition.code))"
+            (checkedChange)="toggle(definition)"
+          />
+          <span class="equipment-settings__copy">
+            <strong
+              class="equipment-settings__label"
+              [id]="'mobile-equipment-' + definition.code + '-label'"
+              >{{ definition.displayName }}</strong
+            >
+            <span
+              class="equipment-settings__description"
+              [id]="'mobile-equipment-' + definition.code + '-description'"
+            >
+              Matériel portable
+              @if (!definition.active) {
+                · Indisponible pour une nouvelle sélection
+              }
+            </span>
+          </span>
+        </div>
+      }
+    </fieldset>
+  }
+
+  <footer class="equipment-settings__actions">
+    @if (success(); as message) {
+      <span role="status">{{ message }}</span>
+    } @else if (dirty()) {
+      <span>Modifications non enregistrées.</span>
+    }
+    <oc-button
+      variant="primary"
+      size="small"
+      [loading]="saving()"
+      [disabled]="!dirty()"
+      (click)="save()"
+    >
+      Enregistrer le matériel mobile
+    </oc-button>
+  </footer>
+</section>

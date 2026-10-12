@@ -8,9 +8,7 @@ import {
   AvailabilityExceptionDto,
   AvailabilityExceptionRequestDto,
   AvailabilityRuleDto,
-  BookingRequestDto,
   DoctorStatsDto,
-  SlotDto,
 } from './appointment-api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -39,15 +37,6 @@ export class AppointmentApiService {
 
   deleteException(id: string): Observable<void> {
     return this.http.delete<void>(`${this.availabilityUrl}/exceptions/${id}`);
-  }
-
-  listSlots(doctorId: string, from: string, to: string): Observable<readonly SlotDto[]> {
-    const params = new HttpParams().set('doctorId', doctorId).set('from', from).set('to', to);
-    return this.http.get<readonly SlotDto[]>(`${this.availabilityUrl}/slots`, { params });
-  }
-
-  book(input: BookingRequestDto): Observable<AppointmentDto> {
-    return this.http.post<AppointmentDto>(this.baseUrl, input);
   }
 
   listAppointments(from: string, to: string): Observable<readonly AppointmentDto[]> {

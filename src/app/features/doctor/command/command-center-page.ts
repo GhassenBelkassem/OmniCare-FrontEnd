@@ -27,20 +27,34 @@ import {
   AvailabilityRuleDto,
   DoctorStatsDto,
   UrgentOfferDto,
-  } from '../appointment-api.models';
-  import { AppointmentDetailPanel } from '../shared/appointment-detail-panel';
+} from '../appointment-api.models';
+import { AppointmentDetailPanel } from '../shared/appointment-detail-panel';
 import { UrgentRequestDetailPanel } from '../shared/urgent-request-detail-panel';
 import { PatientSummaryPanel } from '../shared/patient-summary-panel';
 import { UrgentAcceptedStore } from '../urgent-accepted.store';
+import { BookingRequestDetailPanel } from '../scheduled-care/booking-request-detail-panel';
+import { ScheduledAppointmentDetailPanel } from '../scheduled-care/scheduled-appointment-detail-panel';
+import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
+import type { DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.models';
+import { formatScheduledInstant } from '../scheduled-care/scheduled-care-time';
 
 const URGENT_POLL_INTERVAL_MS = 15_000;
 
 @Component({
   selector: 'app-command-center-page',
   imports: [
-    NzIconModule, OcButton, OcCard, OcMetricCard, OcEmptyState,
-    OcAvatar, OcStatusBadge, AppointmentDetailPanel, UrgentRequestDetailPanel,
+    NzIconModule,
+    OcButton,
+    OcCard,
+    OcMetricCard,
+    OcEmptyState,
+    OcAvatar,
+    OcStatusBadge,
+    AppointmentDetailPanel,
+    UrgentRequestDetailPanel,
     PatientSummaryPanel,
+    BookingRequestDetailPanel,
+    ScheduledAppointmentDetailPanel,
   ],
   templateUrl: './command-center-page.html',
   styleUrl: './command-center-page.scss',
@@ -51,11 +65,16 @@ export class CommandCenterPage {
   private readonly api = inject(AppointmentApiService);
   private readonly urgentApi = inject(DoctorUrgentApiService);
   private readonly acceptedStore = inject(UrgentAcceptedStore);
+  readonly scheduledCare = inject(ScheduledCareFacade);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly aptPanel = viewChild.required<AppointmentDetailPanel>('aptPanel');
   readonly urgentPanel = viewChild.required<UrgentRequestDetailPanel>('urgentPanel');
   readonly patientPanel = viewChild.required<PatientSummaryPanel>('patientPanel');
+  readonly scheduledRequestPanel =
+    viewChild.required<BookingRequestDetailPanel>('scheduledRequestPanel');
+  readonly scheduledAppointmentPanel =
+    viewChild.required<ScheduledAppointmentDetailPanel>('scheduledAppointmentPanel');
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -69,6 +88,10 @@ export class CommandCenterPage {
   readonly availabilityRules = signal<readonly AvailabilityRuleDto[]>([]);
 
   readonly noAvailability = computed(() => this.availabilityRules().length === 0);
+  readonly pendingScheduledRequest = computed(() => this.scheduledCare.home()?.nextPendingRequest ?? null);
+  readonly nextScheduledAppointment = computed(
+    () => this.scheduledCare.home()?.nextConfirmedAppointment ?? null,
+  );
 
   readonly stats = computed(() => {
     const s = this.todayStats();
@@ -76,6 +99,11 @@ export class CommandCenterPage {
       { value: s?.consultations ?? 0, label: "Consultations aujourd'hui", icon: 'medicine-box' },
       { value: s?.upcoming ?? 0, label: 'A venir', icon: 'clock-circle' },
       { value: s?.finished ?? 0, label: 'Terminees', icon: 'check-circle' },
+      {
+        value: this.scheduledCare.home()?.pendingRequestCount ?? 0,
+        label: 'Demandes planifiées',
+        icon: 'inbox',
+      },
       { value: this.urgentOffers().length, label: 'Demandes urgentes', icon: 'exclamation-circle' },
     ];
   });
@@ -88,6 +116,7 @@ export class CommandCenterPage {
 
   constructor() {
     this.loadData();
+    this.scheduledCare.loadHome();
     this.startUrgentPolling();
   }
 
@@ -96,9 +125,7 @@ export class CommandCenterPage {
   }
 
   onAppointmentUpdated(updated: AppointmentDto): void {
-    this.appointments.update((list) =>
-      list.map((a) => (a.id === updated.id ? updated : a)),
-    );
+    this.appointments.update((list) => list.map((a) => (a.id === updated.id ? updated : a)));
     this.loadData();
   }
 
@@ -116,12 +143,18 @@ export class CommandCenterPage {
 
   appointmentStatusLabel(status: AppointmentDto['status']): string {
     switch (status) {
-      case 'CONFIRMED': return 'En attente';
-      case 'IN_PROGRESS': return 'En cours';
-      case 'CANCELLED': return 'Annule';
-      case 'COMPLETED': return 'Termine';
-      case 'NO_SHOW': return 'Absent';
-      default: return status;
+      case 'CONFIRMED':
+        return 'En attente';
+      case 'IN_PROGRESS':
+        return 'En cours';
+      case 'CANCELLED':
+        return 'Annule';
+      case 'COMPLETED':
+        return 'Termine';
+      case 'NO_SHOW':
+        return 'Absent';
+      default:
+        return status;
     }
   }
 
@@ -129,11 +162,16 @@ export class CommandCenterPage {
     status: AppointmentDto['status'],
   ): 'pending' | 'confirmed' | 'cancelled' | 'in-progress' {
     switch (status) {
-      case 'CONFIRMED': return 'pending';
-      case 'IN_PROGRESS': return 'in-progress';
-      case 'COMPLETED': return 'confirmed';
-      case 'CANCELLED': return 'cancelled';
-      default: return 'pending';
+      case 'CONFIRMED':
+        return 'pending';
+      case 'IN_PROGRESS':
+        return 'in-progress';
+      case 'COMPLETED':
+        return 'confirmed';
+      case 'CANCELLED':
+        return 'cancelled';
+      default:
+        return 'pending';
     }
   }
 
@@ -150,6 +188,23 @@ export class CommandCenterPage {
   appointmentDate(apt: AppointmentDto): string {
     const start = new Date(apt.startTime);
     return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short' }).format(start);
+  }
+
+  scheduledTime(record: DoctorScheduledCareItem): string {
+    return formatScheduledInstant(record.start, record.timezone, {
+      weekday: 'short',
+      year: undefined,
+    });
+  }
+
+  openScheduledRequest(request: DoctorScheduledCareItem): void {
+    if (request.requestId) this.scheduledRequestPanel().openWith(request.requestId);
+  }
+
+  openScheduledAppointment(appointment: DoctorScheduledCareItem): void {
+    if (appointment.appointmentId) {
+      this.scheduledAppointmentPanel().openWith(appointment.appointmentId);
+    }
   }
 
   trackByAppointmentId(_index: number, appointment: AppointmentDto): string {
@@ -229,9 +284,7 @@ export class CommandCenterPage {
     this.urgentOffers.update((current) => {
       const freshAccepted = incoming.filter((o) => o.status === 'ACCEPTED');
       const optimisticAccepted = current.filter(
-        (o) =>
-          o.status === 'ACCEPTED' &&
-          !freshAccepted.some((a) => a.offerId === o.offerId),
+        (o) => o.status === 'ACCEPTED' && !freshAccepted.some((a) => a.offerId === o.offerId),
       );
       const pending = incoming.filter((o) => o.status === 'PENDING');
       return [...freshAccepted, ...optimisticAccepted, ...pending];
@@ -241,9 +294,7 @@ export class CommandCenterPage {
   onUrgentAccepted(offer: UrgentOfferDto): void {
     this.acceptedStore.add(offer);
     this.urgentOffers.update((offers) =>
-      offers.map((o) =>
-        o.offerId === offer.offerId ? { ...o, status: 'ACCEPTED' as const } : o,
-      ),
+      offers.map((o) => (o.offerId === offer.offerId ? { ...o, status: 'ACCEPTED' as const } : o)),
     );
   }
 

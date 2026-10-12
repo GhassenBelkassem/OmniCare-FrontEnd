@@ -1,9 +1,17 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
+export type OcCardTone = 'neutral' | 'information' | 'success';
+
 @Component({
   selector: 'oc-card',
   template: `
-    <section class="oc-card" [class.oc-card--compact]="compact()" [attr.aria-label]="title()">
+    <section
+      class="oc-card"
+      [class.oc-card--compact]="compact()"
+      [class.oc-card--information]="tone() === 'information'"
+      [class.oc-card--success]="tone() === 'success'"
+      [attr.aria-label]="title()"
+    >
       <header class="oc-card__header">
         <div class="oc-card__header-main">
           <h2 class="oc-card__title">{{ title() }}</h2>
@@ -26,5 +34,6 @@ export class OcCard {
   readonly title = input.required<string>();
   readonly subtitle = input<string>();
   readonly compact = input(false);
+  readonly tone = input<OcCardTone>('neutral');
   hasFooter = false;
 }

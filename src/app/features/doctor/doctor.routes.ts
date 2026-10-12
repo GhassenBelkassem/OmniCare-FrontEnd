@@ -17,7 +17,8 @@ export const DOCTOR_ROUTES: Routes = [
       },
       {
         path: 'command',
-        loadComponent: () => import('./command/command-center-page').then((c) => c.CommandCenterPage),
+        loadComponent: () =>
+          import('./command/command-center-page').then((c) => c.CommandCenterPage),
         title: 'Accueil | OmniCare',
       },
       {
@@ -27,7 +28,8 @@ export const DOCTOR_ROUTES: Routes = [
       },
       {
         path: 'patient/:id',
-        loadComponent: () => import('./patient-chart/patient-chart-page').then((c) => c.PatientChartPage),
+        loadComponent: () =>
+          import('./patient-chart/patient-chart-page').then((c) => c.PatientChartPage),
         title: 'Dossier patient | OmniCare',
       },
       {
@@ -37,24 +39,27 @@ export const DOCTOR_ROUTES: Routes = [
       },
       {
         path: 'waiting-room',
-        loadComponent: () => import('./waiting-room/waiting-room-page').then((c) => c.WaitingRoomPage),
+        loadComponent: () =>
+          import('./waiting-room/waiting-room-page').then((c) => c.WaitingRoomPage),
         title: "Salle d'attente | OmniCare",
       },
       {
         path: 'consultation/:id',
         canDeactivate: [unsavedChangesGuard],
-        loadComponent: () => import('./consultation/consultation-page').then((c) => c.ConsultationPage),
+        loadComponent: () =>
+          import('./consultation/consultation-page').then((c) => c.ConsultationPage),
         title: 'Consultation | OmniCare',
       },
       {
         path: 'prescriptions',
-        loadComponent: () => import('./prescriptions/prescriptions-page').then((c) => c.PrescriptionsPage),
+        loadComponent: () =>
+          import('./prescriptions/prescriptions-page').then((c) => c.PrescriptionsPage),
         title: 'Prescriptions | OmniCare',
       },
       {
         path: 'results',
         loadComponent: () => import('./results/results-page').then((c) => c.ResultsPage),
-        title: 'Resultats & Suivi | OmniCare',
+        title: 'Résultats et suivi | OmniCare',
       },
       {
         path: 'requests',
@@ -62,8 +67,15 @@ export const DOCTOR_ROUTES: Routes = [
         title: 'Demandes | OmniCare',
       },
       {
+        path: 'urgent-readiness',
+        loadComponent: () =>
+          import('./urgent-readiness/urgent-readiness-page').then((c) => c.UrgentReadinessPage),
+        title: 'Préparation aux urgences | OmniCare',
+      },
+      {
         path: 'communication',
-        loadComponent: () => import('./communication/communication-page').then((c) => c.CommunicationPage),
+        loadComponent: () =>
+          import('./communication/communication-page').then((c) => c.CommunicationPage),
         title: 'Communication | OmniCare',
       },
       {
@@ -84,7 +96,7 @@ export const DOCTOR_ROUTES: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./settings/settings-page').then((c) => c.SettingsPage),
-        title: 'Parametres | OmniCare',
+        title: 'Paramètres | OmniCare',
       },
     ],
   },

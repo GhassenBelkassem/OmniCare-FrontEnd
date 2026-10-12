@@ -31,7 +31,10 @@ describe('PracticeLocationService', () => {
   });
 
   afterEach(() => {
-    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: originalGeolocation });
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: originalGeolocation,
+    });
   });
 
   it('resolves the current coordinates on success', async () => {

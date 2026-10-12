@@ -1,15 +1,26 @@
 <div class="doctor-layout">
   <oc-sidebar
+    class="doctor-shell__desktop-sidebar"
     [items]="navigation"
     [activeId]="activeNav()"
     [(collapsed)]="sidebarCollapsed"
     [profile]="sidebarProfile"
+    [labels]="sidebarLabels"
+    [expandedGroups]="expandedNavigationGroups()"
   ></oc-sidebar>
 
   <div class="doctor-shell">
     <header class="topbar">
       <div class="topbar__left">
-        <button type="button" class="topbar-button" (click)="openLookup()">
+        <button
+          type="button"
+          class="topbar-menu"
+          aria-label="Ouvrir la navigation Docteur"
+          (click)="mobileNavigationOpen.set(true)"
+        >
+          <oc-icon name="menu" />
+        </button>
+        <button type="button" class="topbar-button topbar-button--lookup" (click)="openLookup()">
           <nz-icon nzType="search" aria-hidden="true" />
           <span>Rechercher un patient</span>
         </button>
@@ -18,7 +29,7 @@
         <span
           class="topbar__realtime topbar__realtime--{{ realtimeHealth() }}"
           role="status"
-          [attr.aria-label]="'Connexion temps reel : ' + realtimeLabel()"
+          [attr.aria-label]="realtimeLabel()"
         >
           <span class="topbar__realtime-dot" aria-hidden="true"></span>
           {{ realtimeLabel() }}
@@ -28,33 +39,110 @@
           class="topbar-button"
           [class.topbar-button--active]="emergencyAvailable()"
           [disabled]="urgentToggleSaving()"
+          [attr.aria-pressed]="emergencyAvailable()"
+          [attr.aria-label]="
+            emergencyAvailable()
+              ? 'Désactiver la disponibilité urgente déclarée'
+              : 'Activer la disponibilité urgente déclarée'
+          "
           (click)="toggleEmergency()"
         >
-          <span class="emergency-dot" [class.emergency-dot--on]="emergencyAvailable()" aria-hidden="true"></span>
+          <span
+            class="emergency-dot"
+            [class.emergency-dot--on]="emergencyAvailable()"
+            aria-hidden="true"
+          ></span>
           <span>{{
             urgentToggleSaving()
               ? '...'
               : emergencyAvailable()
-                ? 'Urgences ouvertes'
-                : 'Urgences fermees'
+                ? 'Disponibilité urgente active'
+                : 'Disponibilité urgente inactive'
           }}</span>
         </button>
         @if (urgentToggleError(); as message) {
           <span class="urgent-toggle-error" role="alert">{{ message }}</span>
         }
-        <button
-          type="button"
-          class="topbar-icon-btn"
-          [attr.aria-expanded]="notificationPanelOpen()"
-          aria-haspopup="dialog"
-          aria-label="Notifications"
-          (click)="toggleNotificationPanel()"
+        <oc-popover
+          [open]="notificationPanelOpen()"
+          label="Notifications"
+          [triggerLabel]="notificationTriggerLabel()"
+          triggerAppearance="icon"
+          align="end"
+          [sideOffset]="8"
+          width="min(400px, calc(100vw - 32px))"
+          (openChange)="setNotificationPanelOpen($event)"
         >
-          <nz-icon nzType="bell" />
-          @if (notificationUnread() > 0) {
-            <span class="topbar-icon-btn__badge">{{ notificationUnread() }}</span>
-          }
-        </button>
+          <span ocPopoverTrigger class="notification-trigger-content" aria-hidden="true">
+            <nz-icon nzType="bell" />
+            @if (notificationUnread() > 0) {
+              <span class="topbar-icon-btn__badge">{{ notificationUnread() }}</span>
+            }
+          </span>
+
+          <div class="notification-panel">
+            <header class="notification-panel__head">
+              <h2>Notifications</h2>
+              @if (notificationUnread() > 0) {
+                <button
+                  type="button"
+                  class="text-button"
+                  [disabled]="notificationUpdating()"
+                  (click)="markAllNotificationsRead()"
+                >
+                  Tout marquer comme lu
+                </button>
+              }
+              <button
+                type="button"
+                class="notification-panel__close"
+                aria-label="Fermer les notifications"
+                (click)="closeNotificationPanel()"
+              >
+                <oc-icon name="close" />
+              </button>
+            </header>
+            @if (notificationError() && notifications().length === 0) {
+              <p class="notification-panel__empty" role="alert">{{ notificationError() }}</p>
+            } @else if (notificationLoading()) {
+              <p class="notification-panel__empty" role="status">Chargement...</p>
+            } @else if (notifications().length === 0) {
+              <p class="notification-panel__empty">Aucune notification.</p>
+            } @else {
+              <ul class="notification-list">
+                @for (item of notifications(); track item.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="notification-item"
+                      [class.notification-item--unread]="!item.read"
+                      (click)="openNotification(item)"
+                    >
+                      <strong>{{ item.titleFr }}</strong>
+                      <span>{{ item.bodyFr }}</span>
+                      <time [attr.datetime]="item.createdAt">{{
+                        formatNotificationTime(item.createdAt)
+                      }}</time>
+                    </button>
+                  </li>
+                }
+              </ul>
+              @if (notificationError(); as message) {
+                <p class="notification-panel__empty" role="alert">{{ message }}</p>
+              }
+              @if (notifications().length < notificationTotal()) {
+                <button
+                  type="button"
+                  class="text-button notification-panel__more"
+                  [disabled]="notificationLoadingMore()"
+                  (click)="loadMoreNotifications()"
+                >
+                  {{ notificationLoadingMore() ? 'Chargement...' : 'Voir plus' }}
+                </button>
+              }
+            }
+          </div>
+        </oc-popover>
         <oc-avatar name="Dr Ben Salah" />
       </div>
     </header>
@@ -64,53 +152,26 @@
         <div class="urgent-banner__pulse" aria-hidden="true"></div>
         <div class="urgent-banner__content">
           <strong>Demande urgente entrante</strong>
-          <p>{{ offer.patientName }} &middot; {{ incomingDistance(offer) }} &middot; {{ incomingLocation(offer) }}</p>
-          <p>{{ offer.notes ?? 'Consultation urgente' }} &mdash; repondre dans {{ incomingOfferCountdown() }}s</p>
+          <p>
+            {{ offer.patientName }} &middot; {{ incomingDistance(offer) }} &middot;
+            {{ incomingLocation(offer) }}
+          </p>
+          <p>
+            {{ offer.notes ?? 'Consultation urgente' }} &mdash; repondre dans
+            {{ incomingOfferCountdown() }}s
+          </p>
         </div>
         <div class="urgent-banner__actions">
-          <oc-button variant="primary" [loading]="incomingOfferLoading()" (click)="acceptUrgent()">Disponible</oc-button>
-          <oc-button variant="secondary" [disabled]="incomingOfferLoading()" (click)="declineUrgent()">Refuser</oc-button>
+          <oc-button variant="primary" [loading]="incomingOfferLoading()" (click)="acceptUrgent()"
+            >Disponible</oc-button
+          >
+          <oc-button
+            variant="secondary"
+            [disabled]="incomingOfferLoading()"
+            (click)="declineUrgent()"
+            >Refuser</oc-button
+          >
         </div>
-      </section>
-    }
-
-    @if (notificationPanelOpen()) {
-      <section class="notification-panel" role="dialog" aria-label="Notifications" aria-live="polite">
-        <header class="notification-panel__head">
-          <h2>Notifications</h2>
-          @if (notificationUnread() > 0) {
-            <button type="button" class="text-button" [disabled]="notificationUpdating()" (click)="markAllNotificationsRead()">
-              Tout marquer comme lu
-            </button>
-          }
-          <button type="button" class="text-button" (click)="closeNotificationPanel()">
-            <nz-icon nzType="close" />
-          </button>
-        </header>
-        @if (notificationError(); as message) {
-          <p class="notification-panel__empty" role="alert">{{ message }}</p>
-        } @else if (notificationLoading()) {
-          <p class="notification-panel__empty" role="status">Chargement...</p>
-        } @else if (notifications().length === 0) {
-          <p class="notification-panel__empty">Aucune notification.</p>
-        } @else {
-          <ul class="notification-list">
-            @for (item of notifications(); track item.id) {
-              <li>
-                <button
-                  type="button"
-                  class="notification-item"
-                  [class.notification-item--unread]="!item.read"
-                  (click)="markNotificationRead(item.id)"
-                >
-                  <strong>{{ item.titleFr }}</strong>
-                  <span>{{ item.bodyFr }}</span>
-                  <time [attr.datetime]="item.createdAt">{{ formatNotificationTime(item.createdAt) }}</time>
-                </button>
-              </li>
-            }
-          </ul>
-        }
       </section>
     }
 
@@ -119,6 +180,22 @@
     </main>
   </div>
 </div>
+
+<oc-sheet
+  [open]="mobileNavigationOpen()"
+  side="left"
+  title="Navigation Docteur"
+  [backdropDismissible]="true"
+  (dismissed)="mobileNavigationOpen.set(false)"
+>
+  <oc-sidebar
+    [items]="navigation"
+    [activeId]="activeNav()"
+    [profile]="sidebarProfile"
+    [labels]="sidebarLabels"
+    [expandedGroups]="expandedNavigationGroups()"
+  ></oc-sidebar>
+</oc-sheet>
 
 <app-patient-lookup-dialog
   [open]="lookupOpen()"
