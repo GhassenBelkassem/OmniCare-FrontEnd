@@ -2,9 +2,9 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, RouterOutlet, Routes, UrlTree, provideRouter } from '@angular/router';
 
-import { anonymousOnlyGuard, authenticatedGuard } from './auth.guards';
+import { anonymousOnlyGuard, authenticatedGuard, roleGuard } from './auth.guards';
 import { AuthBootstrapService } from './auth-bootstrap.service';
-import { LoginSession } from './auth.models';
+import { DashboardRole, LoginSession } from './auth.models';
 import { AuthTokenStore } from './auth-token.store';
 
 @Component({ template: '<p>Visible login content</p>' })
@@ -80,6 +80,60 @@ describe('authentication guards', () => {
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Clinic destination');
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Visible login content');
+  });
+});
+
+describe('roleGuard', () => {
+  let tokens: AuthTokenStore;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: AuthBootstrapService, useValue: { whenResolved: () => Promise.resolve() } },
+      ],
+    });
+    tokens = TestBed.inject(AuthTokenStore);
+  });
+
+  async function run(guard: ReturnType<typeof roleGuard>): Promise<unknown> {
+    return TestBed.runInInjectionContext(() => guard({} as never, {} as never));
+  }
+
+  function signIn(role: DashboardRole): void {
+    tokens.setSession({ ...session(), user: { id: 'user-1', role, mustChangePassword: false } });
+  }
+
+  it('keeps single-role call sites working', async () => {
+    signIn('DOCTOR');
+    await expect(run(roleGuard('DOCTOR'))).resolves.toBe(true);
+
+    signIn('PATIENT');
+    await expect(run(roleGuard('DOCTOR'))).resolves.toBeInstanceOf(UrlTree);
+  });
+
+  it('admits any one of several roles', async () => {
+    const shared = roleGuard('DOCTOR', 'SECRETARY');
+
+    signIn('SECRETARY');
+    await expect(run(shared)).resolves.toBe(true);
+
+    signIn('DOCTOR');
+    await expect(run(shared)).resolves.toBe(true);
+
+    signIn('NURSE');
+    await expect(run(shared)).resolves.toBeInstanceOf(UrlTree);
+  });
+
+  it('sends an unrelated authenticated role to /forbidden, not /login', async () => {
+    signIn('ADMIN');
+    const result = (await run(roleGuard('DOCTOR', 'SECRETARY'))) as UrlTree;
+    expect(result.toString()).toBe('/forbidden');
+  });
+
+  it('sends an anonymous request to /login', async () => {
+    const result = (await run(roleGuard('DOCTOR', 'SECRETARY'))) as UrlTree;
+    expect(result.toString()).toBe('/login');
   });
 });
 

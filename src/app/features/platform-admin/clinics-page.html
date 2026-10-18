@@ -6,13 +6,37 @@
   @if (errorMessage()) { <div class="request-error" role="alert">{{ errorMessage() }}</div> }
   @if (createOpen()) {
     <section class="panel" aria-labelledby="create-clinic-title"><h2 id="create-clinic-title">Register a clinic</h2>
-      <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
-        <div class="field"><label for="clinic-name">Clinic name</label><input id="clinic-name" formControlName="name" /></div>
-        <div class="field"><label for="clinic-inpdp">INPDP number</label><input id="clinic-inpdp" formControlName="inpdpNumber" /></div>
-        <div class="field"><label for="clinic-email">Contact email</label><input id="clinic-email" type="email" formControlName="contactEmail" /></div>
-        <div class="field"><label for="clinic-phone">Contact phone</label><input id="clinic-phone" type="tel" formControlName="contactPhone" placeholder="+216XXXXXXXX" /></div>
-        <div class="field"><label for="clinic-governorate">Governorate</label><input id="clinic-governorate" formControlName="governorate" /></div>
-        <div class="field span-2"><label for="clinic-address">Address</label><textarea id="clinic-address" formControlName="address"></textarea></div>
+      <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="field">
+          <label for="clinic-name">Clinic name</label>
+          <input id="clinic-name" formControlName="name" [attr.aria-invalid]="fieldError('name') ? true : null" [attr.aria-describedby]="fieldError('name') ? 'clinic-name-error' : null" />
+          @if (fieldError('name'); as message) { <p class="field-error" id="clinic-name-error">{{ message }}</p> }
+        </div>
+        <div class="field">
+          <label for="clinic-inpdp">INPDP number</label>
+          <input id="clinic-inpdp" formControlName="inpdpNumber" [attr.aria-invalid]="fieldError('inpdpNumber') ? true : null" [attr.aria-describedby]="fieldError('inpdpNumber') ? 'clinic-inpdp-error' : null" />
+          @if (fieldError('inpdpNumber'); as message) { <p class="field-error" id="clinic-inpdp-error">{{ message }}</p> }
+        </div>
+        <div class="field">
+          <label for="clinic-email">Contact email</label>
+          <input id="clinic-email" type="email" formControlName="contactEmail" [attr.aria-invalid]="fieldError('contactEmail') ? true : null" [attr.aria-describedby]="fieldError('contactEmail') ? 'clinic-email-error' : null" />
+          @if (fieldError('contactEmail'); as message) { <p class="field-error" id="clinic-email-error">{{ message }}</p> }
+        </div>
+        <div class="field">
+          <label for="clinic-phone">Contact phone</label>
+          <input id="clinic-phone" type="tel" inputmode="tel" formControlName="contactPhone" placeholder="+216 20 123 456 or 20 123 456" [attr.aria-invalid]="fieldError('contactPhone') ? true : null" [attr.aria-describedby]="fieldError('contactPhone') ? 'clinic-phone-error' : null" />
+          @if (fieldError('contactPhone'); as message) { <p class="field-error" id="clinic-phone-error">{{ message }}</p> }
+        </div>
+        <div class="field">
+          <label for="clinic-governorate">Governorate</label>
+          <input id="clinic-governorate" formControlName="governorate" [attr.aria-invalid]="fieldError('governorate') ? true : null" [attr.aria-describedby]="fieldError('governorate') ? 'clinic-governorate-error' : null" />
+          @if (fieldError('governorate'); as message) { <p class="field-error" id="clinic-governorate-error">{{ message }}</p> }
+        </div>
+        <div class="field span-2">
+          <label for="clinic-address">Address</label>
+          <textarea id="clinic-address" formControlName="address" [attr.aria-invalid]="fieldError('address') ? true : null" [attr.aria-describedby]="fieldError('address') ? 'clinic-address-error' : null"></textarea>
+          @if (fieldError('address'); as message) { <p class="field-error" id="clinic-address-error">{{ message }}</p> }
+        </div>
         <div class="actions span-2"><oc-button variant="primary" type="submit" [loading]="submitting()">Create clinic</oc-button><oc-button variant="quiet" (click)="createOpen.set(false)">Cancel</oc-button></div>
       </form>
     </section>

@@ -14,14 +14,23 @@ export const authenticatedGuard: CanActivateFn = () => {
   );
 };
 
-export function roleGuard(role: DashboardRole): CanActivateFn {
+/**
+ * Accepts any one of `roles`. A variadic signature keeps the single-role call
+ * sites (`roleGuard('DOCTOR')`) unchanged while letting shared shells admit a
+ * small, explicit set of roles — e.g. the doctor's workspace admits both a
+ * DOCTOR and a SECRETARY, and destination routes narrow it back down.
+ */
+export function roleGuard(...roles: readonly DashboardRole[]): CanActivateFn {
   return () => {
     const tokens = inject(AuthTokenStore);
     const bootstrap = inject(AuthBootstrapService);
     const router = inject(Router);
     return bootstrap.whenResolved().then(() => {
       if (!tokens.authenticated()) return router.createUrlTree(['/login']);
-      return tokens.user()?.role === role ? true : router.createUrlTree(['/forbidden']);
+      const role = tokens.user()?.role;
+      return role !== undefined && roles.includes(role)
+        ? true
+        : router.createUrlTree(['/forbidden']);
     });
   };
 }

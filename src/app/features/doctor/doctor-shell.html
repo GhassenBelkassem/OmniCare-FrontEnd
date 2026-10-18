@@ -3,60 +3,64 @@
     [items]="navigation"
     [activeId]="activeNav()"
     [(collapsed)]="sidebarCollapsed"
-    [profile]="sidebarProfile"
+    [profile]="sidebarProfile()"
   ></oc-sidebar>
 
   <div class="doctor-shell">
     <header class="topbar">
       <div class="topbar__left">
-        <button type="button" class="topbar-button" (click)="openLookup()">
-          <nz-icon nzType="search" aria-hidden="true" />
-          <span>Rechercher un patient</span>
-        </button>
-      </div>
-      <div class="topbar__right">
-        <span
-          class="topbar__realtime topbar__realtime--{{ realtimeHealth() }}"
-          role="status"
-          [attr.aria-label]="'Connexion temps reel : ' + realtimeLabel()"
-        >
-          <span class="topbar__realtime-dot" aria-hidden="true"></span>
-          {{ realtimeLabel() }}
-        </span>
-        <button
-          type="button"
-          class="topbar-button"
-          [class.topbar-button--active]="emergencyAvailable()"
-          [disabled]="urgentToggleSaving()"
-          (click)="toggleEmergency()"
-        >
-          <span class="emergency-dot" [class.emergency-dot--on]="emergencyAvailable()" aria-hidden="true"></span>
-          <span>{{
-            urgentToggleSaving()
-              ? '...'
-              : emergencyAvailable()
-                ? 'Urgences ouvertes'
-                : 'Urgences fermees'
-          }}</span>
-        </button>
-        @if (urgentToggleError(); as message) {
-          <span class="urgent-toggle-error" role="alert">{{ message }}</span>
+        @if (!isSecretary()) {
+          <button type="button" class="topbar-button" (click)="openLookup()">
+            <nz-icon nzType="search" aria-hidden="true" />
+            <span>Rechercher un patient</span>
+          </button>
         }
-        <button
-          type="button"
-          class="topbar-icon-btn"
-          [attr.aria-expanded]="notificationPanelOpen()"
-          aria-haspopup="dialog"
-          aria-label="Notifications"
-          (click)="toggleNotificationPanel()"
-        >
-          <nz-icon nzType="bell" />
-          @if (notificationUnread() > 0) {
-            <span class="topbar-icon-btn__badge">{{ notificationUnread() }}</span>
-          }
-        </button>
-        <oc-avatar name="Dr Ben Salah" />
       </div>
+      @if (!isSecretary()) {
+        <div class="topbar__right">
+          <span
+            class="topbar__realtime topbar__realtime--{{ realtimeHealth() }}"
+            role="status"
+            [attr.aria-label]="'Connexion temps reel : ' + realtimeLabel()"
+          >
+            <span class="topbar__realtime-dot" aria-hidden="true"></span>
+            {{ realtimeLabel() }}
+          </span>
+          <button
+            type="button"
+            class="topbar-button"
+            [class.topbar-button--active]="emergencyAvailable()"
+            [disabled]="urgentToggleSaving()"
+            (click)="toggleEmergency()"
+          >
+            <span class="emergency-dot" [class.emergency-dot--on]="emergencyAvailable()" aria-hidden="true"></span>
+            <span>{{
+              urgentToggleSaving()
+                ? '...'
+                : emergencyAvailable()
+                  ? 'Urgences ouvertes'
+                  : 'Urgences fermees'
+            }}</span>
+          </button>
+          @if (urgentToggleError(); as message) {
+            <span class="urgent-toggle-error" role="alert">{{ message }}</span>
+          }
+          <button
+            type="button"
+            class="topbar-icon-btn"
+            [attr.aria-expanded]="notificationPanelOpen()"
+            aria-haspopup="dialog"
+            aria-label="Notifications"
+            (click)="toggleNotificationPanel()"
+          >
+            <nz-icon nzType="bell" />
+            @if (notificationUnread() > 0) {
+              <span class="topbar-icon-btn__badge">{{ notificationUnread() }}</span>
+            }
+          </button>
+          <oc-avatar [name]="displayName()" />
+        </div>
+      }
     </header>
 
     @if (incomingOffer(); as offer) {
@@ -120,8 +124,10 @@
   </div>
 </div>
 
-<app-patient-lookup-dialog
-  [open]="lookupOpen()"
-  (selected)="lookupSelected($event)"
-  (dismissed)="closeLookup()"
-/>
+@if (!isSecretary()) {
+  <app-patient-lookup-dialog
+    [open]="lookupOpen()"
+    (selected)="lookupSelected($event)"
+    (dismissed)="closeLookup()"
+  />
+}

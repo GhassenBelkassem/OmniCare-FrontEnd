@@ -1,6 +1,7 @@
 export type DashboardRole =
   | 'PATIENT'
   | 'DOCTOR'
+  | 'SECRETARY'
   | 'NURSE'
   | 'KINE'
   | 'CLINIC_MEDECIN'
@@ -13,6 +14,7 @@ export type DashboardRole =
 export const DASHBOARD_ROLES: readonly DashboardRole[] = [
   'PATIENT',
   'DOCTOR',
+  'SECRETARY',
   'NURSE',
   'KINE',
   'CLINIC_MEDECIN',
@@ -30,6 +32,13 @@ export function isDashboardRole(value: unknown): value is DashboardRole {
 export function dashboardRouteFor(role: DashboardRole): string {
   if (role === 'ADMIN') return '/admin';
   if (role === 'DOCTOR') return '/doctor';
+  /**
+   * A secretary works inside the doctor's workspace on a restricted set of
+   * destinations, so it lands on the same shell rather than on a separate
+   * dashboard. This case must stay explicit: the generic fall-through below
+   * would otherwise send a freshly invited secretary to /forbidden.
+   */
+  if (role === 'SECRETARY') return '/doctor';
   if (role === 'PATIENT') return '/patient';
   if (role.startsWith('CLINIC_')) return '/clinic';
   return '/forbidden';
