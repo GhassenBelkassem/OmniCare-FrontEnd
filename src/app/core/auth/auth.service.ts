@@ -74,6 +74,12 @@ export class AuthService {
     });
   }
 
+  logoutAll(): Observable<void> {
+    return this.http
+      .post<void>(`${this.config.apiBaseUrl}/auth/logout-all`, {})
+      .pipe(tap(() => this.finishLogout()));
+  }
+
   routeFor(role: DashboardRole): string {
     return dashboardRouteFor(role);
   }

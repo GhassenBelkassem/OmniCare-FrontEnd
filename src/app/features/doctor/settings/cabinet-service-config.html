@@ -1,0 +1,43 @@
+<article class="cabinet-service-config">
+  <button
+    type="button"
+    class="cabinet-service-config__summary"
+    [attr.aria-expanded]="expanded()"
+    [attr.aria-controls]="'cabinet-service-' + location().id + '-content'"
+    [attr.aria-label]="
+      (expanded() ? 'Masquer la configuration de ' : 'Configurer ') + location().name
+    "
+    (click)="toggle()"
+  >
+    <span class="cabinet-service-config__icon" aria-hidden="true">
+      <oc-icon name="building" />
+    </span>
+    <span class="cabinet-service-config__identity">
+      <span class="cabinet-service-config__name">{{ location().name }}</span>
+      <span class="cabinet-service-config__address">
+        {{ location().city }} · {{ location().address }}
+      </span>
+    </span>
+    <oc-status-badge
+      [status]="location().active ? 'completed' : 'draft'"
+      [customLabel]="location().active ? 'Actif' : 'Inactif'"
+    />
+    <span
+      class="cabinet-service-config__chevron"
+      [class.cabinet-service-config__chevron--expanded]="expanded()"
+      aria-hidden="true"
+    >
+      <oc-icon name="chevron-down" />
+    </span>
+  </button>
+
+  @if (expanded()) {
+    <div
+      class="cabinet-service-config__body"
+      [id]="'cabinet-service-' + location().id + '-content'"
+    >
+      <app-cabinet-equipment-settings [locationId]="location().id" [catalog]="catalog()" />
+      <app-cabinet-coverage-settings [locationId]="location().id" />
+    </div>
+  }
+</article>

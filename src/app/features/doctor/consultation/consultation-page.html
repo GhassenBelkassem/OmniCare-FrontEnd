@@ -1,76 +1,130 @@
 <oc-page-header
-  [title]="isNew ? 'Nouvelle consultation' : 'Consultation'"
-  [description]="isNew ? 'Selectionner un patient pour commencer' : (record?.patient?.name ?? '') + ' · ' + (mode === 'active' ? 'Consultation en cours' : 'Consultation passee')"
+  [title]="
+    legacyUrgentBlocked
+      ? 'Consultation urgente mobile'
+      : canonicalRoute
+        ? 'Consultation active'
+        : isNew
+          ? 'Nouvelle consultation'
+          : 'Consultation'
+  "
+  [description]="
+    legacyUrgentBlocked
+      ? 'Cette opération n’est pas disponible dans le tableau de bord web.'
+      : canonicalRoute
+        ? 'État opérationnel synchronisé avec Spring'
+        : isNew
+          ? 'Selectionner un patient pour commencer'
+          : (record?.patient?.name ?? '') +
+            ' · ' +
+            (mode === 'active' ? 'Consultation en cours' : 'Consultation passee')
+  "
 >
   <a ocBreadcrumbs routerLink="/doctor">Retour au tableau de bord</a>
 </oc-page-header>
 
 <main class="consultation-workspace">
-    @if (isNew) {
-      <div class="consultation-patient-select">
-        <div class="consultation-patient-select__search">
-          <h2>Rechercher un patient</h2>
-          <p>Tapez le nom ou le numero de telephone du patient pour demarrer une consultation.</p>
-          <input
-            class="consultation-patient-select__input"
-            type="search"
-            placeholder="Nom ou telephone..."
-            [value]="patientQuery()"
-            (input)="patientQuery.set($any($event.target).value); searchPatients()"
-          />
-        </div>
-
-        @if (patientResults().length > 0) {
-          <ul class="consultation-patient-select__results">
-            @for (match of patientResults(); track match.id) {
-              <li>
-                <button
-                  type="button"
-                  class="consultation-patient-select__result"
-                  (click)="selectPatient(match)"
-                >
-                  <oc-avatar [name]="match.name" size="small" />
-                  <div class="consultation-patient-select__result-info">
-                    <strong>{{ match.name }}</strong>
-                    <span>{{ match.phone }}</span>
-                  </div>
-                </button>
-              </li>
-            }
-          </ul>
-        } @else if (patientQuery().length >= 2) {
-          <p class="consultation-patient-select__empty">Aucun patient trouve.</p>
+  @if (legacyUrgentBlocked) {
+    <div class="consultation-patient-select" role="status">
+      <div class="consultation-patient-select__search">
+        <h2>Utilisez l’application OmniCare Médecin</h2>
+        <p>
+          Les actions liées aux urgences, à l’arrivée et à la consultation urgente sont
+          exclusivement disponibles dans l’application mobile.
+        </p>
+        <oc-button variant="secondary" (click)="back()">Retour au tableau de bord</oc-button>
+      </div>
+    </div>
+  } @else if (canonicalRoute) {
+    <div class="consultation-patient-select" role="status">
+      <div class="consultation-patient-select__search">
+        @if (activeConsultation.active(); as active) {
+          @if (active.consultationId === consultationId) {
+            <h2>Consultation en cours</h2>
+            <p>Statut : {{ active.status }}</p>
+            <p>Accès médical : {{ active.medicalAccessStatus }}</p>
+          } @else {
+            <h2>Consultation non disponible</h2>
+            <p>La consultation active de ce compte est un autre épisode.</p>
+          }
+        } @else if (activeConsultation.loading()) {
+          <h2>Synchronisation…</h2>
+        } @else {
+          <h2>Aucune consultation active</h2>
+          <p>Le serveur ne signale aucun épisode en cours pour ce médecin.</p>
         }
       </div>
-    } @else if (record && consultation) {
-      <app-medical-record-view
-        [record]="record"
-        [mode]="mode"
-        [started]="started()"
-        (start)="started.set(true)"
-      />
-
-      @if (closed()) {
-        <app-close-summary
-          [record]="record"
-          [consultation]="consultation"
-          [draft]="draft()"
-          (bookFollowUp)="bookFollowUp()"
-          (backToDashboard)="back()"
-        />
-      } @else if (mode === 'readonly') {
-        <app-active-consultation-form
-          [readonly]="true"
-          [draft]="draft()"
-          (draftChange)="storeDraft($event)"
-        />
-      } @else if (started()) {
-        <app-active-consultation-form
-          [readonly]="false"
-          [draft]="draft()"
-          (draftChange)="storeDraft($event)"
-          (close)="closeConsultation()"
-        />
+    </div>
+    @if (activeConsultation.active(); as active) {
+      @if (active.consultationId === consultationId) {
+        <app-doctor-medical-workspace [consultation]="active" />
       }
     }
+  } @else if (isNew) {
+    <div class="consultation-patient-select">
+      <div class="consultation-patient-select__search">
+        <h2>Rechercher un patient</h2>
+        <p>Tapez le nom ou le numero de telephone du patient pour demarrer une consultation.</p>
+        <input
+          class="consultation-patient-select__input"
+          type="search"
+          placeholder="Nom ou telephone..."
+          [value]="patientQuery()"
+          (input)="patientQuery.set($any($event.target).value); searchPatients()"
+        />
+      </div>
+
+      @if (patientResults().length > 0) {
+        <ul class="consultation-patient-select__results">
+          @for (match of patientResults(); track match.id) {
+            <li>
+              <button
+                type="button"
+                class="consultation-patient-select__result"
+                (click)="selectPatient(match)"
+              >
+                <oc-avatar [name]="match.name" size="small" />
+                <div class="consultation-patient-select__result-info">
+                  <strong>{{ match.name }}</strong>
+                  <span>{{ match.phone }}</span>
+                </div>
+              </button>
+            </li>
+          }
+        </ul>
+      } @else if (patientQuery().length >= 2) {
+        <p class="consultation-patient-select__empty">Aucun patient trouve.</p>
+      }
+    </div>
+  } @else if (record && consultation) {
+    <app-medical-record-view
+      [record]="record"
+      [mode]="mode"
+      [started]="started()"
+      (start)="started.set(true)"
+    />
+
+    @if (closed()) {
+      <app-close-summary
+        [record]="record"
+        [consultation]="consultation"
+        [draft]="draft()"
+        (bookFollowUp)="bookFollowUp()"
+        (backToDashboard)="back()"
+      />
+    } @else if (mode === 'readonly') {
+      <app-active-consultation-form
+        [readonly]="true"
+        [draft]="draft()"
+        (draftChange)="storeDraft($event)"
+      />
+    } @else if (started()) {
+      <app-active-consultation-form
+        [readonly]="false"
+        [draft]="draft()"
+        (draftChange)="storeDraft($event)"
+        (close)="closeConsultation()"
+      />
+    }
+  }
 </main>

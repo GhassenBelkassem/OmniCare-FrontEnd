@@ -27,8 +27,12 @@ const STATUS_LABELS: Record<OcStatus, string> = {
 
 @Component({
   selector: 'oc-status-badge',
-  template: `<span class="oc-status" [class]="'oc-status oc-status--' + tone()"
-    ><span class="oc-status__dot" aria-hidden="true"></span>{{ label() }}</span
+  template: `<span
+    class="oc-status"
+    [class]="'oc-status oc-status--' + tone()"
+    [class.oc-status--strong]="emphasis() === 'strong'"
+    ><span class="oc-status__dot" aria-hidden="true"></span
+    ><span class="oc-status__label">{{ label() }}</span></span
   >`,
   styleUrl: './oc-status-badge.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,7 +40,8 @@ const STATUS_LABELS: Record<OcStatus, string> = {
 export class OcStatusBadge {
   readonly status = input.required<OcStatus>();
   readonly customLabel = input<string>();
-  readonly label = computed(() => this.customLabel() ?? STATUS_LABELS[this.status()]);
+  readonly emphasis = input<'subtle' | 'strong'>('subtle');
+  readonly label = computed(() => this.customLabel()?.trim() || STATUS_LABELS[this.status()]);
   readonly tone = computed(() => {
     const status = this.status();
     if (status === 'confirmed' || status === 'completed') return 'success';

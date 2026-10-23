@@ -13,15 +13,10 @@ export type EditableTagListField =
   | 'consultationTypes';
 
 export type EditableScalarField =
-  | 'specialty'
-  | 'consultationPriceTnd'
-  | 'experienceYears'
-  | 'practiceLatitude'
-  | 'practiceLongitude'
-  | 'practiceCity'
-  | 'biography';
+  'specialty' | 'consultationPriceTnd' | 'experienceYears' | 'biography';
 
-export type EditableProfessionalProfileField = EditableScalarField | EditableTagListField | 'acceptingNewPatients';
+export type EditableProfessionalProfileField =
+  EditableScalarField | EditableTagListField | 'acceptingNewPatients';
 
 export const EDITABLE_TAG_LIST_FIELDS: readonly EditableTagListField[] = [
   'subSpecialties',
@@ -37,9 +32,6 @@ export const EDITABLE_FIELDS: readonly EditableProfessionalProfileField[] = [
   'specialty',
   'consultationPriceTnd',
   'experienceYears',
-  'practiceLatitude',
-  'practiceLongitude',
-  'practiceCity',
   'acceptingNewPatients',
   ...EDITABLE_TAG_LIST_FIELDS,
   'biography',
@@ -62,9 +54,6 @@ export interface ProfessionalProfileDraft {
   readonly specialty: string;
   readonly consultationPriceTnd: string;
   readonly experienceYears: string;
-  readonly practiceLatitude: string;
-  readonly practiceLongitude: string;
-  readonly practiceCity: string;
   readonly acceptingNewPatients: boolean;
   readonly subSpecialties: readonly string[];
   readonly languages: readonly string[];
@@ -76,16 +65,15 @@ export interface ProfessionalProfileDraft {
   readonly biography: string;
 }
 
-export type ProfessionalProfileFieldErrors = Partial<Record<EditableProfessionalProfileField, string>>;
+export type ProfessionalProfileFieldErrors = Partial<
+  Record<EditableProfessionalProfileField, string>
+>;
 
 export function emptyProfessionalProfileDraft(): ProfessionalProfileDraft {
   return {
     specialty: '',
     consultationPriceTnd: '',
     experienceYears: '',
-    practiceLatitude: '',
-    practiceLongitude: '',
-    practiceCity: '',
     acceptingNewPatients: true,
     subSpecialties: [],
     languages: [],
@@ -103,9 +91,6 @@ export function draftFromProfile(profile: MeProfessionalProfileResponse): Profes
     specialty: profile.specialty ?? '',
     consultationPriceTnd: numberToDraft(profile.consultationPriceTnd),
     experienceYears: numberToDraft(profile.experienceYears),
-    practiceLatitude: numberToDraft(profile.practiceLatitude),
-    practiceLongitude: numberToDraft(profile.practiceLongitude),
-    practiceCity: profile.practiceCity ?? '',
     acceptingNewPatients: profile.acceptingNewPatients ?? true,
     subSpecialties: profile.subSpecialties ?? [],
     languages: profile.languages ?? [],
@@ -139,20 +124,6 @@ export function buildProfessionalProfilePatch(
     patch.experienceYears = experience;
   }
 
-  const latitude = optionalNumber(draft.practiceLatitude);
-  if (latitude !== undefined && latitude !== (baseline.practiceLatitude ?? null)) {
-    patch.practiceLatitude = latitude;
-  }
-
-  const longitude = optionalNumber(draft.practiceLongitude);
-  if (longitude !== undefined && longitude !== (baseline.practiceLongitude ?? null)) {
-    patch.practiceLongitude = longitude;
-  }
-
-  if (normalizeScalar(draft.practiceCity) !== (baseline.practiceCity ?? '')) {
-    patch.practiceCity = normalizeScalar(draft.practiceCity);
-  }
-
   if (draft.acceptingNewPatients !== (baseline.acceptingNewPatients ?? true)) {
     patch.acceptingNewPatients = draft.acceptingNewPatients;
   }
@@ -169,12 +140,17 @@ export function buildProfessionalProfilePatch(
     patch.biography = normalizeScalar(draft.biography);
   }
 
+  if (Object.keys(patch).length > 0) {
+    patch.expectedRevision = baseline.revision;
+  }
+
   return patch;
 }
 
 export function validateDraft(draft: ProfessionalProfileDraft): ProfessionalProfileFieldErrors {
   const errors: ProfessionalProfileFieldErrors = {};
-  const { scalarMaxLength, tagMaxLength, maxTags, biographyMaxLength } = PROFESSIONAL_PROFILE_LIMITS;
+  const { scalarMaxLength, tagMaxLength, maxTags, biographyMaxLength } =
+    PROFESSIONAL_PROFILE_LIMITS;
 
   if (draft.specialty.length > scalarMaxLength) {
     errors.specialty = `${scalarMaxLength} caracteres max.`;
@@ -185,19 +161,7 @@ export function validateDraft(draft: ProfessionalProfileDraft): ProfessionalProf
   }
 
   if (validateNonNegativeInteger(draft.experienceYears)) {
-    errors.experienceYears = 'Annees d\'experience invalide. Entier 0 ou plus.';
-  }
-
-  if (validateAngle(draft.practiceLatitude, -90, 90)) {
-    errors.practiceLatitude = 'Latitude entre -90 et 90.';
-  }
-
-  if (validateAngle(draft.practiceLongitude, -180, 180)) {
-    errors.practiceLongitude = 'Longitude entre -180 et 180.';
-  }
-
-  if (draft.practiceCity.length > scalarMaxLength) {
-    errors.practiceCity = `${scalarMaxLength} caracteres max.`;
+    errors.experienceYears = "Annees d'experience invalide. Entier 0 ou plus.";
   }
 
   if (draft.biography.length > biographyMaxLength) {
@@ -238,13 +202,6 @@ function validateNonNegativeInteger(raw: string): boolean {
   const trimmed = raw.trim();
   if (trimmed === '') return false;
   return !/^\d+$/.test(trimmed) || Number(trimmed) > 1000;
-}
-
-function validateAngle(raw: string, min: number, max: number): boolean {
-  const trimmed = raw.trim();
-  if (trimmed === '') return false;
-  const value = Number(trimmed);
-  return !Number.isFinite(value) || value < min || value > max;
 }
 
 function normalizeScalar(value: string): string {

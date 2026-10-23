@@ -1,0 +1,26 @@
+<section class="urgent-readiness-route" aria-labelledby="urgent-readiness-route-title">
+  <oc-page-header
+    title="Préparation aux urgences"
+    description="La préparation HOME et CABINET est désormais présentée avec sa configuration dans les paramètres Doctor."
+  />
+
+  <section class="urgent-readiness-route__notice" aria-labelledby="urgent-readiness-route-title">
+    <span class="urgent-readiness-route__icon" aria-hidden="true">
+      <oc-icon name="info" intent="information" />
+    </span>
+    <div>
+      <h2 id="urgent-readiness-route-title">Une seule source de préparation</h2>
+      <p>
+        Consultez l’état calculé par OmniCare dans l’onglet Services. Cette page ne présente plus de
+        disponibilité, de localisation ou d’opération urgente synthétique.
+      </p>
+      <p>
+        La disponibilité en temps réel, la position GPS et les réponses aux offres restent
+        exclusivement gérées dans l’application mobile Doctor.
+      </p>
+    </div>
+    <oc-button variant="primary" leadingIcon="setting" (click)="openSettings()">
+      Ouvrir les paramètres Services
+    </oc-button>
+  </section>
+</section>

@@ -1,0 +1,219 @@
+<section class="urgent-readiness" aria-labelledby="urgent-readiness-title">
+  <header class="urgent-readiness__header">
+    <span class="urgent-readiness__section-icon" aria-hidden="true">
+      <oc-icon name="coverage" />
+    </span>
+    <div>
+      <h3 id="urgent-readiness-title">Préparation actuelle aux urgences</h3>
+      <p>Lecture seule, calculée par OmniCare à partir des autorités actuelles du serveur.</p>
+    </div>
+    <oc-button
+      variant="quiet"
+      size="small"
+      [loading]="loading()"
+      ariaLabel="Actualiser la préparation aux urgences"
+      (click)="refresh()"
+    >
+      Actualiser
+    </oc-button>
+  </header>
+
+  @if (loading() && readiness() === null) {
+    <div
+      class="urgent-readiness__loading"
+      role="status"
+      aria-label="Vérification de la préparation urgente"
+    >
+      <oc-skeleton variant="block" />
+      <oc-skeleton variant="block" />
+    </div>
+  } @else if (failure() === 'session-expired') {
+    <div class="urgent-readiness__notice urgent-readiness__notice--danger" role="alert">
+      <div>
+        <strong>Session expirée</strong>
+        <p>Reconnectez-vous pour vérifier votre préparation urgente.</p>
+      </div>
+      <oc-button variant="secondary" size="small" (click)="reAuthenticate()"
+        >Se reconnecter</oc-button
+      >
+    </div>
+  } @else if (failure() === 'access-denied') {
+    <div class="urgent-readiness__notice urgent-readiness__notice--danger" role="alert">
+      <div>
+        <strong>Accès refusé</strong>
+        <p>Ce statut privé est réservé au compte Doctor autorisé.</p>
+      </div>
+    </div>
+  } @else if (readiness(); as data) {
+    @if (stale()) {
+      <div
+        class="urgent-readiness__notice urgent-readiness__notice--warning"
+        [attr.role]="failure() === 'unavailable' ? 'alert' : 'status'"
+      >
+        <div>
+          <strong>{{
+            failure() === 'unavailable' ? 'État non vérifié' : 'Actualisation en cours'
+          }}</strong>
+          <p>
+            {{
+              failure() === 'unavailable'
+                ? 'La dernière réponse vérifiée reste affichée, mais elle peut être périmée.'
+                : 'Les données affichées attendent la confirmation du serveur.'
+            }}
+          </p>
+        </div>
+        @if (failure() === 'unavailable') {
+          <oc-button variant="secondary" size="small" (click)="refresh()">Réessayer</oc-button>
+        }
+      </div>
+    }
+
+    <div class="urgent-readiness__summary" role="status" aria-live="polite">
+      <div>
+        <span class="urgent-readiness__eyebrow">Profil professionnel</span>
+        <strong>{{ professionalLabel() }}</strong>
+      </div>
+      <oc-status-badge
+        [status]="status(data.professionalEligible)"
+        [customLabel]="data.professionalEligible ? 'Éligible' : 'À vérifier'"
+      />
+      <div>
+        <span class="urgent-readiness__eyebrow">Évaluation en direct</span>
+        <strong>{{
+          data.completeLiveMatchingEligibilityEvaluated ? 'Effectuée' : 'Non effectuée'
+        }}</strong>
+      </div>
+      <div class="urgent-readiness__metadata">
+        Révision {{ data.revision }} · Évalué par le serveur
+        <time [attr.datetime]="data.evaluatedAt">{{ evaluatedAtLabel(data.evaluatedAt) }}</time>
+      </div>
+    </div>
+
+    @if (
+      !data.completeLiveMatchingEligibilityEvaluated &&
+      (data.home.capabilityEnabled || data.cabinet.capabilityEnabled)
+    ) {
+      <div class="urgent-readiness__boundary" role="note">
+        <oc-icon name="info" aria-hidden="true" />
+        <p>
+          La configuration et l’intention opérationnelle sont connues, mais aucune demande Patient
+          précise n’est évaluée ici. Ce statut ne signifie pas que vous êtes disponible pour une
+          urgence réelle.
+        </p>
+      </div>
+    }
+
+    <div class="urgent-readiness__modes">
+      @for (
+        entry of [
+          { id: 'home', title: 'Urgence à domicile', icon: 'home', mode: data.home },
+          { id: 'cabinet', title: 'Urgence au cabinet', icon: 'building', mode: data.cabinet },
+        ];
+        track entry.id
+      ) {
+        <article
+          class="urgent-readiness__mode"
+          [attr.aria-labelledby]="'urgent-readiness-' + entry.id"
+        >
+          <header>
+            <span class="urgent-readiness__mode-icon" aria-hidden="true">
+              <oc-icon [name]="entry.id === 'home' ? 'home' : 'building'" />
+            </span>
+            <h4 [id]="'urgent-readiness-' + entry.id">{{ entry.title }}</h4>
+          </header>
+          @if (!entry.mode.capabilityEnabled) {
+            <div class="urgent-readiness__inactive" role="status">
+              <oc-status-badge status="draft" customLabel="Mode inactif" />
+              <p>
+                Ce mode est désactivé dans vos capacités permanentes. Activez-le et enregistrez les
+                modes de prise en charge pour consulter sa préparation détaillée.
+              </p>
+            </div>
+          } @else {
+            <dl class="urgent-readiness__facts">
+              <div>
+                <dt>Capacité permanente</dt>
+                <dd>
+                  <oc-status-badge
+                    [status]="status(entry.mode.capabilityEnabled)"
+                    [customLabel]="capabilityLabel(entry.mode)"
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt>Configuration</dt>
+                <dd>
+                  <oc-status-badge
+                    [status]="status(entry.mode.configurationReady)"
+                    [customLabel]="configurationLabel(entry.mode)"
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt>Intention opérationnelle</dt>
+                <dd>
+                  <oc-status-badge
+                    [status]="entry.mode.runtimeAvailabilityIntent ? 'in-progress' : 'draft'"
+                    [customLabel]="runtimeLabel(entry.mode)"
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt>Éligibilité actuelle</dt>
+                <dd>
+                  <oc-status-badge
+                    [status]="
+                      eligibilityStatus(entry.mode, data.completeLiveMatchingEligibilityEvaluated)
+                    "
+                    [customLabel]="
+                      eligibilityLabel(entry.mode, data.completeLiveMatchingEligibilityEvaluated)
+                    "
+                  />
+                </dd>
+              </div>
+            </dl>
+
+            @if (entry.mode.blockingReasons.length > 0) {
+              <section
+                class="urgent-readiness__blockers"
+                [attr.aria-labelledby]="'urgent-blockers-' + entry.id"
+              >
+                <h5 [id]="'urgent-blockers-' + entry.id">Conditions signalées par le serveur</h5>
+                <ul>
+                  @for (reason of entry.mode.blockingReasons; track $index) {
+                    <li>
+                      <span class="urgent-readiness__reason-icon" aria-hidden="true">
+                        <oc-icon
+                          [name]="presentation(reason).icon"
+                          [intent]="presentation(reason).tone"
+                        />
+                      </span>
+                      <div>
+                        <strong>{{ presentation(reason).title }}</strong>
+                        <p>{{ presentation(reason).description }}</p>
+                      </div>
+                    </li>
+                  }
+                </ul>
+              </section>
+            } @else {
+              <p class="urgent-readiness__no-blocker">
+                Aucune condition bloquante signalée pour ce mode.
+              </p>
+            }
+          }
+        </article>
+      }
+    </div>
+  } @else if (failure() === 'unavailable') {
+    <div class="urgent-readiness__notice urgent-readiness__notice--danger" role="alert">
+      <div>
+        <strong>Préparation impossible à vérifier</strong>
+        <p>
+          Le serveur n’a fourni aucun état fiable. Aucune valeur de remplacement n’est affichée.
+        </p>
+      </div>
+      <oc-button variant="secondary" size="small" (click)="refresh()">Réessayer</oc-button>
+    </div>
+  }
+</section>

@@ -46,12 +46,18 @@ describe('ProfessionalProfileApiService', () => {
   });
 
   it('patches only the provided fields with the access token', () => {
-    service.updateProfile({ specialty: 'Cardiologie', languages: ['Francais'] }).subscribe();
+    service
+      .updateProfile({ specialty: 'Cardiologie', languages: ['Francais'], expectedRevision: 7 })
+      .subscribe();
     const request = http.expectOne(
       (candidate) => candidate.url === '/api/v1/me/professional-profile',
     );
     expect(request.request.method).toBe('PATCH');
-    expect(request.request.body).toEqual({ specialty: 'Cardiologie', languages: ['Francais'] });
+    expect(request.request.body).toEqual({
+      specialty: 'Cardiologie',
+      languages: ['Francais'],
+      expectedRevision: 7,
+    });
     expect(request.request.headers.get('Authorization')).toBe('Bearer doctor-access-token');
     request.flush({ userId: 'doctor-1', specialty: 'Cardiologie' });
   });
@@ -61,11 +67,89 @@ describe('ProfessionalProfileApiService', () => {
     service.updateProfile({}).subscribe({ error: (error: unknown) => (receivedError = error) });
     http
       .expectOne((candidate) => candidate.url === '/api/v1/me/professional-profile')
-      .flush({ message: 'At least one field must be provided.' }, {
-        status: 400,
-        statusText: 'Bad Request',
-      });
+      .flush(
+        { message: 'At least one field must be provided.' },
+        {
+          status: 400,
+          statusText: 'Bad Request',
+        },
+      );
     expect(receivedError instanceof HttpErrorResponse).toBe(true);
     expect((receivedError as HttpErrorResponse).status).toBe(400);
   });
+
+  it('supports education list, create, revision-aware update, and delete', () => {
+    service.listEducation().subscribe();
+    expectRequest('GET', '/api/v1/me/professional-profile/education', null, []);
+
+    const create = {
+      institution: 'Faculté de Médecine de Tunis',
+      qualification: 'Doctorat en médecine',
+      fieldOfStudy: 'Cardiologie',
+      completionYear: 2018,
+      displayOrder: 0,
+    };
+    service.createEducation(create).subscribe();
+    expectRequest('POST', '/api/v1/me/professional-profile/education', create, {
+      id: 'education-1',
+    });
+
+    const update = { qualification: 'Doctorat en médecine', expectedRevision: 3 };
+    service.updateEducation('education-1', update).subscribe();
+    expectRequest('PATCH', '/api/v1/me/professional-profile/education/education-1', update, {
+      revision: 4,
+    });
+
+    service.deleteEducation('education-1', 3).subscribe();
+    const deleteRequest = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/v1/me/professional-profile/education/education-1' &&
+        candidate.method === 'DELETE',
+    );
+    expect(deleteRequest.request.params.get('expectedRevision')).toBe('3');
+    deleteRequest.flush(null);
+  });
+
+  it('supports certification list, create, revision-aware update, and delete', () => {
+    service.listCertifications().subscribe();
+    expectRequest('GET', '/api/v1/me/professional-profile/certifications', null, []);
+
+    const create = {
+      name: 'Échocardiographie clinique',
+      issuer: 'Société tunisienne de cardiologie',
+      issuedYear: 2022,
+      expiryDate: null,
+      displayOrder: 0,
+    };
+    service.createCertification(create).subscribe();
+    expectRequest('POST', '/api/v1/me/professional-profile/certifications', create, {
+      id: 'certification-1',
+    });
+
+    const update = { name: 'Échocardiographie clinique', expectedRevision: 2 };
+    service.updateCertification('certification-1', update).subscribe();
+    expectRequest(
+      'PATCH',
+      '/api/v1/me/professional-profile/certifications/certification-1',
+      update,
+      { revision: 3 },
+    );
+
+    service.deleteCertification('certification-1', 2).subscribe();
+    const deleteRequest = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/v1/me/professional-profile/certifications/certification-1' &&
+        candidate.method === 'DELETE',
+    );
+    expect(deleteRequest.request.params.get('expectedRevision')).toBe('2');
+    deleteRequest.flush(null);
+  });
+
+  function expectRequest(method: string, url: string, body: unknown, response: unknown): void {
+    const request = http.expectOne(url);
+    expect(request.request.method).toBe(method);
+    if (body !== null) expect(request.request.body).toEqual(body);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer doctor-access-token');
+    request.flush(response as never);
+  }
 });

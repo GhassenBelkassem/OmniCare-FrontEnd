@@ -2,7 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  computed,
+  afterRenderEffect,
   input,
   model,
   viewChildren,
@@ -35,7 +35,12 @@ export interface OcTab {
                 [class.oc-tabs__item--active]="selected() === tab.id"
                 [attr.aria-selected]="selected() === tab.id"
                 [attr.aria-disabled]="tab.disabled || null"
+                [attr.tabindex]="selected() === tab.id ? 0 : -1"
                 [routerLink]="tab.route"
+                (keydown.arrowright)="move(index, 1, $event)"
+                (keydown.arrowleft)="move(index, -1, $event)"
+                (keydown.home)="moveToEdge('first', $event)"
+                (keydown.end)="moveToEdge('last', $event)"
               >
                 @if (tab.icon) {
                   <nz-icon [nzType]="tab.icon" aria-hidden="true" />
@@ -53,10 +58,13 @@ export interface OcTab {
                 class="oc-tabs__item"
                 [class.oc-tabs__item--active]="selected() === tab.id"
                 [attr.aria-selected]="selected() === tab.id"
+                [attr.tabindex]="selected() === tab.id ? 0 : -1"
                 [disabled]="tab.disabled"
                 (click)="select(tab.id)"
                 (keydown.arrowright)="move(index, 1, $event)"
                 (keydown.arrowleft)="move(index, -1, $event)"
+                (keydown.home)="moveToEdge('first', $event)"
+                (keydown.end)="moveToEdge('last', $event)"
               >
                 @if (tab.icon) {
                   <nz-icon [nzType]="tab.icon" aria-hidden="true" />
@@ -81,6 +89,32 @@ export class OcTabs {
   readonly selected = model.required<string>();
   private readonly tabElements = viewChildren<ElementRef<HTMLElement>>('tabElement');
 
+  constructor() {
+    afterRenderEffect({
+      earlyRead: () => {
+        const index = this.tabs().findIndex((tab) => tab.id === this.selected());
+        const item = this.tabElements()[index]?.nativeElement;
+        const strip = item?.parentElement?.parentElement;
+        if (!item || !strip) return null;
+
+        const visibleStart = strip.scrollLeft;
+        const visibleEnd = visibleStart + strip.clientWidth;
+        const itemStart = item.offsetLeft;
+        const itemEnd = itemStart + item.offsetWidth;
+        if (itemStart >= visibleStart && itemEnd <= visibleEnd) return null;
+
+        return {
+          strip,
+          left: itemStart < visibleStart ? itemStart : Math.max(0, itemEnd - strip.clientWidth),
+        };
+      },
+      write: (target) => {
+        const reveal = target();
+        if (reveal) reveal.strip.scrollLeft = reveal.left;
+      },
+    });
+  }
+
   select(id: string): void {
     this.selected.set(id);
   }
@@ -97,6 +131,20 @@ export class OcTabs {
     if (next) {
       this.selected.set(next.id);
       this.tabElements()[nextIndex]?.nativeElement.focus();
+    }
+  }
+
+  moveToEdge(edge: 'first' | 'last', event: Event): void {
+    event.preventDefault();
+    const tabs = this.tabs();
+    const indexes = edge === 'first' ? tabs.keys() : [...tabs.keys()].reverse();
+    for (const index of indexes) {
+      const tab = tabs[index];
+      if (tab && !tab.disabled) {
+        this.selected.set(tab.id);
+        this.tabElements()[index]?.nativeElement.focus();
+        return;
+      }
     }
   }
 }

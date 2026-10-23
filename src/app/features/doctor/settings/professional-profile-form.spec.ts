@@ -9,13 +9,20 @@ import {
   validateDraft,
 } from './professional-profile-form';
 
-function profile(overrides: Partial<MeProfessionalProfileResponse> = {}): MeProfessionalProfileResponse {
+function profile(
+  overrides: Partial<MeProfessionalProfileResponse> = {},
+): MeProfessionalProfileResponse {
   return {
     userId: 'doctor-1',
+    firstName: 'Amina',
+    lastName: 'Ben Salah',
+    displayName: 'Dr Amina Ben Salah',
+    photoUrl: null,
     professionalLicenseNumber: 'LIC-2020-001',
     specialty: 'Medecine generale',
     governorate: 'Tunis',
     affiliatedClinicId: null,
+    affiliatedClinicName: null,
     alsoIndependent: true,
     verifiedAt: '2026-01-10T09:00:00Z',
     mfaMethod: 'NONE',
@@ -34,20 +41,21 @@ function profile(overrides: Partial<MeProfessionalProfileResponse> = {}): MeProf
     consultationTypes: null,
     biography: 'Generaliste a Tunis.',
     updatedAt: '2026-09-24T01:35:00Z',
+    revision: 7,
     ...overrides,
   };
 }
 
 describe('professional-profile-form', () => {
   describe('draftFromProfile', () => {
-    it('maps every editable field, preserving empty strings for absent numbers', () => {
+    it('maps every editable field without importing legacy location authority', () => {
       const draft = draftFromProfile(profile());
       expect(draft.specialty).toBe('Medecine generale');
       expect(draft.consultationPriceTnd).toBe('60');
       expect(draft.experienceYears).toBe('12');
-      expect(draft.practiceLatitude).toBe('36.8065');
-      expect(draft.practiceLongitude).toBe('10.1815');
-      expect(draft.practiceCity).toBe('Tunis');
+      expect(draft).not.toHaveProperty('practiceLatitude');
+      expect(draft).not.toHaveProperty('practiceLongitude');
+      expect(draft).not.toHaveProperty('practiceCity');
       expect(draft.acceptingNewPatients).toBe(true);
       expect(draft.subSpecialties).toEqual([]);
       expect(draft.languages).toEqual(['Francais', 'Arabe']);
@@ -55,7 +63,9 @@ describe('professional-profile-form', () => {
     });
 
     it('defaults acceptingNewPatients to true and list fields to empty arrays', () => {
-      const draft = draftFromProfile(profile({ acceptingNewPatients: undefined, languages: undefined }));
+      const draft = draftFromProfile(
+        profile({ acceptingNewPatients: undefined, languages: undefined }),
+      );
       expect(draft.acceptingNewPatients).toBe(true);
       expect(draft.languages).toEqual([]);
       expect(draft.consultationTypes).toEqual([]);
@@ -83,14 +93,17 @@ describe('professional-profile-form', () => {
         { ...draft, specialty: 'Cardiologie', experienceYears: '15' },
         baseline,
       );
-      expect(patch).toEqual({ specialty: 'Cardiologie', experienceYears: 15 });
+      expect(patch).toEqual({ specialty: 'Cardiologie', experienceYears: 15, expectedRevision: 7 });
+      expect(patch).not.toHaveProperty('practiceLatitude');
+      expect(patch).not.toHaveProperty('practiceLongitude');
+      expect(patch).not.toHaveProperty('practiceCity');
     });
 
     it('treats an emptied list as a real change (empty array clears)', () => {
       const baseline = profile({ languages: ['Francais', 'Arabe'] });
       const draft = { ...draftFromProfile(baseline), languages: [] };
       const patch = buildProfessionalProfilePatch(draft, baseline);
-      expect(patch.languages).toEqual([]);
+      expect(patch).toEqual({ languages: [], expectedRevision: 7 });
     });
 
     it('omits untouched list fields entirely', () => {
@@ -110,13 +123,16 @@ describe('professional-profile-form', () => {
       const baseline = profile({ consultationPriceTnd: 60 });
       const draft = { ...draftFromProfile(baseline), consultationPriceTnd: '85.50' };
       const patch = buildProfessionalProfilePatch(draft, baseline);
-      expect(patch.consultationPriceTnd).toBe(85.5);
+      expect(patch).toEqual({ consultationPriceTnd: 85.5, expectedRevision: 7 });
     });
 
     it('sends the acceptingNewPatients toggle only when toggled', () => {
       const baseline = profile({ acceptingNewPatients: true });
       const draft = { ...draftFromProfile(baseline), acceptingNewPatients: false };
-      expect(buildProfessionalProfilePatch(draft, baseline)).toEqual({ acceptingNewPatients: false });
+      expect(buildProfessionalProfilePatch(draft, baseline)).toEqual({
+        acceptingNewPatients: false,
+        expectedRevision: 7,
+      });
     });
 
     it('normalizes scalar strings before sending', () => {
@@ -132,38 +148,63 @@ describe('professional-profile-form', () => {
     });
 
     it('rejects malformed pricing', () => {
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: 'abc' }).consultationPriceTnd).toBeDefined();
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '60.123' }).consultationPriceTnd).toBeDefined();
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '-5' }).consultationPriceTnd).toBeDefined();
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '999999999999' }).consultationPriceTnd).toBeDefined();
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '85.50' }).consultationPriceTnd).toBeUndefined();
-    });
-
-    it('rejects invalid or out-of-range coordinates', () => {
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), practiceLatitude: '95' }).practiceLatitude).toBeDefined();
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), practiceLongitude: '181' }).practiceLongitude).toBeDefined();
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), practiceLatitude: '36.8065' }).practiceLatitude).toBeUndefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: 'abc' })
+          .consultationPriceTnd,
+      ).toBeDefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '60.123' })
+          .consultationPriceTnd,
+      ).toBeDefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '-5' })
+          .consultationPriceTnd,
+      ).toBeDefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '999999999999' })
+          .consultationPriceTnd,
+      ).toBeDefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '85.50' })
+          .consultationPriceTnd,
+      ).toBeUndefined();
     });
 
     it('rejects invalid experience values', () => {
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), experienceYears: 'trois' }).experienceYears).toBeDefined();
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), experienceYears: '12' }).experienceYears).toBeUndefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), experienceYears: 'trois' })
+          .experienceYears,
+      ).toBeDefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), experienceYears: '12' })
+          .experienceYears,
+      ).toBeUndefined();
     });
 
     it('rejects oversized lists and list elements', () => {
       const tooMany = Array.from({ length: 51 }, (_, i) => `Langue ${i}`);
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), languages: tooMany }).languages).toBeDefined();
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), languages: ['a'.repeat(101)] }).languages).toBeDefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), languages: tooMany }).languages,
+      ).toBeDefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), languages: ['a'.repeat(101)] })
+          .languages,
+      ).toBeDefined();
     });
 
     it('rejects an oversized biography', () => {
-      expect(validateDraft({ ...emptyProfessionalProfileDraft(), biography: 'a'.repeat(5001) }).biography).toBeDefined();
+      expect(
+        validateDraft({ ...emptyProfessionalProfileDraft(), biography: 'a'.repeat(5001) })
+          .biography,
+      ).toBeDefined();
     });
 
     it('allows empty scalar numbers (leave unchanged)', () => {
-      const errors = validateDraft({ ...emptyProfessionalProfileDraft(), consultationPriceTnd: '', practiceLatitude: '' });
+      const errors = validateDraft({
+        ...emptyProfessionalProfileDraft(),
+        consultationPriceTnd: '',
+      });
       expect(errors.consultationPriceTnd).toBeUndefined();
-      expect(errors.practiceLatitude).toBeUndefined();
     });
   });
 });

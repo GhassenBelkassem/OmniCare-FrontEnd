@@ -38,6 +38,21 @@ describe('OcSidebar', () => {
     });
   });
 
+  it('renders the OmniCare icon in the dashboard brand', () => {
+    const fixture = TestBed.createComponent(OcSidebar);
+    fixture.componentRef.setInput('items', navigation);
+    fixture.componentRef.setInput('activeId', 'appointments');
+    fixture.detectChanges();
+
+    const icon = fixture.nativeElement.querySelector(
+      '.oc-sidebar__brand-mark img',
+    ) as HTMLImageElement;
+    expect(icon.getAttribute('ngsrc')).toBe('assets/icon/app_icon.png');
+    expect(icon.alt).toBe('');
+    expect(icon.width).toBe(36);
+    expect(icon.height).toBe(36);
+  });
+
   it('expands and collapses navigation groups with aria state', () => {
     const fixture = TestBed.createComponent(OcSidebar);
     fixture.componentRef.setInput('items', navigation);
@@ -85,5 +100,53 @@ describe('OcSidebar', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.collapsed()).toBe(true);
     expect(fixture.nativeElement.querySelector('[aria-label="Expand navigation"]')).toBeTruthy();
+  });
+
+  it('expands the rail and reveals a group when its collapsed icon is activated', () => {
+    const fixture = TestBed.createComponent(OcSidebar);
+    fixture.componentRef.setInput('items', navigation);
+    fixture.componentRef.setInput('activeId', '');
+    fixture.componentRef.setInput('collapsed', true);
+    fixture.detectChanges();
+
+    const group = fixture.nativeElement.querySelector(
+      '.oc-sidebar__group-button',
+    ) as HTMLButtonElement;
+    expect(group.getAttribute('aria-expanded')).toBe('false');
+    expect(fixture.nativeElement.querySelector('.oc-sidebar__children')).toBeNull();
+
+    group.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.collapsed()).toBe(false);
+    expect(group.getAttribute('aria-expanded')).toBe('true');
+    expect(fixture.nativeElement.querySelector('.oc-sidebar__children')).toBeTruthy();
+  });
+
+  it('supports French shell labels without changing the reusable default', () => {
+    const fixture = TestBed.createComponent(OcSidebar);
+    fixture.componentRef.setInput('items', navigation);
+    fixture.componentRef.setInput('activeId', 'appointments');
+    fixture.componentRef.setInput('profile', {
+      initials: 'BS',
+      name: 'Dr Ben Salah',
+      context: 'Médecine générale',
+    });
+    fixture.componentRef.setInput('labels', {
+      landmark: 'Navigation principale',
+      workspace: 'Espace clinique',
+      navigation: 'Espace médecin',
+      signOut: 'Se déconnecter',
+      collapse: 'Réduire la navigation',
+      expand: 'Développer la navigation',
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('aside').getAttribute('aria-label')).toBe(
+      'Navigation principale',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Espace clinique');
+    expect(fixture.nativeElement.querySelector('[aria-label="Se déconnecter"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('Dr Ben Salah');
   });
 });

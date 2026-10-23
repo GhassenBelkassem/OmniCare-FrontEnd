@@ -3,8 +3,14 @@ import { Routes } from '@angular/router';
 
 import { landingRedirect } from './core/auth/auth.guards';
 
-const productionRoutes: Routes = [
-  {
+const legacyPatientDevelopmentRoute: Routes[number] = {
+  path: 'patient',
+  loadChildren: () =>
+    import('./features/patient/patient.routes').then((routes) => routes.PATIENT_ROUTES),
+};
+
+function applicationShellRoute(additionalRoutes: Routes = []): Routes[number] {
+  return {
     path: '',
     loadComponent: () =>
       import('./core/shell/application-shell').then((component) => component.ApplicationShell),
@@ -44,16 +50,14 @@ const productionRoutes: Routes = [
         loadChildren: () =>
           import('./features/clinic/clinic.routes').then((routes) => routes.CLINIC_ROUTES),
       },
-      {
-        path: 'patient',
-        loadChildren: () =>
-          import('./features/patient/patient.routes').then((routes) => routes.PATIENT_ROUTES),
-      },
+      ...additionalRoutes,
       { path: '', pathMatch: 'full', redirectTo: landingRedirect },
       { path: '**', redirectTo: 'login' },
     ],
-  },
-];
+  };
+}
+
+const productionRoutes: Routes = [applicationShellRoute()];
 
 export function createAppRoutes(includeDevelopmentRoutes: boolean): Routes {
   const developmentRoutes: Routes = includeDevelopmentRoutes
@@ -69,7 +73,10 @@ export function createAppRoutes(includeDevelopmentRoutes: boolean): Routes {
       ]
     : [];
 
-  return [...developmentRoutes, ...productionRoutes];
+  if (includeDevelopmentRoutes) {
+    return [...developmentRoutes, applicationShellRoute([legacyPatientDevelopmentRoute])];
+  }
+  return productionRoutes;
 }
 
 export const routes = createAppRoutes(isDevMode());

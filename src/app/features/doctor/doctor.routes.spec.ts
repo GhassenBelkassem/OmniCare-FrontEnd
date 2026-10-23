@@ -1,10 +1,19 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRouteSnapshot, CanActivateFn, provideRouter, RouterStateSnapshot, UrlTree } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  CanActivateFn,
+  provideRouter,
+  RouterStateSnapshot,
+  UrlTree,
+} from '@angular/router';
 
 import { authenticatedGuard } from '../../core/auth/auth.guards';
 import { AuthBootstrapService } from '../../core/auth/auth-bootstrap.service';
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import type { DashboardRole } from '../../core/auth/auth.models';
+import { CalendarPage } from './calendar/calendar-page';
 import { DOCTOR_ROUTES } from './doctor.routes';
+import { UrgentReadinessPage } from './urgent-readiness/urgent-readiness-page';
 import { unsavedChangesGuard } from './unsaved-changes.guard';
 
 describe('doctor routes', () => {
@@ -45,58 +54,83 @@ describe('doctor routes', () => {
     expect(consultation?.canDeactivate).toEqual([unsavedChangesGuard]);
   });
 
-  it('admits a DOCTOR or a SECRETARY into the workspace', async () => {
+  it('exposes only the production Calendar route after FullCalendar cutover', async () => {
+    const children = DOCTOR_ROUTES[0].children ?? [];
+    const calendar = children.find((route) => route.path === 'calendar');
+
+    expect(calendar).toBeDefined();
+    expect(children.some((route) => route.path === 'calendar-preview')).toBe(false);
+    await expect(calendar?.loadComponent?.()).resolves.toBe(CalendarPage);
+  });
+
+  it('exposes the urgent readiness page inside the guarded Doctor shell', async () => {
+    const urgentReadiness = DOCTOR_ROUTES[0].children?.find(
+      (route) => route.path === 'urgent-readiness',
+    );
+
+    expect(urgentReadiness?.title).toBe('Préparation aux urgences | OmniCare');
+    await expect(urgentReadiness?.loadComponent?.()).resolves.toBe(UrgentReadinessPage);
+  });
+
+  it('allows DOCTOR and SECRETARY sessions into the workspace', async () => {
     const tokens = TestBed.inject(AuthTokenStore);
     const roleCheck = DOCTOR_ROUTES[0].canActivate?.[1] as CanActivateFn;
     const emptySnapshot = {} as ActivatedRouteSnapshot;
     const emptyState = {} as RouterStateSnapshot;
 
-    tokens.setSession(session('doctor-1', 'DOCTOR'));
+    tokens.setSession({
+      accessToken: 'doctor-access-token',
+      tokenType: 'Bearer',
+      expiresAt: '2999-08-06T12:00:00Z',
+      refreshToken: 'doctor-refresh-token',
+      refreshExpiresAt: '2999-08-06T23:59:59Z',
+      user: { id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false },
+    });
     await expect(
       TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState)),
     ).resolves.toBe(true);
 
-    tokens.setSession(session('secretary-1', 'SECRETARY'));
+    tokens.setSession(sessionFor('SECRETARY'));
     await expect(
       TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState)),
     ).resolves.toBe(true);
-
-    tokens.setSession(session('admin-1', 'ADMIN'));
-    await expect(
-      TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState)),
-    ).resolves.toBeInstanceOf(UrlTree);
   });
 
-  it('lets a secretary reach the agenda but not the doctor-only pages', () => {
-    const children = DOCTOR_ROUTES[0].children ?? [];
-    const agenda = children.find((route) => route.path === 'secretary-agenda');
-    const team = children.find((route) => route.path === 'team');
+  it.each(['PATIENT', 'ADMIN'] satisfies DashboardRole[])(
+    'rejects a %s session from the Doctor workspace',
+    async (role) => {
+      const tokens = TestBed.inject(AuthTokenStore);
+      const roleCheck = DOCTOR_ROUTES[0].canActivate?.[1] as CanActivateFn;
+      const emptySnapshot = {} as ActivatedRouteSnapshot;
+      const emptyState = {} as RouterStateSnapshot;
 
-    expect(agenda?.canActivate).toBeUndefined();
-    expect(typeof team?.canActivate?.[0]).toBe('function');
-  });
+      tokens.setSession(sessionFor(role));
+      const result = await TestBed.runInInjectionContext(() =>
+        roleCheck(emptySnapshot, emptyState),
+      );
 
-  it('guards every doctor-only destination against direct navigation', () => {
+      expect(result).toBeInstanceOf(UrlTree);
+      expect((result as UrlTree).toString()).toBe('/forbidden');
+    },
+  );
+
+  it('lets a secretary reach only the delegated agenda', () => {
     const children = DOCTOR_ROUTES[0].children ?? [];
     const openPaths = children
       .filter((route) => route.path !== '' && route.canActivate === undefined)
       .map((route) => route.path);
 
-    // Only the agenda and the empty-path redirect are reachable by a secretary.
     expect(openPaths).toEqual(['secretary-agenda']);
   });
 });
 
-function session(
-  id: string,
-  role: 'DOCTOR' | 'SECRETARY' | 'ADMIN',
-): Parameters<AuthTokenStore['setSession']>[0] {
+function sessionFor(role: DashboardRole) {
   return {
-    accessToken: `${id}-access-token`,
-    tokenType: 'Bearer',
+    accessToken: `${role.toLowerCase()}-access-token`,
+    tokenType: 'Bearer' as const,
     expiresAt: '2999-08-06T12:00:00Z',
-    refreshToken: `${id}-refresh-token`,
+    refreshToken: `${role.toLowerCase()}-refresh-token`,
     refreshExpiresAt: '2999-08-06T23:59:59Z',
-    user: { id, role, mustChangePassword: false },
+    user: { id: `${role.toLowerCase()}-1`, role, mustChangePassword: false },
   };
 }

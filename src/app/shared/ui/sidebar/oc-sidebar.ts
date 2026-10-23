@@ -7,6 +7,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { OcIcon, OcIconName } from '../icon/oc-icon';
 
@@ -26,24 +27,48 @@ export interface SidebarUserProfile {
   readonly context: string;
 }
 
+export interface SidebarLabels {
+  readonly landmark: string;
+  readonly workspace: string;
+  readonly navigation: string;
+  readonly noResults: string;
+  readonly signOut: string;
+  readonly expand: string;
+  readonly collapse: string;
+}
+
+const DEFAULT_LABELS: SidebarLabels = {
+  landmark: 'Primary navigation',
+  workspace: 'Clinical workspace',
+  navigation: 'Workspace',
+  noResults: 'No navigation matches',
+  signOut: 'Sign out',
+  expand: 'Expand navigation',
+  collapse: 'Collapse navigation',
+};
+
 @Component({
   selector: 'oc-sidebar',
-  imports: [RouterLink, OcIcon],
+  imports: [NgOptimizedImage, RouterLink, OcIcon],
   template: `
     <aside
       class="oc-sidebar"
       [class.oc-sidebar--collapsed]="collapsed()"
       [class.oc-sidebar--mobile-open]="mobileOpen()"
-      aria-label="Primary navigation"
+      [attr.aria-label]="resolvedLabels().landmark"
     >
       <div class="oc-sidebar__brand">
-        <span class="oc-sidebar__brand-mark" aria-hidden="true">O<span>+</span></span>
+        <span class="oc-sidebar__brand-mark" aria-hidden="true">
+          <img ngSrc="assets/icon/app_icon.png" width="36" height="36" alt="" />
+        </span>
         @if (!collapsed()) {
-          <span class="oc-sidebar__brand-name">OmniCare<small>Clinical workspace</small></span>
+          <span class="oc-sidebar__brand-name"
+            >OmniCare<small>{{ resolvedLabels().workspace }}</small></span
+          >
         }
       </div>
 
-      <nav class="oc-sidebar__nav" aria-label="Workspace">
+      <nav class="oc-sidebar__nav" [attr.aria-label]="resolvedLabels().navigation">
         <ul>
           @for (item of filteredItems(); track item.id) {
             <li>
@@ -53,7 +78,8 @@ export interface SidebarUserProfile {
                   [attr.title]="collapsed() ? item.label : null"
                   type="button"
                   [disabled]="item.disabled"
-                  [attr.aria-expanded]="isExpanded(item.id)"
+                  [attr.aria-expanded]="!collapsed() && isExpanded(item.id)"
+                  [attr.aria-controls]="!collapsed() ? 'oc-sidebar-group-' + item.id : null"
                   [class.oc-sidebar__item--parent-active]="isParentActive(item)"
                   (click)="toggleGroup(item.id)"
                 >
@@ -62,19 +88,22 @@ export interface SidebarUserProfile {
                   }
                   @if (!collapsed()) {
                     <span>{{ item.label }}</span>
-                    <oc-icon class="oc-sidebar__chevron" [name]="isExpanded(item.id) ? 'chevron-down' : 'chevron-right'" />
+                    <oc-icon
+                      class="oc-sidebar__chevron"
+                      [name]="isExpanded(item.id) ? 'chevron-down' : 'chevron-right'"
+                    />
                   }
                 </button>
                 @if (!collapsed() && isExpanded(item.id)) {
-                  <ul class="oc-sidebar__children">
+                  <ul class="oc-sidebar__children" [id]="'oc-sidebar-group-' + item.id">
                     @for (child of item.children; track child.id) {
                       <li>
                         <a
-                          [routerLink]="child.route ?? null"
+                          [routerLink]="child.disabled ? null : (child.route ?? null)"
                           [class.oc-sidebar__item--active]="activeId() === child.id"
                           [attr.aria-current]="activeId() === child.id ? 'page' : null"
                           [attr.aria-disabled]="child.disabled || !child.route || null"
-                          (click)="mobileOpen.set(false)"
+                          (click)="activateLink(child, $event)"
                         >
                           <span>{{ child.label }}</span>
                           @if (child.badge !== undefined) {
@@ -89,11 +118,11 @@ export interface SidebarUserProfile {
                 <a
                   class="oc-sidebar__standalone"
                   [attr.title]="collapsed() ? item.label : null"
-                  [routerLink]="item.route ?? null"
+                  [routerLink]="item.disabled ? null : (item.route ?? null)"
                   [class.oc-sidebar__item--active]="activeId() === item.id"
                   [attr.aria-current]="activeId() === item.id ? 'page' : null"
                   [attr.aria-disabled]="item.disabled || !item.route || null"
-                  (click)="mobileOpen.set(false)"
+                  (click)="activateLink(item, $event)"
                 >
                   @if (item.icon) {
                     <oc-icon [name]="item.icon" intent="information" />
@@ -107,7 +136,7 @@ export interface SidebarUserProfile {
           }
         </ul>
         @if (filteredItems().length === 0) {
-          <p class="oc-sidebar__no-results">No navigation matches “{{ query() }}”.</p>
+          <p class="oc-sidebar__no-results">{{ resolvedLabels().noResults }} “{{ query() }}”.</p>
         }
       </nav>
 
@@ -121,10 +150,10 @@ export interface SidebarUserProfile {
             >
             <button
               type="button"
-              aria-label="Sign out"
+              [attr.aria-label]="resolvedLabels().signOut"
               (click)="profileMenu.emit()"
             >
-              <oc-icon name="close" /><span>Sign out</span>
+              <oc-icon name="external" />
             </button>
           }
         </div>
@@ -132,12 +161,12 @@ export interface SidebarUserProfile {
       <button
         class="oc-sidebar__collapse"
         type="button"
-        [attr.aria-label]="collapsed() ? 'Expand navigation' : 'Collapse navigation'"
+        [attr.aria-label]="collapsed() ? resolvedLabels().expand : resolvedLabels().collapse"
         (click)="collapsed.update((value) => !value)"
       >
         <oc-icon [name]="collapsed() ? 'chevron-right' : 'chevron-left'" />
         @if (!collapsed()) {
-          <span>Collapse navigation</span>
+          <span>{{ resolvedLabels().collapse }}</span>
         }
       </button>
     </aside>
@@ -152,8 +181,10 @@ export class OcSidebar {
   readonly mobileOpen = model(false);
   readonly expandedGroups = model<ReadonlySet<string>>(new Set());
   readonly profile = input<SidebarUserProfile>();
+  readonly labels = input<Partial<SidebarLabels>>({});
   readonly profileMenu = output<void>();
   readonly query = signal('');
+  readonly resolvedLabels = computed(() => ({ ...DEFAULT_LABELS, ...this.labels() }));
   readonly filteredItems = computed(() => {
     const term = this.query().trim().toLocaleLowerCase();
     if (!term) return this.items();
@@ -172,7 +203,22 @@ export class OcSidebar {
     this.query.set((event.target as HTMLInputElement).value);
   }
 
+  activateLink(item: SidebarNavigationItem, event: Event): void {
+    if (item.disabled || !item.route) {
+      event.preventDefault();
+      return;
+    }
+    this.mobileOpen.set(false);
+  }
+
   toggleGroup(id: string): void {
+    if (this.collapsed()) {
+      this.collapsed.set(false);
+      if (!this.isExpanded(id)) {
+        this.expandedGroups.update((current) => new Set(current).add(id));
+      }
+      return;
+    }
     this.expandedGroups.update((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);

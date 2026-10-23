@@ -73,6 +73,23 @@ describe('AuthTokenStore', () => {
     expect(store.authenticated()).toBe(false);
     expect(sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull();
   });
+
+  it('rejects a stored session whose role is not in the implemented dashboard contract', () => {
+    sessionStorage.setItem(
+      AUTH_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        ...session(),
+        user: { id: 'unsupported-1', role: 'SUPERUSER', mustChangePassword: false },
+      }),
+    );
+
+    const store = TestBed.inject(AuthTokenStore);
+
+    expect(store.restoreStoredSession()).toBe(false);
+    expect(store.authenticated()).toBe(false);
+    expect(store.user()).toBeNull();
+    expect(sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull();
+  });
 });
 
 function session(overrides: Partial<LoginSession> = {}): LoginSession {

@@ -14,11 +14,7 @@
   } @else {
     <div class="command-page__stats">
       @for (stat of stats(); track stat.label) {
-        <oc-metric-card
-          [icon]="stat.icon"
-          [label]="stat.label"
-          [value]="'' + stat.value"
-        />
+        <oc-metric-card [icon]="stat.icon" [label]="stat.label" [value]="'' + stat.value" />
       }
     </div>
 
@@ -27,44 +23,77 @@
         <nz-icon nzType="warning" />
         <div class="command-page__banner-text">
           <strong>Aucun créneau configuré</strong>
-          <span>Vos patients ne peuvent pas prendre de rendez-vous en ligne. Configurez vos disponibilités pour activer la prise de rendez-vous.</span>
+          <span
+            >Vos patients ne peuvent pas prendre de rendez-vous en ligne. Configurez vos
+            disponibilités pour activer la prise de rendez-vous.</span
+          >
         </div>
-        <oc-button variant="primary" size="small" (click)="goToSchedule()">Configurer mes disponibilités</oc-button>
+        <oc-button variant="primary" size="small" (click)="goToSchedule()"
+          >Configurer mes disponibilités</oc-button
+        >
       </div>
     }
 
-    @if (urgentOffers().length > 0) {
-      <oc-card title="Demandes Urgentes" subtitle="Reponnez rapidement aux demandes de vos patients">
-        <div class="urgent-list">
-          @for (offer of urgentOffers(); track trackByOfferId($index, offer)) {
-            <article class="urgent-row" (click)="openUrgentDetail(offer)">
-              <div class="urgent-row__indicator" aria-hidden="true"></div>
-              <oc-avatar [name]="offer.patientName" size="small" />
-              <div class="urgent-row__info">
-                <strong>{{ offer.patientName }}</strong>
-                <span>{{ offer.notes || 'Demande urgente' }}</span>
-              </div>
-              <oc-status-badge status="pending" />
-              <div class="urgent-row__actions" (click)="$event.stopPropagation()">
-                <oc-button variant="primary" size="small" (click)="openUrgentDetail(offer)">
-                  Repondre
-                </oc-button>
-              </div>
-            </article>
-          }
+    @if (scheduledCare.homeError(); as scheduledError) {
+      <div class="command-page__error" role="alert">
+        <span>{{ scheduledError }}</span>
+        <oc-button variant="quiet" size="small" (click)="scheduledCare.loadHome()"
+          >Reessayer</oc-button
+        >
+      </div>
+    }
+
+    @if (pendingScheduledRequest(); as request) {
+      <oc-card
+        title="Demandes planifiées à traiter"
+        subtitle="Le créneau reste réservé provisoirement jusqu'à votre réponse"
+      >
+        <div class="appointment-list">
+          <article
+            class="appointment-row appointment-row--pending-scheduled"
+            (click)="openScheduledRequest(request)"
+          >
+            <time class="appointment-row__time">{{ scheduledTime(request) }}</time>
+            <oc-avatar [name]="request.subject.displayName" size="small" />
+            <div class="appointment-row__info">
+              <strong>{{ request.subject.displayName }}</strong>
+              <span
+                >{{ request.subject.relationship || 'Patient' }} · {{ request.cabinet.name }}</span
+              >
+            </div>
+            <oc-status-badge status="requires-attention" customLabel="Réponse attendue" />
+            <div class="appointment-row__actions" (click)="$event.stopPropagation()">
+              <oc-button variant="primary" size="small" (click)="openScheduledRequest(request)">
+                Répondre
+              </oc-button>
+            </div>
+          </article>
         </div>
       </oc-card>
     }
 
-    @if (urgentLoading()) {
-      <div class="command-page__urgent-loading" role="status">Actualisation des urgences...</div>
-    }
-
-    @if (urgentError(); as msg) {
-      <div class="command-page__error command-page__error--urgent" role="alert">
-        <span>{{ msg }}</span>
-        <oc-button variant="quiet" size="small" (click)="retryUrgent()">Reessayer</oc-button>
-      </div>
+    @if (nextScheduledAppointment(); as appointment) {
+      <oc-card title="Prochain rendez-vous confirmé">
+        <div class="appointment-list">
+          <article class="appointment-row" (click)="openScheduledAppointment(appointment)">
+            <time class="appointment-row__time">{{ scheduledTime(appointment) }}</time>
+            <oc-avatar [name]="appointment.subject.displayName" size="small" />
+            <div class="appointment-row__info">
+              <strong>{{ appointment.subject.displayName }}</strong>
+              <span>{{ appointment.cabinet.name }}</span>
+            </div>
+            <oc-status-badge status="confirmed" customLabel="Confirmé" />
+            <div class="appointment-row__actions" (click)="$event.stopPropagation()">
+              <oc-button
+                variant="secondary"
+                size="small"
+                (click)="openScheduledAppointment(appointment)"
+                >Détails</oc-button
+              >
+            </div>
+          </article>
+        </div>
+      </oc-card>
     }
 
     <oc-card title="Rendez-vous du jour">
@@ -85,11 +114,7 @@
               {{ apt.source }}
             </span>
             <div class="appointment-row__actions" (click)="$event.stopPropagation()">
-              <oc-button
-                variant="primary"
-                size="small"
-                (click)="startConsultation(apt.id)"
-              >
+              <oc-button variant="primary" size="small" (click)="startConsultation(apt.id)">
                 Consultation
               </oc-button>
             </div>
@@ -127,6 +152,7 @@
   }
 
   <app-appointment-detail-panel #aptPanel (updated)="onAppointmentUpdated($event)" />
-  <app-urgent-request-detail-panel #urgentPanel (accepted)="onUrgentAccepted($event)" />
   <app-patient-summary-panel #patientPanel />
+  <app-booking-request-detail-panel #scheduledRequestPanel />
+  <app-scheduled-appointment-detail-panel #scheduledAppointmentPanel />
 </section>

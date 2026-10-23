@@ -5,19 +5,10 @@ import { authenticatedGuard, roleGuard } from '../../core/auth/auth.guards';
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
 import { unsavedChangesGuard } from './unsaved-changes.guard';
 
-/**
- * A SECRETARY session is a deliberately reduced view of this workspace, so it
- * lands on the agenda rather than the doctor's command centre.
- */
 function doctorWorkspaceLanding(): string {
   return inject(AuthTokenStore).user()?.role === 'SECRETARY' ? 'secretary-agenda' : 'command';
 }
 
-/**
- * Hides a destination from SECRETARY sessions. Filtering the navigation is a
- * convenience, not a control: without this a secretary could still reach a
- * doctor-only page by typing its URL.
- */
 function doctorOnly(route: Route): Route {
   return { ...route, canActivate: [roleGuard('DOCTOR')] };
 }
@@ -36,7 +27,8 @@ export const DOCTOR_ROUTES: Routes = [
       },
       doctorOnly({
         path: 'command',
-        loadComponent: () => import('./command/command-center-page').then((c) => c.CommandCenterPage),
+        loadComponent: () =>
+          import('./command/command-center-page').then((c) => c.CommandCenterPage),
         title: 'Accueil | OmniCare',
       }),
       {
@@ -48,15 +40,13 @@ export const DOCTOR_ROUTES: Routes = [
       doctorOnly({
         path: 'team',
         loadComponent: () => import('./secretary/team/team-page').then((c) => c.TeamPage),
-        title: 'Mon equipe | OmniCare',
+        title: 'Mon équipe | OmniCare',
       }),
-      // Declared after 'team' so the static segment wins; without the full path the router
-      // would treat 'team' as a prefix and never reach the list.
       doctorOnly({
         path: 'team/:membershipId',
         loadComponent: () =>
           import('./secretary/team/team-detail-page').then((c) => c.TeamDetailPage),
-        title: 'Detail du secretaire | OmniCare',
+        title: 'Détail du secrétaire | OmniCare',
       }),
       doctorOnly({
         path: 'patients',
@@ -96,12 +86,18 @@ export const DOCTOR_ROUTES: Routes = [
       doctorOnly({
         path: 'results',
         loadComponent: () => import('./results/results-page').then((c) => c.ResultsPage),
-        title: 'Resultats & Suivi | OmniCare',
+        title: 'Résultats et suivi | OmniCare',
       }),
       doctorOnly({
         path: 'requests',
         loadComponent: () => import('./requests/requests-page').then((c) => c.RequestsPage),
         title: 'Demandes | OmniCare',
+      }),
+      doctorOnly({
+        path: 'urgent-readiness',
+        loadComponent: () =>
+          import('./urgent-readiness/urgent-readiness-page').then((c) => c.UrgentReadinessPage),
+        title: 'Préparation aux urgences | OmniCare',
       }),
       doctorOnly({
         path: 'communication',
@@ -126,8 +122,9 @@ export const DOCTOR_ROUTES: Routes = [
       }),
       doctorOnly({
         path: 'settings',
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () => import('./settings/settings-page').then((c) => c.SettingsPage),
-        title: 'Parametres | OmniCare',
+        title: 'Paramètres | OmniCare',
       }),
     ],
   },

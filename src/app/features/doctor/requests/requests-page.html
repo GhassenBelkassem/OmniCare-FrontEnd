@@ -1,202 +1,58 @@
 <section class="requests-page">
-  <oc-page-header title="Demandes" description="Gerez vos demandes de rendez-vous et urgences" />
+  <oc-page-header title="Demandes" description="Gérez vos demandes de rendez-vous planifiés" />
 
-  <oc-tabs
-    [tabs]="tabs"
-    [selected]="activeTab()"
-    (selectedChange)="onTabChange($event)"
-    label="Types de demandes"
-  />
+  <div class="requests-page__state" role="note">
+    Les opérations urgentes sont gérées dans l’application mobile OmniCare Médecin.
+  </div>
 
-  @if (activeTab() === 'appointments') {
-    @if (appointmentsLoading()) {
-      <div class="requests-page__state" role="status">Chargement des demandes...</div>
-    } @else if (appointmentsError(); as message) {
-      <div class="requests-page__error" role="alert">
-        <span>{{ message }}</span>
-        <oc-button variant="quiet" size="small" (click)="retryAppointments()">Reessayer</oc-button>
-      </div>
-    } @else {
-      <div class="requests-page__list">
-        @for (appointment of appointmentRequests(); track trackByAppointmentId($index, appointment)) {
-          <oc-card [title]="appointment.patientId" [compact]="true">
-            <article class="request-row" (click)="openAptDetail(appointment)">
-              <div class="request-row__main">
-                <oc-avatar [name]="appointment.patientId" size="small" />
-                <div class="request-row__info">
-                  <span class="request-row__reason">
-                    {{ appointment.notes || 'Consultation' }}
-                  </span>
-                  <time class="request-row__date">{{ appointment.startTime }}</time>
-                  <div class="request-row__meta">
-                    <span class="request-row__source">{{ appointment.source }}</span>
-                  </div>
-                </div>
-                <oc-status-badge [status]="appointmentStatusOc(appointment.status)" />
-              </div>
-
-              <div class="request-row__actions" (click)="$event.stopPropagation()">
-                @if (appointment.status === 'BOOKED') {
-                  <oc-button variant="primary" size="small" (click)="startConsultation()">
-                    Consultation
-                  </oc-button>
-                  <oc-button variant="secondary" size="small" (click)="cancelAppointment(appointment)">
-                    Annuler
-                  </oc-button>
-                }
-              </div>
-            </article>
-          </oc-card>
-        } @empty {
-          <oc-empty-state
-            icon="inbox"
-            title="Aucune demande de rendez-vous"
-            description="Aucune demande en attente pour le moment."
-          />
-        }
-      </div>
-    }
-  }
-
-  @if (activeTab() === 'urgent') {
-    <div class="requests-page__urgent-header">
-      @if (urgentPolling()) {
-        <span class="requests-page__polling-indicator" role="status" aria-label="Mise a jour en cours">
-          <span class="requests-page__polling-dot" aria-hidden="true"></span>
-          <span class="requests-page__polling-text">Actualisation automatique</span>
-        </span>
-      }
+  @if (appointmentsLoading()) {
+    <div class="requests-page__state" role="status">Chargement des demandes...</div>
+  } @else if (appointmentsError(); as message) {
+    <div class="requests-page__error" role="alert">
+      <span>{{ message }}</span>
+      <oc-button variant="quiet" size="small" (click)="retryAppointments()">Réessayer</oc-button>
     </div>
-
-    @if (urgentLoading()) {
-      <div class="requests-page__state" role="status">Chargement des demandes urgentes...</div>
-    } @else if (urgentError(); as message) {
-      <div class="requests-page__error" role="alert">
-        <span>{{ message }}</span>
-        <oc-button variant="quiet" size="small" (click)="retryUrgent()">Reessayer</oc-button>
-      </div>
-    } @else {
-      @if (pendingUrgentOffers().length > 0) {
-        <h3 class="requests-page__section-title">En attente de reponse</h3>
-        <div class="requests-page__list">
-          @for (offer of pendingUrgentOffers(); track trackByOfferId($index, offer)) {
-            <oc-card [title]="'Offre urgente — ' + offer.patientName" [compact]="true">
-              <article class="request-row request-row--urgent" (click)="openUrgentDetail(offer)">
-                <div class="request-row__main">
-                  <oc-avatar [name]="offer.patientName" size="small" />
-                  <div class="request-row__info">
-                    <span class="request-row__reason">
-                      {{ offer.notes || 'Demande urgente' }}
-                    </span>
-                    <time class="request-row__date">{{ offer.sentAt }}</time>
-                    <div class="request-row__meta">
-                      @if (offer.visitPreference) {
-                        <span class="request-row__preference">
-                          {{ incomingLocation(offer) }}
-                        </span>
-                      }
-                      <span class="request-row__distance">
-                        {{ incomingDistance(offer) }}
-                      </span>
-                    </div>
-                  </div>
-                  <oc-status-badge [status]="offerStatusOc(offer.status)" />
+  } @else {
+    <div class="requests-page__list">
+      @for (request of appointmentRequests(); track trackByAppointmentId($index, request)) {
+        <oc-card [title]="request.subject.displayName" [compact]="true">
+          <article class="request-row" (click)="openRequestDetail(request)">
+            <div class="request-row__main">
+              <oc-avatar [name]="request.subject.displayName" size="small" />
+              <div class="request-row__info">
+                <span class="request-row__reason">{{ request.cabinet.name }}</span>
+                <time class="request-row__date">{{ scheduledTime(request) }}</time>
+                <div class="request-row__meta">
+                  <span class="request-row__source">
+                    {{ request.subject.relationship || 'Patient' }}
+                  </span>
                 </div>
+              </div>
+              <oc-status-badge
+                [status]="appointmentStatusOc(request.status)"
+                [customLabel]="appointmentStatusLabel(request.status)"
+              />
+            </div>
 
-                <div class="request-row__actions" (click)="$event.stopPropagation()">
-                  <oc-button variant="primary" size="small" (click)="acceptUrgent(offer)">
-                    Disponible
-                  </oc-button>
-                  <oc-button variant="secondary" size="small" (click)="declineUrgent(offer)">
-                    Refuser
-                  </oc-button>
-                </div>
-              </article>
-            </oc-card>
-          }
-        </div>
-      }
-
-      @if (acceptedUrgentOffers().length > 0) {
-        <h3 class="requests-page__section-title">Offres acceptees</h3>
-        <div class="requests-page__list">
-          @for (offer of acceptedUrgentOffers(); track trackByOfferId($index, offer)) {
-            <oc-card [title]="offer.patientName" [compact]="true">
-              <article class="request-row request-row--accepted" (click)="openUrgentDetail(offer)">
-                <div class="request-row__main">
-                  <oc-avatar [name]="offer.patientName" size="small" />
-                  <div class="request-row__info">
-                    <span class="request-row__reason">
-                      {{ offer.notes || 'Consultation urgente acceptee' }}
-                    </span>
-                    <div class="request-row__meta">
-                      @if (offer.visitPreference) {
-                        <span class="request-row__preference">
-                          {{ incomingLocation(offer) }}
-                        </span>
-                      }
-                      <span class="request-row__distance">
-                        {{ incomingDistance(offer) }}
-                      </span>
-                    </div>
-                  </div>
-                  <oc-status-badge [status]="offerStatusOc(offer.status)" />
-                </div>
-
-                <div class="request-row__actions" (click)="$event.stopPropagation()">
-                  @if (hasArrived(offer.offerId)) {
-                    <oc-button
-                      variant="primary"
-                      size="small"
-                      leadingIcon="medicine-box"
-                      (click)="startConsultation(true)"
-                    >
-                      Demarrer la consultation
-                    </oc-button>
-                  } @else if (offer.requestStatus === 'MATCHED') {
-                    @if (showDirections(offer)) {
-                      <oc-button
-                        variant="secondary"
-                        size="small"
-                        leadingIcon="environment"
-                        (click)="openDirections(offer)"
-                      >
-                        Itineraire
-                      </oc-button>
-                    }
-                    <oc-button
-                      variant="primary"
-                      size="small"
-                      leadingIcon="check-circle"
-                      [loading]="arrivingId() === offer.requestId"
-                      [disabled]="arrivingId() !== null && arrivingId() !== offer.requestId"
-                      (click)="arriveUrgent(offer)"
-                    >
-                      Arriver
-                    </oc-button>
-                  } @else {
-                    <span class="request-row__waiting" role="status">
-                      En attente du choix du patient
-                    </span>
-                  }
-                </div>
-              </article>
-            </oc-card>
-          }
-        </div>
-      }
-
-      @if (urgentOffers().length === 0) {
+            <div class="request-row__actions" (click)="$event.stopPropagation()">
+              @if (request.availableActions.length > 0) {
+                <oc-button variant="primary" size="small" (click)="openRequestDetail(request)">
+                  Répondre
+                </oc-button>
+              }
+            </div>
+          </article>
+        </oc-card>
+      } @empty {
         <oc-empty-state
-          icon="exclamation-circle"
-          title="Aucune demande urgente"
-          description="Aucune offre urgente en attente."
+          icon="inbox"
+          title="Aucune demande de rendez-vous"
+          description="Aucune demande en attente pour le moment."
         />
       }
-    }
+    </div>
   }
 
-  <app-appointment-detail-panel #aptPanel (updated)="onAppointmentUpdated($event)" />
-  <app-urgent-request-detail-panel #urgentPanel (accepted)="onUrgentAccepted($event)" />
+  <app-booking-request-detail-panel #requestPanel />
   <app-patient-summary-panel #patientPanel />
 </section>

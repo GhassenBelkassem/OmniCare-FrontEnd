@@ -81,7 +81,9 @@ export class ClinicInformationDialog {
   readonly instructionChanged = output<string>();
   readonly confirmed = output<ClinicInformationReasonCode>();
   readonly cancelled = output<void>();
-  readonly reasons = CLINIC_INFORMATION_REASON_OPTIONS;
+  get reasons() {
+    return CLINIC_INFORMATION_REASON_OPTIONS;
+  }
   get responseExplanation(): readonly string[] { return clinicInformationResponseExplanation(this.form.controls.reasonCode.value); }
   readonly form = new FormGroup({
     reasonCode: new FormControl<ClinicInformationReasonCode | null>(null, Validators.required),

@@ -37,6 +37,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "assets"
               }
             ],
             "styles": [
@@ -50,10 +55,7 @@
             "security": {
               "allowedHosts": []
             },
-            "allowedCommonJsDependencies": [
-              "@stomp/stompjs",
-              "sockjs-client"
-            ]
+            "allowedCommonJsDependencies": ["@stomp/stompjs", "sockjs-client"]
           },
           "configurations": {
             "production": {

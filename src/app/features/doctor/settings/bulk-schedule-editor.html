@@ -1,0 +1,211 @@
+<oc-dialog
+  [open]="open()"
+  [title]="title()"
+  [description]="description()"
+  [error]="saveError()"
+  [submitting]="saving()"
+  [hasFooter]="true"
+  size="wide"
+  initialFocus="first-tabbable"
+  (dismissed)="dismissed.emit()"
+>
+  <form id="bulkScheduleForm" class="bulk-schedule" [formGroup]="form" (ngSubmit)="submit()">
+    <fieldset class="bulk-schedule__days" formGroupName="days">
+      <legend>Quels jours travaillez-vous ?</legend>
+      <div class="bulk-schedule__day-grid">
+        @for (day of days; track day.value) {
+          <div
+            class="bulk-schedule__day-option"
+            [class.bulk-schedule__day-option--selected]="dayControl(day.value).value"
+            [class.bulk-schedule__day-option--disabled]="copySourceIs(day.value)"
+          >
+            <oc-checkbox
+              [controlId]="'bulk-day-' + day.value"
+              [labelledBy]="'bulk-day-' + day.value + '-label'"
+              [describedBy]="form.controls.days.hasError('requiredDay') ? 'bulkDaysError' : null"
+              [checked]="dayControl(day.value).value"
+              [disabled]="saving() || copySourceIs(day.value)"
+              (checkedChange)="setDay(day.value, $event)"
+            />
+            <span [id]="'bulk-day-' + day.value + '-label'">{{ day.label }}</span>
+          </div>
+        }
+      </div>
+      @if (form.controls.days.touched && form.controls.days.hasError('requiredDay')) {
+        <p id="bulkDaysError" class="bulk-schedule__error" role="alert">
+          Sélectionnez au moins un jour.
+        </p>
+      }
+    </fieldset>
+
+    @if (mode() === 'copy' && sourceRule(); as source) {
+      <section class="bulk-schedule__source" aria-labelledby="copySourceTitle">
+        <h3 id="copySourceTitle">Horaires copiés</h3>
+        <p>
+          <strong
+            >{{ source.startTime.substring(0, 5) }}–{{ source.endTime.substring(0, 5) }}</strong
+          >
+          @if (source.pauseStart && source.pauseEnd) {
+            · Pause {{ source.pauseStart.substring(0, 5) }}–{{ source.pauseEnd.substring(0, 5) }}
+          }
+          · {{ source.slotDurationMinutes }} min
+        </p>
+      </section>
+    } @else {
+      <section class="bulk-schedule__section" aria-labelledby="bulkHoursTitle">
+        <h3 id="bulkHoursTitle">Horaires habituels</h3>
+        <div class="bulk-schedule__time-grid">
+          <label class="bulk-schedule__field" for="bulkScheduleStart">
+            <span>Début</span>
+            <oc-time-field
+              controlId="bulkScheduleStart"
+              formControlName="startTime"
+              [allowClear]="false"
+              [ariaDescribedBy]="
+                form.touched && form.hasError('workingWindowOrder')
+                  ? 'bulkWorkingWindowError'
+                  : null
+              "
+              [invalid]="form.touched && form.hasError('workingWindowOrder')"
+            />
+          </label>
+          <label class="bulk-schedule__field" for="bulkScheduleEnd">
+            <span>Fin</span>
+            <oc-time-field
+              controlId="bulkScheduleEnd"
+              formControlName="endTime"
+              [allowClear]="false"
+              [ariaDescribedBy]="
+                form.touched && form.hasError('workingWindowOrder')
+                  ? 'bulkWorkingWindowError'
+                  : null
+              "
+              [invalid]="form.touched && form.hasError('workingWindowOrder')"
+            />
+          </label>
+        </div>
+        @if (form.touched && form.hasError('workingWindowOrder')) {
+          <p id="bulkWorkingWindowError" class="bulk-schedule__error" role="alert">
+            L'heure de début doit précéder l'heure de fin.
+          </p>
+        }
+      </section>
+
+      <section class="bulk-schedule__section" aria-labelledby="bulkPauseTitle">
+        <div class="bulk-schedule__pause-toggle">
+          <oc-checkbox
+            controlId="bulkSchedulePause"
+            labelledBy="bulkPauseTitle"
+            [checked]="form.controls.includePause.value"
+            [disabled]="saving()"
+            (checkedChange)="togglePause($event)"
+          />
+          <h3 id="bulkPauseTitle">Ajouter une pause</h3>
+        </div>
+        @if (form.controls.includePause.value) {
+          <div class="bulk-schedule__time-grid">
+            <label class="bulk-schedule__field" for="bulkPauseStart">
+              <span>Début de la pause</span>
+              <oc-time-field
+                controlId="bulkPauseStart"
+                formControlName="pauseStart"
+                [ariaDescribedBy]="
+                  form.touched &&
+                  (form.hasError('pausePair') ||
+                    form.hasError('pauseOrder') ||
+                    form.hasError('pauseOutsideWindow'))
+                    ? 'bulkPauseError'
+                    : null
+                "
+                [invalid]="
+                  form.touched &&
+                  (form.hasError('pausePair') ||
+                    form.hasError('pauseOrder') ||
+                    form.hasError('pauseOutsideWindow'))
+                "
+              />
+            </label>
+            <label class="bulk-schedule__field" for="bulkPauseEnd">
+              <span>Fin de la pause</span>
+              <oc-time-field
+                controlId="bulkPauseEnd"
+                formControlName="pauseEnd"
+                [ariaDescribedBy]="
+                  form.touched &&
+                  (form.hasError('pausePair') ||
+                    form.hasError('pauseOrder') ||
+                    form.hasError('pauseOutsideWindow'))
+                    ? 'bulkPauseError'
+                    : null
+                "
+                [invalid]="
+                  form.touched &&
+                  (form.hasError('pausePair') ||
+                    form.hasError('pauseOrder') ||
+                    form.hasError('pauseOutsideWindow'))
+                "
+              />
+            </label>
+          </div>
+        }
+        @if (
+          form.touched &&
+          (form.hasError('pausePair') ||
+            form.hasError('pauseOrder') ||
+            form.hasError('pauseOutsideWindow'))
+        ) {
+          <div id="bulkPauseError" class="bulk-schedule__error" role="alert">
+            @if (form.hasError('pausePair')) {
+              <p>Renseignez les deux heures de pause ou aucune.</p>
+            }
+            @if (form.hasError('pauseOrder')) {
+              <p>Le début de pause doit précéder sa fin.</p>
+            }
+            @if (form.hasError('pauseOutsideWindow')) {
+              <p>La pause doit être entièrement comprise dans la plage de travail.</p>
+            }
+          </div>
+        }
+      </section>
+
+      <label class="bulk-schedule__field" for="bulkScheduleDuration">
+        <span>Durée d’une consultation</span>
+        <select
+          id="bulkScheduleDuration"
+          formControlName="slotDurationMinutes"
+          [attr.aria-describedby]="
+            form.controls.slotDurationMinutes.hasError('unsupportedSlotDuration')
+              ? 'bulkDurationError'
+              : null
+          "
+        >
+          <option [ngValue]="15">15 minutes</option>
+          <option [ngValue]="20">20 minutes</option>
+          <option [ngValue]="30">30 minutes</option>
+          <option [ngValue]="45">45 minutes</option>
+          <option [ngValue]="60">60 minutes</option>
+        </select>
+      </label>
+      @if (form.controls.slotDurationMinutes.hasError('unsupportedSlotDuration')) {
+        <p id="bulkDurationError" class="bulk-schedule__error" role="alert">
+          Choisissez une durée de consultation prise en charge.
+        </p>
+      }
+    }
+  </form>
+
+  <div ocDialogFooter class="bulk-schedule__actions">
+    <oc-button variant="secondary" [disabled]="saving()" (click)="dismissed.emit()">
+      Annuler
+    </oc-button>
+    <oc-button
+      type="submit"
+      form="bulkScheduleForm"
+      variant="primary"
+      [loading]="saving()"
+      [disabled]="selectedDays().length === 0"
+    >
+      {{ primaryLabel() }}
+    </oc-button>
+  </div>
+</oc-dialog>

@@ -1,0 +1,281 @@
+<oc-dialog
+  [open]="open()"
+  [title]="title"
+  description="Ces informations publiques aident les patients à trouver votre lieu de consultation."
+  [error]="error()"
+  size="wide"
+  initialFocus="#cabinet-name"
+  [backdropDismissible]="true"
+  [submitting]="submitting()"
+  [hasFooter]="true"
+  (dismissed)="dismissed.emit()"
+>
+  <form id="cabinet-form" class="cabinet-form" [formGroup]="form" (ngSubmit)="submit()">
+    <section class="cabinet-form__section" aria-labelledby="cabinet-general-title">
+      <div class="cabinet-form__section-heading">
+        <h3 id="cabinet-general-title">Informations générales</h3>
+        <p>Identité et adresse affichées aux patients.</p>
+      </div>
+      <div class="cabinet-form__grid">
+        <div class="cabinet-form__full">
+          <oc-field
+            controlId="cabinet-name"
+            label="Nom du cabinet"
+            [required]="true"
+            [disabled]="submitting()"
+            [error]="errorFor('name')"
+          >
+            <input
+              id="cabinet-name"
+              class="cabinet-form__input"
+              type="text"
+              maxlength="160"
+              required
+              formControlName="name"
+              [attr.aria-invalid]="invalid('name')"
+              [attr.aria-describedby]="invalid('name') ? 'cabinet-name-error' : null"
+            />
+          </oc-field>
+        </div>
+
+        <oc-field
+          controlId="cabinet-governorate"
+          label="Gouvernorat"
+          [required]="true"
+          [disabled]="submitting()"
+          [error]="errorFor('governorate')"
+        >
+          <input
+            id="cabinet-governorate"
+            class="cabinet-form__input"
+            type="text"
+            maxlength="100"
+            required
+            formControlName="governorate"
+            [attr.aria-invalid]="invalid('governorate')"
+            [attr.aria-describedby]="invalid('governorate') ? 'cabinet-governorate-error' : null"
+          />
+        </oc-field>
+
+        <oc-field
+          controlId="cabinet-city"
+          label="Ville"
+          [required]="true"
+          [disabled]="submitting()"
+          [error]="errorFor('city')"
+        >
+          <input
+            id="cabinet-city"
+            class="cabinet-form__input"
+            type="text"
+            maxlength="100"
+            required
+            formControlName="city"
+            [attr.aria-invalid]="invalid('city')"
+            [attr.aria-describedby]="invalid('city') ? 'cabinet-city-error' : null"
+          />
+        </oc-field>
+
+        <div class="cabinet-form__full">
+          <oc-field
+            controlId="cabinet-address"
+            label="Adresse complète"
+            [required]="true"
+            [disabled]="submitting()"
+            [error]="errorFor('address')"
+          >
+            <input
+              id="cabinet-address"
+              class="cabinet-form__input"
+              type="text"
+              maxlength="500"
+              required
+              formControlName="address"
+              [attr.aria-invalid]="invalid('address')"
+              [attr.aria-describedby]="invalid('address') ? 'cabinet-address-error' : null"
+            />
+          </oc-field>
+        </div>
+      </div>
+    </section>
+
+    <section class="cabinet-form__section" aria-labelledby="cabinet-location-title">
+      <div class="cabinet-form__section-heading cabinet-form__section-heading--action">
+        <div>
+          <h3 id="cabinet-location-title">Localisation</h3>
+          <p>Utilisée pour situer précisément le cabinet.</p>
+        </div>
+        <oc-button
+          type="button"
+          variant="secondary"
+          size="small"
+          leadingIcon="environment"
+          [loading]="locating()"
+          (click)="useCurrentPosition()"
+        >
+          Utiliser ma position actuelle
+        </oc-button>
+      </div>
+      @if (locationError(); as message) {
+        <p class="cabinet-form__location-error" role="alert">{{ message }}</p>
+      }
+      <div class="cabinet-form__grid cabinet-form__grid--coordinates">
+        <oc-field
+          controlId="cabinet-latitude"
+          label="Latitude"
+          [required]="true"
+          [disabled]="submitting()"
+          [error]="errorFor('latitude')"
+        >
+          <input
+            id="cabinet-latitude"
+            class="cabinet-form__input"
+            type="text"
+            inputmode="decimal"
+            required
+            formControlName="latitude"
+            [attr.aria-invalid]="invalid('latitude')"
+          />
+        </oc-field>
+        <oc-field
+          controlId="cabinet-longitude"
+          label="Longitude"
+          [required]="true"
+          [disabled]="submitting()"
+          [error]="errorFor('longitude')"
+        >
+          <input
+            id="cabinet-longitude"
+            class="cabinet-form__input"
+            type="text"
+            inputmode="decimal"
+            required
+            formControlName="longitude"
+            [attr.aria-invalid]="invalid('longitude')"
+          />
+        </oc-field>
+      </div>
+    </section>
+
+    <section class="cabinet-form__section" aria-labelledby="cabinet-public-title">
+      <div class="cabinet-form__section-heading">
+        <h3 id="cabinet-public-title">Informations publiques</h3>
+        <p>Coordonnées et consignes utiles avant l’arrivée.</p>
+      </div>
+      <div class="cabinet-form__grid">
+        <div class="cabinet-form__full">
+          <oc-field
+            controlId="cabinet-phone"
+            label="Téléphone public du cabinet"
+            hint="Affiché aux patients si renseigné."
+            [disabled]="submitting()"
+            [error]="errorFor('publicPhone')"
+          >
+            <input
+              id="cabinet-phone"
+              class="cabinet-form__input"
+              type="tel"
+              maxlength="32"
+              formControlName="publicPhone"
+              aria-describedby="cabinet-phone-hint"
+              [attr.aria-invalid]="invalid('publicPhone')"
+            />
+          </oc-field>
+        </div>
+        <div class="cabinet-form__full">
+          <oc-field
+            controlId="cabinet-instructions"
+            label="Instructions pour les patients"
+            hint="Informations publiques d’accès ou d’arrivée. N’ajoutez pas d’informations médicales."
+            [disabled]="submitting()"
+            [error]="errorFor('patientInstructions')"
+          >
+            <oc-textarea
+              controlId="cabinet-instructions"
+              formControlName="patientInstructions"
+              [rows]="3"
+              [maxLength]="1000"
+              [showCount]="true"
+              [invalid]="invalid('patientInstructions')"
+            />
+          </oc-field>
+        </div>
+      </div>
+    </section>
+
+    <section class="cabinet-form__section" aria-labelledby="cabinet-options-title">
+      <div class="cabinet-form__section-heading">
+        <h3 id="cabinet-options-title">Options</h3>
+        <p>Visibilité et caractéristiques de ce lieu.</p>
+      </div>
+      <div class="cabinet-form__options">
+        <div class="cabinet-form__option">
+          <div>
+            <strong id="cabinet-wheelchair-label">Accessible PMR</strong>
+            <span id="cabinet-wheelchair-description"
+              >Le cabinet accueille les personnes à mobilité réduite.</span
+            >
+          </div>
+          <oc-switch
+            controlId="cabinet-wheelchair"
+            labelledBy="cabinet-wheelchair-label"
+            describedBy="cabinet-wheelchair-description"
+            formControlName="wheelchairAccessible"
+          />
+        </div>
+        <div class="cabinet-form__option">
+          <div>
+            <strong id="cabinet-primary-label">Cabinet principal</strong>
+            <span id="cabinet-primary-description">Mis en avant sur votre profil.</span>
+          </div>
+          <oc-switch
+            controlId="cabinet-primary"
+            labelledBy="cabinet-primary-label"
+            describedBy="cabinet-primary-description"
+            formControlName="primary"
+          />
+        </div>
+        <div class="cabinet-form__option">
+          <div>
+            <strong id="cabinet-active-label">Cabinet actif</strong>
+            <span id="cabinet-active-description">Visible par les patients.</span>
+          </div>
+          <oc-switch
+            controlId="cabinet-active"
+            labelledBy="cabinet-active-label"
+            describedBy="cabinet-active-description"
+            formControlName="active"
+          />
+        </div>
+      </div>
+      @if (form.hasError('primaryInactive') && form.touched) {
+        <p class="cabinet-form__form-error" role="alert">Un cabinet principal doit rester actif.</p>
+      }
+    </section>
+    @if (conflict()) {
+      <div class="cabinet-form__conflict" role="alert">
+        <p>Rechargez les données du cabinet avant de reprendre la modification.</p>
+        <oc-button type="button" variant="secondary" size="small" (click)="refreshRequested.emit()"
+          >Recharger les données</oc-button
+        >
+      </div>
+    }
+  </form>
+
+  <oc-button
+    ocDialogFooter
+    type="button"
+    variant="secondary"
+    [disabled]="submitting()"
+    (click)="dismissed.emit()"
+    >Annuler</oc-button
+  >
+  <oc-button
+    ocDialogFooter
+    type="submit"
+    form="cabinet-form"
+    [loading]="submitting()"
+    [disabled]="form.invalid || conflict()"
+    >Enregistrer</oc-button
+  >
+</oc-dialog>

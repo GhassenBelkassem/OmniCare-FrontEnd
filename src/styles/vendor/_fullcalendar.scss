@@ -1,0 +1,211 @@
+// FullCalendar v7 emits its DOM without component-scoped styles. Keep the
+// structural skeleton and selected theme in the watched global stylesheet graph.
+@use '@fullcalendar/angular/skeleton.css';
+@use '@fullcalendar/angular/themes/monarch/theme.css';
+
+.omnicare-calendar {
+  // Replace Monarch's stock palette with the OmniCare semantic theme while
+  // retaining FullCalendar's structural and accessibility behavior.
+  --fc-monarch-primary: var(--oc-color-brand-primary);
+  --fc-monarch-primary-foreground: var(--oc-color-text-primary);
+  --fc-monarch-primary-over: var(--oc-color-brand-primary-hover);
+  --fc-monarch-primary-down: var(--oc-color-brand-primary-active);
+  --fc-monarch-secondary: var(--oc-color-surface-selected);
+  --fc-monarch-secondary-foreground: var(--oc-color-text-primary);
+  --fc-monarch-secondary-over: var(--oc-color-surface-hover);
+  --fc-monarch-secondary-down: var(--oc-color-border-default);
+  --fc-monarch-tertiary: var(--oc-color-coordination-surface);
+  --fc-monarch-tertiary-foreground: var(--oc-color-coordination);
+  --fc-monarch-tertiary-over: var(--oc-color-surface-hover);
+  --fc-monarch-tertiary-down: var(--oc-color-border-default);
+  --fc-monarch-event: var(--oc-color-brand-primary);
+  --fc-monarch-event-contrast: var(--oc-color-text-primary);
+  --fc-monarch-highlight: var(--oc-color-surface-selected);
+  --fc-monarch-now: var(--oc-color-critical);
+  --fc-monarch-selected: var(--oc-color-brand-primary-active);
+  --fc-monarch-selected-foreground: var(--oc-color-text-inverse);
+  --fc-monarch-selected-over: var(--oc-color-brand-primary-hover);
+  --fc-monarch-selected-down: var(--oc-color-brand-primary-active);
+  --fc-monarch-outline: var(--oc-color-border-focus);
+  --fc-monarch-popover: var(--oc-color-surface-card);
+  --fc-monarch-popover-foreground: var(--oc-color-text-primary);
+  --fc-monarch-background: var(--oc-color-surface-card);
+  --fc-monarch-faint: var(--oc-color-surface-subtle);
+  --fc-monarch-muted: var(--oc-color-surface-hover);
+  --fc-monarch-strong: var(--oc-color-border-subtle);
+  --fc-monarch-stronger: var(--oc-color-border-default);
+  --fc-monarch-strongest: var(--oc-color-border-strong);
+  --fc-monarch-foreground: var(--oc-color-text-primary);
+  --fc-monarch-faint-foreground: var(--oc-color-text-disabled);
+  --fc-monarch-muted-foreground: var(--oc-color-text-muted);
+  --fc-monarch-strong-foreground: var(--oc-color-text-secondary);
+  --fc-monarch-border: var(--oc-color-border-subtle);
+  --fc-monarch-strong-border: var(--oc-color-border-default);
+
+  .omnicare-fc-view {
+    overflow: clip;
+    border-radius: var(--oc-radius-lg);
+    background: var(--oc-color-surface-card);
+    color: var(--oc-color-text-primary);
+    font-family: var(--oc-font-family);
+  }
+
+  .omnicare-fc-day-header {
+    border-color: var(--oc-color-border-subtle);
+    background: var(--oc-color-surface-card);
+  }
+
+  .omnicare-fc-day-header--today {
+    background: color-mix(in srgb, var(--oc-color-brand-primary) 6%, transparent);
+  }
+
+  .omnicare-fc-day-header__inner {
+    width: 100%;
+  }
+
+  .omnicare-calendar-day-heading {
+    display: flex;
+    min-height: 3rem;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--oc-space-1, 0.25rem);
+    padding: var(--oc-space-2, 0.5rem) var(--oc-space-1, 0.25rem);
+    color: var(--oc-color-text-muted);
+    text-align: center;
+  }
+
+  .omnicare-calendar-day-heading__weekday {
+    font-size: 0.6875rem;
+    font-weight: var(--oc-font-weight-semibold, 600);
+    letter-spacing: 0.06em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .omnicare-calendar-day-heading__date {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--oc-color-text-primary);
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .omnicare-calendar-day-heading--today {
+    color: var(--oc-color-brand-primary-active);
+  }
+
+  .omnicare-calendar-day-heading--today .omnicare-calendar-day-heading__date {
+    background: var(--oc-color-brand-primary);
+    color: var(--oc-color-text-primary);
+  }
+
+  .omnicare-fc-day-cell {
+    border-color: var(--oc-color-border-subtle);
+    background: var(--oc-color-surface-card);
+    transition: background-color 120ms ease;
+  }
+
+  .omnicare-fc-day-cell:hover {
+    background: var(--oc-color-surface-hover);
+  }
+
+  .omnicare-fc-day-cell--other {
+    background: var(--oc-color-surface-subtle);
+  }
+
+  .omnicare-fc-day-cell--today {
+    background: color-mix(in srgb, var(--oc-color-brand-primary) 5%, transparent);
+  }
+
+  .omnicare-fc-day-cell--blocked,
+  .omnicare-fc-day-cell--blocked:hover {
+    background: var(--oc-color-neutral-surface);
+  }
+
+  .omnicare-fc-day-cell__top {
+    padding: var(--oc-space-2);
+  }
+
+  .omnicare-fc-day-cell__events {
+    padding-inline: var(--oc-space-1);
+  }
+
+  .omnicare-fc-day-lane,
+  .omnicare-fc-slot-lane,
+  .omnicare-fc-slot-header {
+    border-color: var(--oc-color-border-subtle);
+  }
+
+  .omnicare-fc-day-lane--today {
+    background: color-mix(in srgb, var(--oc-color-brand-primary) 3%, transparent);
+  }
+
+  .omnicare-fc-slot-header {
+    color: var(--oc-color-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .omnicare-fc-slot-lane--minor {
+    border-color: color-mix(in srgb, var(--oc-color-border-subtle) 55%, transparent);
+  }
+
+  .omnicare-fc-non-business {
+    background: var(--oc-color-surface-subtle);
+    opacity: 0.55;
+  }
+
+  .omnicare-fc-now-line {
+    border-color: var(--oc-color-critical);
+    border-width: 2px 0 0;
+  }
+
+  .omnicare-fc-now-dot {
+    border-color: var(--oc-color-critical);
+    background: var(--oc-color-critical);
+  }
+
+  .omnicare-fc-event {
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--oc-radius-sm);
+    background: transparent;
+    box-shadow: none;
+    color: var(--oc-color-text-primary);
+  }
+
+  .omnicare-fc-event--appointment {
+    cursor: pointer;
+  }
+
+  .omnicare-fc-event--urgent {
+    cursor: default;
+  }
+
+  .omnicare-fc-event:hover {
+    filter: brightness(0.98);
+  }
+
+  .omnicare-fc-event:focus-visible {
+    outline: 2px solid var(--oc-color-border-focus);
+    outline-offset: 1px;
+  }
+
+  .omnicare-fc-background-event {
+    opacity: 0.55;
+  }
+
+  .omnicare-exception-background--block {
+    background: var(--oc-color-surface-disabled);
+  }
+
+  .omnicare-exception-background--extra {
+    background: var(--oc-color-success-surface);
+  }
+}

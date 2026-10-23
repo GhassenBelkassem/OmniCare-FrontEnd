@@ -1,14 +1,21 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject, input, output, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { NzModalModule } from 'ng-zorro-antd/modal';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzFormModule } from 'ng-zorro-antd/form';
 
-import { OcButton } from '../../../shared/ui';
-import { AvailabilityRuleDto, DayOfWeekDto } from '../../doctor/appointment-api.models';
+import { OcButton, OcTimeField } from '../../../shared/ui';
+import { AvailabilityRuleDto, DayOfWeekDto } from '../appointment-api.models';
 
-const DAYS: { value: DayOfWeekDto; label: string }[] = [
+export const WEEKDAYS: readonly {
+  readonly value: DayOfWeekDto;
+  readonly label: string;
+}[] = [
   { value: 'MONDAY', label: 'Lundi' },
   { value: 'TUESDAY', label: 'Mardi' },
   { value: 'WEDNESDAY', label: 'Mercredi' },
@@ -18,66 +25,107 @@ const DAYS: { value: DayOfWeekDto; label: string }[] = [
   { value: 'SUNDAY', label: 'Dimanche' },
 ];
 
+export const WEEKDAY_LABELS: Readonly<Record<DayOfWeekDto, string>> = Object.fromEntries(
+  WEEKDAYS.map((day) => [day.value, day.label]),
+) as Readonly<Record<DayOfWeekDto, string>>;
+
+export function scheduleWindowValidator(control: AbstractControl): ValidationErrors | null {
+  const start = control.get('startTime')?.value as string | null;
+  const end = control.get('endTime')?.value as string | null;
+  const pauseStart = control.get('pauseStart')?.value as string | null;
+  const pauseEnd = control.get('pauseEnd')?.value as string | null;
+  const errors: Record<string, boolean> = {};
+
+  if (start && end && start >= end) errors['workingWindowOrder'] = true;
+  if (Boolean(pauseStart) !== Boolean(pauseEnd)) errors['pausePair'] = true;
+  if (pauseStart && pauseEnd) {
+    if (pauseStart >= pauseEnd) errors['pauseOrder'] = true;
+    if (start && end && (pauseStart <= start || pauseEnd >= end)) {
+      errors['pauseOutsideWindow'] = true;
+    }
+  }
+  return Object.keys(errors).length > 0 ? errors : null;
+}
+
+export function supportedSlotDurationValidator(control: AbstractControl): ValidationErrors | null {
+  return [15, 20, 30, 45, 60].includes(Number(control.value))
+    ? null
+    : { unsupportedSlotDuration: true };
+}
+
 @Component({
   selector: 'app-availability-rule-dialog',
-  imports: [FormsModule, NzModalModule, NzSelectModule, NzInputModule, NzFormModule, OcButton],
+  imports: [ReactiveFormsModule, NzModalModule, OcButton, OcTimeField],
   templateUrl: './availability-rule-dialog.html',
   styleUrl: './availability-rule-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AvailabilityRuleDialog {
-  readonly days = DAYS;
-
-  @Input({ required: true }) open = false;
-  @Input() rule: AvailabilityRuleDto | null = null;
+  readonly open = input.required<boolean>();
+  readonly rule = input<AvailabilityRuleDto | null>(null);
+  readonly day = input.required<DayOfWeekDto>();
+  readonly contextLabel = input('Planning du médecin — tous les cabinets');
+  readonly saving = input(false);
+  readonly saveError = input<string | null>(null);
 
   readonly openChange = output<boolean>();
   readonly saved = output<AvailabilityRuleDto>();
 
-  readonly dayOfWeek = signal<DayOfWeekDto>('MONDAY');
-  readonly startTime = signal('09:00');
-  readonly endTime = signal('17:00');
-  readonly pauseStart = signal<string | null>(null);
-  readonly pauseEnd = signal<string | null>(null);
-  readonly slotDuration = signal(30);
-  readonly active = signal(true);
+  readonly form = new FormGroup(
+    {
+      startTime: new FormControl('09:00', {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+      endTime: new FormControl('17:00', {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+      pauseStart: new FormControl<string | null>(null),
+      pauseEnd: new FormControl<string | null>(null),
+      slotDurationMinutes: new FormControl(30, {
+        nonNullable: true,
+        validators: [supportedSlotDurationValidator],
+      }),
+    },
+    { validators: scheduleWindowValidator },
+  );
 
-  ngOnChanges(): void {
-    if (this.rule) {
-      this.dayOfWeek.set(this.rule.dayOfWeek);
-      this.startTime.set(this.rule.startTime);
-      this.endTime.set(this.rule.endTime);
-      this.pauseStart.set(this.rule.pauseStart);
-      this.pauseEnd.set(this.rule.pauseEnd);
-      this.slotDuration.set(this.rule.slotDurationMinutes);
-      this.active.set(this.rule.active);
-    } else {
-      this.dayOfWeek.set('MONDAY');
-      this.startTime.set('09:00');
-      this.endTime.set('17:00');
-      this.pauseStart.set(null);
-      this.pauseEnd.set(null);
-      this.slotDuration.set(30);
-      this.active.set(true);
-    }
+  dialogTitle(): string {
+    return `Modifier les horaires du ${WEEKDAY_LABELS[this.day()].toLowerCase()}`;
+  }
+
+  constructor() {
+    effect(() => {
+      if (!this.open()) return;
+      const rule = this.rule();
+      this.form.reset({
+        startTime: rule?.startTime.substring(0, 5) ?? '09:00',
+        endTime: rule?.endTime.substring(0, 5) ?? '17:00',
+        pauseStart: rule?.pauseStart?.substring(0, 5) ?? null,
+        pauseEnd: rule?.pauseEnd?.substring(0, 5) ?? null,
+        slotDurationMinutes: rule?.slotDurationMinutes ?? 30,
+      });
+    });
   }
 
   onSave(): void {
-    const dto: AvailabilityRuleDto = {
-      id: this.rule?.id,
-      dayOfWeek: this.dayOfWeek(),
-      startTime: this.startTime(),
-      endTime: this.endTime(),
-      pauseStart: this.pauseStart(),
-      pauseEnd: this.pauseEnd(),
-      slotDurationMinutes: this.slotDuration(),
-      active: this.active(),
-    };
-    this.saved.emit(dto);
-    this.close();
+    this.form.markAllAsTouched();
+    if (this.form.invalid || this.saving()) return;
+    const value = this.form.getRawValue();
+    this.saved.emit({
+      id: this.rule()?.id,
+      dayOfWeek: this.day(),
+      startTime: value.startTime,
+      endTime: value.endTime,
+      pauseStart: value.pauseStart || null,
+      pauseEnd: value.pauseEnd || null,
+      slotDurationMinutes: value.slotDurationMinutes,
+      active: true,
+    });
   }
 
   close(): void {
-    this.openChange.emit(false);
+    if (!this.saving()) this.openChange.emit(false);
   }
 }

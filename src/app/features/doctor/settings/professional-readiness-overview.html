@@ -1,0 +1,231 @@
+<section class="readiness" aria-labelledby="readiness-title">
+  <header class="readiness__intro">
+    <div>
+      <h2 id="readiness-title">Vue d’ensemble</h2>
+      <p>Vérifiez la visibilité de votre profil et la configuration de votre activité.</p>
+    </div>
+    <oc-button variant="quiet" size="small" [loading]="loading()" (click)="load()">
+      Actualiser
+    </oc-button>
+  </header>
+
+  @if (loading()) {
+    <div class="readiness__skeleton" role="status" aria-label="Vérification de votre visibilité">
+      <span class="oc-sr-only">Vérification de votre visibilité en cours.</span>
+      <div class="readiness__skeleton-hero">
+        <oc-skeleton variant="circle" />
+        <div>
+          <oc-skeleton variant="line" />
+          <oc-skeleton variant="line" />
+          <oc-skeleton variant="line" />
+        </div>
+      </div>
+      <div class="readiness__skeleton-grid">
+        <oc-skeleton variant="block" />
+        <oc-skeleton variant="block" />
+      </div>
+      <div class="readiness__skeleton-grid">
+        <oc-skeleton variant="block" />
+        <oc-skeleton variant="block" />
+      </div>
+    </div>
+  } @else if (failure(); as error) {
+    <div class="readiness__error" role="alert">
+      <span class="readiness__error-icon" aria-hidden="true">
+        <oc-icon name="warning" intent="critical" />
+      </span>
+      <div>
+        <h3>{{ error.title }}</h3>
+        <p>{{ error.description }}</p>
+      </div>
+      <oc-button variant="secondary" size="small" (click)="load()"> Réessayer </oc-button>
+    </div>
+  } @else if (readiness(); as data) {
+    <article
+      class="readiness__hero"
+      [class.readiness__hero--visible]="data.publicDirectory.discoverable"
+      [class.readiness__hero--hidden]="!data.publicDirectory.discoverable"
+      aria-labelledby="patient-visibility-title"
+    >
+      <span class="readiness__hero-icon" aria-hidden="true">
+        <oc-icon
+          [name]="data.publicDirectory.discoverable ? 'coverage' : 'warning'"
+          [intent]="data.publicDirectory.discoverable ? 'success' : 'warning'"
+        />
+      </span>
+      <div class="readiness__hero-copy">
+        <span class="readiness__eyebrow">Visibilité auprès des patients</span>
+        <h3 id="patient-visibility-title">
+          {{
+            data.publicDirectory.discoverable
+              ? 'Votre profil est visible'
+              : 'Votre profil n’est pas encore visible'
+          }}
+        </h3>
+        <p>
+          {{
+            data.publicDirectory.discoverable
+              ? 'Les patients peuvent trouver votre profil dans l’annuaire OmniCare.'
+              : 'Consultez les étapes ci-dessous pour préparer la publication de votre profil.'
+          }}
+        </p>
+      </div>
+      <oc-status-badge
+        [status]="data.publicDirectory.discoverable ? 'confirmed' : 'requires-attention'"
+        [customLabel]="data.publicDirectory.discoverable ? 'Visible' : 'Action requise'"
+      />
+    </article>
+
+    <div class="readiness__primary-grid">
+      <article
+        class="readiness__card readiness__card--cabinet"
+        aria-labelledby="cabinet-readiness-title"
+      >
+        <header class="readiness__card-header">
+          <span class="readiness__icon readiness__icon--information" aria-hidden="true">
+            <oc-icon name="building" intent="information" />
+          </span>
+          <div>
+            <span class="readiness__eyebrow">Consultation au cabinet</span>
+            <h3 id="cabinet-readiness-title">
+              {{
+                data.cabinet.discoverable
+                  ? 'Disponible pour les consultations au cabinet'
+                  : 'Configuration incomplète'
+              }}
+            </h3>
+          </div>
+          <oc-status-badge
+            [status]="data.cabinet.discoverable ? 'confirmed' : 'requires-attention'"
+            [customLabel]="data.cabinet.discoverable ? 'Disponible' : 'À compléter'"
+          />
+        </header>
+
+        @if (!data.cabinet.discoverable) {
+          <p class="readiness__card-description">
+            Certaines étapes sont nécessaires avant que les patients puissent vous trouver pour une
+            consultation au cabinet.
+          </p>
+        }
+
+        <ul class="readiness__checklist" aria-label="État de la configuration au cabinet">
+          <li [class.readiness__checklist-item--ready]="data.cabinet.capabilityEnabled">
+            <span aria-hidden="true">{{ data.cabinet.capabilityEnabled ? '✓' : '—' }}</span>
+            {{ data.cabinet.capabilityEnabled ? 'Service activé' : 'Service désactivé' }}
+          </li>
+          <li [class.readiness__checklist-item--ready]="data.cabinet.activeCabinetCount > 0">
+            <span aria-hidden="true">{{ data.cabinet.activeCabinetCount > 0 ? '✓' : '—' }}</span>
+            {{ activeCabinetLabel(data.cabinet.activeCabinetCount) }}
+          </li>
+          <li [class.readiness__checklist-item--ready]="data.acceptingNewPatients">
+            <span aria-hidden="true">{{ data.acceptingNewPatients ? '✓' : '—' }}</span>
+            {{
+              data.acceptingNewPatients
+                ? 'Nouveaux patients acceptés'
+                : 'Nouveaux patients non acceptés'
+            }}
+          </li>
+        </ul>
+      </article>
+
+      <article class="readiness__card" aria-labelledby="verification-title">
+        <header class="readiness__card-header readiness__card-header--compact">
+          <span class="readiness__icon readiness__icon--success" aria-hidden="true">
+            <oc-icon name="coverage" intent="success" />
+          </span>
+          <div>
+            <span class="readiness__eyebrow">Profil professionnel</span>
+            <h3 id="verification-title">
+              {{
+                data.professionalVerification.verified
+                  ? 'Profil vérifié'
+                  : 'Vérification en attente'
+              }}
+            </h3>
+          </div>
+        </header>
+        @if (
+          data.professionalVerification.verified &&
+            verifiedAtLabel(data.professionalVerification.verifiedAt);
+          as verifiedAt
+        ) {
+          <p class="readiness__card-description">Vérifié le {{ verifiedAt }}</p>
+        } @else if (!data.professionalVerification.verified) {
+          <p class="readiness__card-description">
+            La vérification est réalisée par OmniCare avant la publication.
+          </p>
+        }
+        <oc-status-badge
+          [status]="data.professionalVerification.verified ? 'confirmed' : 'pending'"
+          [customLabel]="data.professionalVerification.verified ? 'Vérifié' : 'En attente'"
+        />
+      </article>
+    </div>
+
+    <div class="readiness__summary-grid">
+      <article class="readiness__summary" aria-labelledby="new-patients-title">
+        <span class="readiness__icon readiness__icon--information" aria-hidden="true">
+          <oc-icon name="staff" intent="information" />
+        </span>
+        <div>
+          <span class="readiness__eyebrow">Nouveaux patients</span>
+          <h3 id="new-patients-title">
+            {{
+              data.acceptingNewPatients
+                ? 'Vous acceptez de nouveaux patients'
+                : 'Vous n’acceptez pas actuellement de nouveaux patients'
+            }}
+          </h3>
+          <oc-button variant="quiet" size="small" (click)="navigateTo.emit('profile')">
+            Modifier
+          </oc-button>
+        </div>
+      </article>
+
+      <article class="readiness__summary" aria-labelledby="active-cabinets-title">
+        <span class="readiness__icon readiness__icon--information" aria-hidden="true">
+          <oc-icon name="location" intent="information" />
+        </span>
+        <div>
+          <span class="readiness__eyebrow">Cabinets</span>
+          <h3 id="active-cabinets-title">
+            {{ activeCabinetLabel(data.cabinet.activeCabinetCount) }}
+          </h3>
+          <oc-button variant="quiet" size="small" (click)="navigateTo.emit('cabinets')">
+            Gérer les cabinets
+          </oc-button>
+        </div>
+      </article>
+    </div>
+
+    @if (blockingReasons().length > 0) {
+      <section class="readiness__actions" aria-labelledby="readiness-actions-title">
+        <header>
+          <h3 id="readiness-actions-title">Actions requises</h3>
+          <p>Les décisions de visibilité ci-dessous proviennent directement d’OmniCare.</p>
+        </header>
+        <div class="readiness__reason-list">
+          @for (reason of blockingReasons(); track reason.code) {
+            <article
+              class="readiness__reason"
+              [class]="'readiness__reason readiness__reason--' + reason.presentation.tone"
+            >
+              <span class="readiness__reason-icon" aria-hidden="true">
+                <oc-icon [name]="reason.presentation.icon" [intent]="reason.presentation.tone" />
+              </span>
+              <div>
+                <h4>{{ reason.presentation.title }}</h4>
+                <p>{{ reason.presentation.description }}</p>
+              </div>
+              @if (reason.presentation.action; as action) {
+                <oc-button variant="secondary" size="small" (click)="navigateTo.emit(action.tab)">
+                  {{ action.label }}
+                </oc-button>
+              }
+            </article>
+          }
+        </div>
+      </section>
+    }
+  }
+</section>

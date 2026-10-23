@@ -40,6 +40,17 @@ describe('OcTagInput', () => {
     expect(chips.length).toBe(2);
     expect(host().textContent).toContain('Francais');
     expect(host().textContent).toContain('Arabe');
+    expect(host().querySelector('[aria-label="Retirer Francais"]')).not.toBeNull();
+  });
+
+  it('applies an optional semantic tone without changing tag semantics', () => {
+    fixture.componentRef.setInput('tone', 'aqua');
+    component.writeValue(['Échocardiographie']);
+    fixture.detectChanges();
+
+    expect(host().querySelector('.oc-tag-input--aqua')).not.toBeNull();
+    expect(host().querySelectorAll('[role="listitem"]')).toHaveLength(1);
+    expect(input().getAttribute('placeholder')).toBe('Ajouter');
   });
 
   it('adds a tag on Enter and emits through the CVA', () => {

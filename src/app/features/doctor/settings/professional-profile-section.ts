@@ -4,11 +4,32 @@ import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs/operators';
 
-import { ApiErrorBody } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
-import { OcButton, OcCard, OcEmptyState, OcField, OcTagInput, OcTextarea } from '../../../shared/ui';
+import {
+  OcAvatar,
+  OcButton,
+  OcCard,
+  OcEmptyState,
+  OcField,
+  OcIcon,
+  OcSkeleton,
+  OcStatusBadge,
+  OcSwitch,
+  OcTagInput,
+  OcTextarea,
+} from '../../../shared/ui';
 import { MeProfessionalProfileResponse } from './professional-profile-api.models';
 import { ProfessionalProfileApiService } from './professional-profile-api.service';
+import {
+  RE_AUTHENTICATE_MESSAGE,
+  STALE_PROFILE_MESSAGE,
+  isAuthenticationError,
+  isConflict,
+  isNetworkError,
+  isValidationError,
+  problemDetails,
+} from './professional-profile-errors';
+import { ProfessionalQualificationsSection } from './professional-qualifications-section';
 import {
   EDITABLE_FIELDS,
   EditableProfessionalProfileField,
@@ -22,40 +43,35 @@ import {
   hasFieldErrors,
   validateDraft,
 } from './professional-profile-form';
-import { PracticeLocationService } from './practice-location.service';
-
-const MFA_METHOD_LABELS: Readonly<Record<string, string>> = {
-  none: 'Aucune',
-  email_otp: 'Code par email',
-  totp: 'Application d\'authentification',
-  sms: 'Code par SMS',
-};
-
-const RE_AUTHENTICATE_MESSAGE = 'Votre session n\'est plus valide. Reconnectez-vous pour continuer.';
-
 interface ManagedField {
-  readonly key:
-    | 'professionalLicenseNumber'
-    | 'verifiedAt'
-    | 'affiliatedClinicId'
-    | 'governorate'
-    | 'mfaMethod'
-    | 'alsoIndependent';
+  readonly key: 'professionalLicenseNumber' | 'verifiedAt' | 'governorate' | 'alsoIndependent';
   readonly label: string;
 }
 
 const MANAGED_FIELDS: readonly ManagedField[] = [
-  { key: 'professionalLicenseNumber', label: 'Numero de licence' },
+  { key: 'professionalLicenseNumber', label: 'Numéro de licence' },
   { key: 'governorate', label: 'Gouvernorat' },
-  { key: 'affiliatedClinicId', label: 'Clinique' },
-  { key: 'verifiedAt', label: 'Verifie le' },
-  { key: 'mfaMethod', label: 'Authentification' },
-  { key: 'alsoIndependent', label: 'Exercice independant' },
+  { key: 'verifiedAt', label: 'Vérifié le' },
+  { key: 'alsoIndependent', label: 'Exercice indépendant' },
 ];
 
 @Component({
   selector: 'app-professional-profile-section',
-  imports: [FormsModule, OcButton, OcCard, OcEmptyState, OcField, OcTagInput, OcTextarea],
+  imports: [
+    FormsModule,
+    OcAvatar,
+    OcButton,
+    OcCard,
+    OcEmptyState,
+    OcField,
+    OcIcon,
+    OcSkeleton,
+    OcStatusBadge,
+    OcSwitch,
+    OcTagInput,
+    OcTextarea,
+    ProfessionalQualificationsSection,
+  ],
   templateUrl: './professional-profile-section.html',
   styleUrl: './professional-profile-section.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -63,7 +79,6 @@ const MANAGED_FIELDS: readonly ManagedField[] = [
 export class ProfessionalProfileSection {
   private readonly api = inject(ProfessionalProfileApiService);
   private readonly auth = inject(AuthService);
-  private readonly location = inject(PracticeLocationService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly managedFields = MANAGED_FIELDS;
@@ -78,9 +93,8 @@ export class ProfessionalProfileSection {
   readonly saveError = signal<string | null>(null);
   readonly saved = signal<string | null>(null);
   readonly authError = signal<string | null>(null);
-
-  readonly locating = signal(false);
-  readonly locationError = signal<string | null>(null);
+  readonly conflict = signal(false);
+  readonly avatarFailed = signal(false);
 
   constructor() {
     this.loadProfile();
@@ -92,7 +106,10 @@ export class ProfessionalProfileSection {
     this.authError.set(null);
     this.api
       .getProfile()
-      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.loading.set(false)))
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.loading.set(false)),
+      )
       .subscribe({
         next: (profile) => this.applyProfile(profile),
         error: (error: unknown) => this.handleLoadError(error),
@@ -117,22 +134,8 @@ export class ProfessionalProfileSection {
     this.markDirty();
   }
 
-  async useCurrentLocation(): Promise<void> {
-    if (this.locating()) return;
-    this.locating.set(true);
-    this.locationError.set(null);
-    const coords = await this.location.getCurrentPosition();
-    this.locating.set(false);
-    if (coords === null) {
-      this.locationError.set('Impossible de recuperer votre position. Autorisez la geolocalisation puis reessayez.');
-      return;
-    }
-    this.updateScalar('practiceLatitude', coords.latitude.toFixed(6));
-    this.updateScalar('practiceLongitude', coords.longitude.toFixed(6));
-  }
-
   save(): void {
-    if (this.saving()) return;
+    if (this.saving() || this.conflict()) return;
     const baseline = this.profile();
     if (baseline === null) return;
 
@@ -140,7 +143,7 @@ export class ProfessionalProfileSection {
     this.fieldErrors.set(errors);
     if (hasFieldErrors(errors)) {
       this.saved.set(null);
-      this.saveError.set('Corrigez les erreurs indiquees avant d\'enregistrer.');
+      this.saveError.set("Corrigez les erreurs indiquees avant d'enregistrer.");
       return;
     }
 
@@ -157,11 +160,21 @@ export class ProfessionalProfileSection {
     this.authError.set(null);
     this.api
       .updateProfile(patch)
-      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false)))
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.saving.set(false)),
+      )
       .subscribe({
-        next: () => this.reloadAfterSave(),
+        next: (profile) => {
+          this.applyProfile(profile);
+          this.saved.set('Profil mis à jour.');
+        },
         error: (error: unknown) => this.handleSaveError(error),
       });
+  }
+
+  reloadServerProfile(): void {
+    this.loadProfile();
   }
 
   reAuthenticate(): void {
@@ -175,12 +188,34 @@ export class ProfessionalProfileSection {
       case 'alsoIndependent':
         return profile.alsoIndependent === null ? '—' : profile.alsoIndependent ? 'Oui' : 'Non';
       case 'verifiedAt':
-        return profile.verifiedAt !== null && profile.verifiedAt !== '' ? profile.verifiedAt.slice(0, 10) : '—';
-      case 'mfaMethod':
-        return mfaLabel(profile.mfaMethod);
+        return profile.verifiedAt !== null && profile.verifiedAt !== ''
+          ? profile.verifiedAt.slice(0, 10)
+          : '—';
       default:
         return profile[key] ?? '—';
     }
+  }
+
+  identityName(): string {
+    const profile = this.profile();
+    if (profile === null) return 'Médecin';
+    return (
+      profile.displayName?.trim() ||
+      [profile.firstName, profile.lastName]
+        .filter((value) => value !== null && value.trim() !== '')
+        .join(' ') ||
+      'Médecin'
+    );
+  }
+
+  identityLegalName(): string {
+    const profile = this.profile();
+    if (profile === null) return '—';
+    return (
+      [profile.firstName, profile.lastName]
+        .filter((value) => value !== null && value.trim() !== '')
+        .join(' ') || '—'
+    );
   }
 
   private applyProfile(profile: MeProfessionalProfileResponse): void {
@@ -189,11 +224,12 @@ export class ProfessionalProfileSection {
     this.fieldErrors.set({});
     this.saveError.set(null);
     this.saved.set(null);
-    this.locationError.set(null);
+    this.conflict.set(false);
+    this.avatarFailed.set(false);
   }
 
   private handleLoadError(error: unknown): void {
-    if (error instanceof HttpErrorResponse && error.status === 403) {
+    if (isAuthenticationError(error)) {
       this.authError.set(RE_AUTHENTICATE_MESSAGE);
       return;
     }
@@ -201,40 +237,38 @@ export class ProfessionalProfileSection {
       this.loadError.set('Profil professionnel introuvable pour votre compte.');
       return;
     }
-    this.loadError.set('Impossible de charger le profil professionnel.');
-  }
-
-  private reloadAfterSave(): void {
-    this.api
-      .getProfile()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (profile) => {
-          this.applyProfile(profile);
-          this.saved.set('Profil mis a jour.');
-        },
-        error: () => this.saved.set('Profil enregistre, mais impossible de le recharger.'),
-      });
+    this.loadError.set(
+      isNetworkError(error)
+        ? 'Connexion impossible. Vérifiez votre réseau puis réessayez.'
+        : 'Impossible de charger le profil professionnel.',
+    );
   }
 
   private handleSaveError(error: unknown): void {
-    if (error instanceof HttpErrorResponse) {
-      if (error.status === 403) {
-        this.authError.set(RE_AUTHENTICATE_MESSAGE);
-        return;
-      }
-      if (error.status === 404) {
-        this.saveError.set('Profil professionnel introuvable. Veuillez contacter le support.');
-        return;
-      }
-      const body = error.error as ApiErrorBody | null;
-      if (error.status === 400 && body !== null) {
-        if (body.fieldErrors !== undefined) this.applyBackendFieldErrors(body.fieldErrors);
-        this.saveError.set(body.message ?? 'Donnees invalides. Corrigez les champs puis reessayez.');
-        return;
-      }
+    if (isAuthenticationError(error)) {
+      this.authError.set(RE_AUTHENTICATE_MESSAGE);
+      return;
     }
-    this.saveError.set('Unable to save the profile. Please try again.');
+    if (isConflict(error)) {
+      this.conflict.set(true);
+      this.saveError.set(STALE_PROFILE_MESSAGE);
+      return;
+    }
+    if (error instanceof HttpErrorResponse && error.status === 404) {
+      this.saveError.set('Profil professionnel introuvable. Veuillez contacter le support.');
+      return;
+    }
+    if (isValidationError(error)) {
+      const body = problemDetails(error);
+      if (body?.fieldErrors !== undefined) this.applyBackendFieldErrors(body.fieldErrors);
+      this.saveError.set('Données invalides. Corrigez les champs puis réessayez.');
+      return;
+    }
+    this.saveError.set(
+      isNetworkError(error)
+        ? 'Connexion impossible. Vérifiez votre réseau puis réessayez.'
+        : 'Impossible d’enregistrer le profil. Réessayez.',
+    );
   }
 
   private applyBackendFieldErrors(errors: Readonly<Record<string, string>>): void {
@@ -262,9 +296,4 @@ export class ProfessionalProfileSection {
     this.saved.set(null);
     this.saveError.set(null);
   }
-}
-
-function mfaLabel(value: string | null | undefined): string {
-  if (value === null || value === undefined || value === '') return '—';
-  return MFA_METHOD_LABELS[value.toLowerCase()] ?? value;
 }

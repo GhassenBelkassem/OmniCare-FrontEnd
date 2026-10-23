@@ -104,16 +104,33 @@ export interface UrgentOfferDto {
   readonly requestStatus: string;
 }
 
+export type P2NotificationType =
+  | 'DOCTOR_BOOKING_REQUEST_CREATED'
+  | 'DOCTOR_BOOKING_TIME_PROPOSED'
+  | 'DOCTOR_BOOKING_REQUEST_DECLINED'
+  | 'DOCTOR_BOOKING_REQUEST_CANCELLED_BY_PATIENT'
+  | 'DOCTOR_BOOKING_PROPOSAL_ACCEPTED'
+  | 'DOCTOR_BOOKING_PROPOSAL_DECLINED'
+  | 'APPOINTMENT_CONFIRMED'
+  | 'APPOINTMENT_CANCELLED_BY_PATIENT'
+  | 'APPOINTMENT_CANCELLED_BY_PROFESSIONAL'
+  | 'DOCTOR_BOOKING_REQUEST_EXPIRED';
+
+export interface NotificationDeepLinkPayloadDto {
+  readonly request_id?: string;
+  readonly appointment_id?: string;
+}
+
 export interface NotificationItemDto {
   readonly id: string;
-  readonly type: string;
+  readonly type: P2NotificationType | string;
   readonly priority: string;
   readonly category: string;
   readonly titleFr: string;
   readonly bodyFr: string;
   readonly titleAr: string;
   readonly bodyAr: string;
-  readonly deepLinkPayload: Readonly<Record<string, unknown>> | null;
+  readonly deepLinkPayload: NotificationDeepLinkPayloadDto | null;
   readonly read: boolean;
   readonly createdAt: string;
 }
