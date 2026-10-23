@@ -1,0 +1,63 @@
+<div class="page-stack">
+  <oc-page-header
+    title="Patients"
+    description="Patient accounts that signed up on OmniCare. Read-only: patients manage their own access."
+  />
+
+  @if (errorMessage()) { <div class="request-error" role="alert">{{ errorMessage() }}</div> }
+
+  <div class="toolbar">
+    <label class="oc-sr-only" for="patient-search">Search patients</label>
+    <input
+      id="patient-search"
+      type="search"
+      [formControl]="search"
+      placeholder="Search name or email"
+      (keyup.enter)="applySearch()"
+    />
+    <oc-button variant="secondary" (click)="applySearch()">Search</oc-button>
+    @if (hasSearch()) { <oc-button variant="quiet" (click)="clearSearch()">Clear search</oc-button> }
+  </div>
+
+  <oc-data-table-shell [state]="tableState()" density="compact">
+    <h2 ocTableTitle>Patient accounts</h2>
+    <oc-empty-state
+      icon="user"
+      title="No patients found"
+      [description]="hasSearch() ? 'No account matches this search. Try a different name or email.' : 'No patient account has been created yet.'"
+    />
+    <table>
+      <caption class="oc-sr-only">Patient accounts matching the current search</caption>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Email</th>
+          <th scope="col">Phone</th>
+          <th scope="col">Role</th>
+          <th scope="col">Status</th>
+          <th scope="col">Last active</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of page()?.items ?? []; track item.userId) {
+          <tr>
+            <td>{{ displayName(item) }}</td>
+            <td>{{ item.email || '—' }}</td>
+            <td>{{ item.phone || '—' }}</td>
+            <td>{{ roleLabel(item.role) }}</td>
+            <td><oc-status-badge [status]="statusTone(item.status)" /></td>
+            <td>{{ item.lastActiveAt ? (item.lastActiveAt | date: 'medium') : 'Never' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <div ocTableFooter class="pagination">
+      <span>{{ resultSummary() }}</span>
+      <div class="pagination-controls">
+        <oc-button variant="secondary" [disabled]="!canGoBack()" (click)="previousPage()">Previous</oc-button>
+        <span>Page {{ (page()?.page ?? 0) + 1 }} of {{ page()?.totalPages || 1 }}</span>
+        <oc-button variant="secondary" [disabled]="!canGoForward()" (click)="nextPage()">Next</oc-button>
+      </div>
+    </div>
+  </oc-data-table-shell>
+</div>

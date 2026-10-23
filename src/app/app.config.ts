@@ -4,7 +4,7 @@ import enGb from '@angular/common/locales/en-GB';
 import { ApplicationConfig, LOCALE_ID, inject, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, withEnabledBlockingInitialNavigation } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { provideNzIcons } from 'ng-zorro-antd/icon';
 import { en_GB, NZ_DATE_CONFIG, provideNzI18n } from 'ng-zorro-antd/i18n';
 
@@ -19,7 +19,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideAnimations(),
-    provideRouter(routes, withEnabledBlockingInitialNavigation()),
+    provideRouter(routes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideAppInitializer(() => inject(AuthBootstrapService).initialize()),
     provideClientHydration(withEventReplay()),

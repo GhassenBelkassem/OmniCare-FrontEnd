@@ -1,0 +1,41 @@
+<div class="monitoring-stack">
+  <div class="panel-toolbar">
+    <div>
+      <h2 class="section-title">API performance</h2>
+      <p class="section-hint">Aggregated metrics for the selected window. No high-frequency polling.</p>
+    </div>
+    <oc-segmented-control
+      label="Time window"
+      [options]="windowOptions"
+      [selected]="window()"
+      (selectedChange)="handleWindowChange($event)"
+    />
+  </div>
+
+  @if (performance().unavailableSources.length) {
+    <p class="unavailable-note" role="status">
+      Partial data — not instrumented: {{ performance().unavailableSources.join(', ') }}.
+    </p>
+  }
+
+  <div class="metric-grid">
+    @for (metric of performance().metrics; track metric.id) {
+      <oc-card [title]="metric.label" [subtitle]="metric.supportingText" [compact]="true">
+        <div class="metric-head">
+          <span class="metric-value">{{ formatValue(metric.value) }}<span class="metric-unit">{{ metric.unit }}</span></span>
+          <oc-status-badge [status]="statusBadge(metric.status)" [customLabel]="statusLabel(metric.status)" />
+        </div>
+        @if (metric.series && metric.series.length > 0) {
+          <oc-monitoring-sparkline
+            [points]="metric.series"
+            [label]="metric.label"
+            [unit]="metric.unit"
+            [valueLabel]="formatValue(metric.value)"
+          />
+        } @else {
+          <p class="metric-note">No series data</p>
+        }
+      </oc-card>
+    }
+  </div>
+</div>

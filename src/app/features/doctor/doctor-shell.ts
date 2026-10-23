@@ -3,14 +3,13 @@ import {
   Component,
   DestroyRef,
   computed,
-  effect,
   inject,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { forkJoin, interval, of } from 'rxjs';
+import { filter, forkJoin, interval, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
@@ -43,6 +42,63 @@ const URGENT_OFFER_TTL_SECONDS = 120;
 const URGENT_LATITUDE = 36.8065;
 const URGENT_LONGITUDE = 10.1815;
 const URGENT_LOCATION_LABEL = 'Tunis, Tunisie - 36.8065, 10.1815';
+
+/**
+ * `Mon equipe` deliberately sits next to `Parametres` rather than beside
+ * `Mes Patients`: both entries are about people, and separating them keeps the
+ * new `solution` icon from reading as a second "Mes Patients".
+ */
+const DOCTOR_NAVIGATION: readonly SidebarNavigationItem[] = [
+  { id: 'command', label: 'Accueil', icon: 'dashboard', route: '/doctor/command' },
+  { id: 'patients', label: 'Mes Patients', icon: 'team', route: '/doctor/patients' },
+  { id: 'calendar', label: 'Calendrier', icon: 'calendar', route: '/doctor/calendar' },
+  { id: 'waiting-room', label: "Salle d'attente", icon: 'clock-circle', route: '/doctor/waiting-room' },
+  { id: 'consultation', label: 'Consultation', icon: 'medicine-box', route: '/doctor/consultation/new' },
+  { id: 'prescriptions', label: 'Prescriptions', icon: 'file-text', route: '/doctor/prescriptions' },
+  { id: 'results', label: 'Resultats & Suivi', icon: 'check-circle', route: '/doctor/results' },
+  { id: 'requests', label: 'Demandes', icon: 'notification', route: '/doctor/requests', badge: 2 },
+  { id: 'communication', label: 'Communication', icon: 'message', route: '/doctor/communication' },
+  { id: 'history', label: 'Historique', icon: 'history', route: '/doctor/history' },
+  { id: 'billing', label: 'Facturation', icon: 'account-book', route: '/doctor/billing' },
+  { id: 'analytics', label: 'Analyses', icon: 'bar-chart', route: '/doctor/analytics' },
+  { id: 'team', label: 'Mon equipe', icon: 'solution', route: '/doctor/team' },
+  { id: 'settings', label: 'Parametres', icon: 'setting', route: '/doctor/settings' },
+];
+
+/**
+ * A secretary is delegated the agenda and nothing else. The remaining
+ * destinations stay out of the shell rather than being rendered and refused,
+ * and `doctor.routes.ts` independently rejects them on direct navigation.
+ */
+const SECRETARY_NAVIGATION: readonly SidebarNavigationItem[] = [
+  { id: 'secretary-agenda', label: 'Agenda', icon: 'calendar', route: '/doctor/secretary-agenda' },
+];
+
+const DOCTOR_TABS: readonly OcTab[] = [
+  { id: 'command', label: 'Accueil', icon: 'dashboard', route: '/doctor/command' },
+  { id: 'patients', label: 'Mes Patients', icon: 'team', route: '/doctor/patients' },
+  { id: 'calendar', label: 'Calendrier', icon: 'calendar', route: '/doctor/calendar' },
+  { id: 'waiting-room', label: "Salle d'attente", icon: 'clock-circle', route: '/doctor/waiting-room' },
+  { id: 'prescriptions', label: 'Prescriptions', icon: 'file-text', route: '/doctor/prescriptions' },
+  { id: 'results', label: 'Resultats', icon: 'check-circle', route: '/doctor/results' },
+  { id: 'requests', label: 'Demandes', icon: 'notification', route: '/doctor/requests' },
+  { id: 'communication', label: 'Messages', icon: 'message', route: '/doctor/communication' },
+  { id: 'history', label: 'Historique', icon: 'history', route: '/doctor/history' },
+  { id: 'billing', label: 'Facturation', icon: 'account-book', route: '/doctor/billing' },
+  { id: 'analytics', label: 'Analyses', icon: 'bar-chart', route: '/doctor/analytics' },
+  { id: 'team', label: 'Mon equipe', icon: 'solution', route: '/doctor/team' },
+  { id: 'settings', label: 'Parametres', icon: 'setting', route: '/doctor/settings' },
+];
+
+const SECRETARY_TABS: readonly OcTab[] = [
+  { id: 'secretary-agenda', label: 'Agenda', icon: 'calendar', route: '/doctor/secretary-agenda' },
+];
+
+/** URL segments whose navigation id differs from the path segment. */
+const NAV_SEGMENT_ALIASES: Readonly<Record<string, string>> = {
+  patient: 'patients',
+  consultation: 'consultation',
+};
 
 @Component({
   selector: 'app-doctor-shell',
@@ -89,6 +145,32 @@ export class DoctorShell {
   readonly activeNav = signal('command');
   readonly activeTabId = signal('command');
 
+  /**
+   * A SECRETARY is a delegated, non-clinical collaborator in this workspace.
+   * Several shell affordances (patient lookup, urgent-care availability,
+   * doctor notifications) are backed by doctor-only endpoints, so they are
+   * gated rather than left to fail with a 403.
+   */
+  readonly isSecretary = computed(() => this.tokens.user()?.role === 'SECRETARY');
+
+  readonly navigation: readonly SidebarNavigationItem[] = this.isSecretary()
+    ? SECRETARY_NAVIGATION
+    : DOCTOR_NAVIGATION;
+
+  readonly tabs: readonly OcTab[] = this.isSecretary() ? SECRETARY_TABS : DOCTOR_TABS;
+
+  /**
+   * The doctor workspace is seeded with placeholder identity data. A secretary
+   * must not be shown the doctor's name, so fall back to their actual role.
+   */
+  readonly sidebarProfile = computed<SidebarUserProfile>(() =>
+    this.isSecretary()
+      ? { initials: 'SC', name: 'Secretaire', context: 'Agenda du cabinet' }
+      : { initials: 'BS', name: 'Dr Ben Salah', context: 'Medecine generale' },
+  );
+
+  readonly displayName = computed(() => this.sidebarProfile().name);
+
   /** Live connection health, shown as a chip in the topbar. */
   readonly expectsRealtimeActivity = computed(
     () => this.emergencyAvailable() || this.matchedRequests.hasActive(),
@@ -102,61 +184,39 @@ export class DoctorShell {
     }
   });
 
-  readonly navigation: readonly SidebarNavigationItem[] = [
-    { id: 'command', label: 'Accueil', icon: 'dashboard', route: '/doctor/command' },
-    { id: 'patients', label: 'Mes Patients', icon: 'team', route: '/doctor/patients' },
-    { id: 'calendar', label: 'Calendrier', icon: 'calendar', route: '/doctor/calendar' },
-    { id: 'waiting-room', label: "Salle d'attente", icon: 'clock-circle', route: '/doctor/waiting-room' },
-    { id: 'consultation', label: 'Consultation', icon: 'medicine-box', route: '/doctor/consultation/new' },
-    { id: 'prescriptions', label: 'Prescriptions', icon: 'file-text', route: '/doctor/prescriptions' },
-    { id: 'results', label: 'Resultats & Suivi', icon: 'check-circle', route: '/doctor/results' },
-    { id: 'requests', label: 'Demandes', icon: 'notification', route: '/doctor/requests', badge: 2 },
-    { id: 'communication', label: 'Communication', icon: 'message', route: '/doctor/communication' },
-    { id: 'history', label: 'Historique', icon: 'history', route: '/doctor/history' },
-    { id: 'billing', label: 'Facturation', icon: 'account-book', route: '/doctor/billing' },
-    { id: 'analytics', label: 'Analyses', icon: 'bar-chart', route: '/doctor/analytics' },
-    { id: 'settings', label: 'Parametres', icon: 'setting', route: '/doctor/settings' },
-  ];
-
-  readonly sidebarProfile: SidebarUserProfile = {
-    initials: 'BS',
-    name: 'Dr Ben Salah',
-    context: 'Medecine generale',
-  };
-
-  readonly tabs: OcTab[] = [
-    { id: 'command', label: 'Accueil', icon: 'dashboard', route: '/doctor/command' },
-    { id: 'patients', label: 'Mes Patients', icon: 'team', route: '/doctor/patients' },
-    { id: 'calendar', label: 'Calendrier', icon: 'calendar', route: '/doctor/calendar' },
-    { id: 'waiting-room', label: "Salle d'attente", icon: 'clock-circle', route: '/doctor/waiting-room' },
-    { id: 'prescriptions', label: 'Prescriptions', icon: 'file-text', route: '/doctor/prescriptions' },
-    { id: 'results', label: 'Resultats', icon: 'check-circle', route: '/doctor/results' },
-    { id: 'requests', label: 'Demandes', icon: 'notification', route: '/doctor/requests' },
-    { id: 'communication', label: 'Messages', icon: 'message', route: '/doctor/communication' },
-    { id: 'history', label: 'Historique', icon: 'history', route: '/doctor/history' },
-    { id: 'billing', label: 'Facturation', icon: 'account-book', route: '/doctor/billing' },
-    { id: 'analytics', label: 'Analyses', icon: 'bar-chart', route: '/doctor/analytics' },
-    { id: 'settings', label: 'Parametres', icon: 'setting', route: '/doctor/settings' },
-  ];
-
   constructor() {
-    this.loadUrgentStatus();
-    this.hydrateMatchedRequests();
-    this.refreshUnreadCount();
-    // WebSocket events drive responsiveness; the interval is only a safety
-    // net (~2 min while realtime is healthy).
-    interval(DOCTOR_POLL_SAFETY_NET_MS)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.pollTick());
-    this.realtime.urgentEvents$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event) => this.onUrgentEvent(event));
+    if (!this.isSecretary()) {
+      this.loadUrgentStatus();
+      this.hydrateMatchedRequests();
+      this.refreshUnreadCount();
+      // WebSocket events drive responsiveness; the interval is only a safety
+      // net (~2 min while realtime is healthy).
+      interval(DOCTOR_POLL_SAFETY_NET_MS)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this.pollTick());
+      this.realtime.urgentEvents$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((event) => this.onUrgentEvent(event));
+    }
     this.destroyRef.onDestroy(() => {
       if (this.offerCountdownTimer) clearInterval(this.offerCountdownTimer);
     });
-    effect(() => {
-      this.activeNav();
-    });
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.syncActiveNav());
+    this.syncActiveNav();
+  }
+
+  /** Keeps the sidebar highlight in step with the URL. */
+  private syncActiveNav(): void {
+    const segments = this.router.url.split(/[?#]/)[0].split('/');
+    const segment = segments[2] ?? '';
+    const id = segment === '' ? (this.navigation[0]?.id ?? '') : NAV_SEGMENT_ALIASES[segment] ?? segment;
+    this.activeNav.set(id);
+    this.activeTabId.set(id);
   }
 
   private onUrgentEvent(event: UrgentLiveEvent): void {

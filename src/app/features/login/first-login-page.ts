@@ -14,6 +14,25 @@ interface InvitationValidation {
   readonly expiresAt: string;
 }
 
+/**
+ * The backend provisions invitations for every professional role, not just a
+ * clinic administrator or a doctor. A two-way split would greet an invited
+ * secretary as "doctor".
+ */
+const INVITATION_ROLE_LABELS: Readonly<Record<DashboardRole, string>> = {
+  PATIENT: 'patient',
+  DOCTOR: 'doctor',
+  SECRETARY: 'secretary',
+  NURSE: 'nurse',
+  KINE: 'physiotherapist',
+  CLINIC_MEDECIN: 'clinic physician',
+  CLINIC_INFIRMIERE: 'clinic nurse',
+  CLINIC_KINE: 'clinic physiotherapist',
+  CLINIC_ASSISTANT: 'clinic assistant',
+  CLINIC_ADMIN: 'clinic administrator',
+  ADMIN: 'platform administrator',
+};
+
 @Component({
   selector: 'app-first-login-page',
   imports: [ReactiveFormsModule, RouterLink, OcButton],
@@ -29,7 +48,7 @@ interface InvitationValidation {
           <a routerLink="/login">Continue to sign in</a>
         } @else if (invitation(); as details) {
           <h1 id="first-login-title">Create your password</h1>
-          <p>Complete the {{ details.role === 'CLINIC_ADMIN' ? 'clinic administrator' : 'doctor' }} account for <strong>{{ details.email }}</strong>.</p>
+          <p>Complete the {{ invitationRoleLabel(details.role) }} account for <strong>{{ details.email }}</strong>.</p>
           @if (errorMessage()) { <div class="message message--error" role="alert">{{ errorMessage() }}</div> }
           <form [formGroup]="form" (ngSubmit)="submit()">
             <label for="new-password">New password</label>
@@ -79,6 +98,10 @@ export class FirstLoginPage {
         next: (details) => { this.invitation.set(details); this.loading.set(false); },
         error: (error: HttpErrorResponse) => { this.errorMessage.set(readMessage(error)); this.loading.set(false); },
       });
+  }
+
+  protected invitationRoleLabel(role: DashboardRole): string {
+    return INVITATION_ROLE_LABELS[role];
   }
 
   submit(): void {

@@ -1,91 +1,134 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Route, Routes } from '@angular/router';
 
 import { authenticatedGuard, roleGuard } from '../../core/auth/auth.guards';
+import { AuthTokenStore } from '../../core/auth/auth-token.store';
 import { unsavedChangesGuard } from './unsaved-changes.guard';
+
+/**
+ * A SECRETARY session is a deliberately reduced view of this workspace, so it
+ * lands on the agenda rather than the doctor's command centre.
+ */
+function doctorWorkspaceLanding(): string {
+  return inject(AuthTokenStore).user()?.role === 'SECRETARY' ? 'secretary-agenda' : 'command';
+}
+
+/**
+ * Hides a destination from SECRETARY sessions. Filtering the navigation is a
+ * convenience, not a control: without this a secretary could still reach a
+ * doctor-only page by typing its URL.
+ */
+function doctorOnly(route: Route): Route {
+  return { ...route, canActivate: [roleGuard('DOCTOR')] };
+}
 
 export const DOCTOR_ROUTES: Routes = [
   {
     path: '',
-    canActivate: [authenticatedGuard, roleGuard('DOCTOR')],
+    canActivate: [authenticatedGuard, roleGuard('DOCTOR', 'SECRETARY')],
     loadComponent: () => import('./doctor-shell').then((c) => c.DoctorShell),
     title: 'Doctor workspace | OmniCare',
     children: [
       {
         path: '',
-        redirectTo: 'command',
+        redirectTo: doctorWorkspaceLanding,
         pathMatch: 'full',
       },
-      {
+      doctorOnly({
         path: 'command',
         loadComponent: () => import('./command/command-center-page').then((c) => c.CommandCenterPage),
         title: 'Accueil | OmniCare',
-      },
+      }),
       {
+        path: 'secretary-agenda',
+        loadComponent: () =>
+          import('./secretary/agenda/secretary-agenda-page').then((c) => c.SecretaryAgendaPage),
+        title: 'Agenda | OmniCare',
+      },
+      doctorOnly({
+        path: 'team',
+        loadComponent: () => import('./secretary/team/team-page').then((c) => c.TeamPage),
+        title: 'Mon equipe | OmniCare',
+      }),
+      // Declared after 'team' so the static segment wins; without the full path the router
+      // would treat 'team' as a prefix and never reach the list.
+      doctorOnly({
+        path: 'team/:membershipId',
+        loadComponent: () =>
+          import('./secretary/team/team-detail-page').then((c) => c.TeamDetailPage),
+        title: 'Detail du secretaire | OmniCare',
+      }),
+      doctorOnly({
         path: 'patients',
         loadComponent: () => import('./patients/patients-page').then((c) => c.PatientsPage),
         title: 'Mes Patients | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'patient/:id',
-        loadComponent: () => import('./patient-chart/patient-chart-page').then((c) => c.PatientChartPage),
+        loadComponent: () =>
+          import('./patient-chart/patient-chart-page').then((c) => c.PatientChartPage),
         title: 'Dossier patient | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'calendar',
         loadComponent: () => import('./calendar/calendar-page').then((c) => c.CalendarPage),
         title: 'Calendrier | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'waiting-room',
-        loadComponent: () => import('./waiting-room/waiting-room-page').then((c) => c.WaitingRoomPage),
+        loadComponent: () =>
+          import('./waiting-room/waiting-room-page').then((c) => c.WaitingRoomPage),
         title: "Salle d'attente | OmniCare",
-      },
-      {
+      }),
+      doctorOnly({
         path: 'consultation/:id',
         canDeactivate: [unsavedChangesGuard],
-        loadComponent: () => import('./consultation/consultation-page').then((c) => c.ConsultationPage),
+        loadComponent: () =>
+          import('./consultation/consultation-page').then((c) => c.ConsultationPage),
         title: 'Consultation | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'prescriptions',
-        loadComponent: () => import('./prescriptions/prescriptions-page').then((c) => c.PrescriptionsPage),
+        loadComponent: () =>
+          import('./prescriptions/prescriptions-page').then((c) => c.PrescriptionsPage),
         title: 'Prescriptions | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'results',
         loadComponent: () => import('./results/results-page').then((c) => c.ResultsPage),
         title: 'Resultats & Suivi | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'requests',
         loadComponent: () => import('./requests/requests-page').then((c) => c.RequestsPage),
         title: 'Demandes | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'communication',
-        loadComponent: () => import('./communication/communication-page').then((c) => c.CommunicationPage),
+        loadComponent: () =>
+          import('./communication/communication-page').then((c) => c.CommunicationPage),
         title: 'Communication | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'history',
         loadComponent: () => import('./history/history-page').then((c) => c.HistoryPage),
         title: 'Historique | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'billing',
         loadComponent: () => import('./billing/billing-page').then((c) => c.BillingPage),
         title: 'Facturation | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'analytics',
         loadComponent: () => import('./analytics/analytics-page').then((c) => c.AnalyticsPage),
         title: 'Analyses | OmniCare',
-      },
-      {
+      }),
+      doctorOnly({
         path: 'settings',
         loadComponent: () => import('./settings/settings-page').then((c) => c.SettingsPage),
         title: 'Parametres | OmniCare',
-      },
+      }),
     ],
   },
 ];

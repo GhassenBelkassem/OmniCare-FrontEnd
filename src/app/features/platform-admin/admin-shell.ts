@@ -8,7 +8,9 @@ import { OcSidebar, SidebarNavigationItem, SidebarUserProfile } from '../../shar
 
 const NAVIGATION: readonly SidebarNavigationItem[] = [
   { id: 'professionals', label: 'Professionals', icon: 'team', route: '/admin/professionals' },
+  { id: 'patients', label: 'Patients', icon: 'user', route: '/admin/patients' },
   { id: 'clinics', label: 'Clinics', icon: 'medicine-box', route: '/admin/clinics' },
+  { id: 'monitoring', label: 'Monitoring', icon: 'workspace', route: '/admin/monitoring' },
 ];
 
 @Component({
@@ -44,7 +46,15 @@ export class AdminShell {
     ).subscribe((event) => this.activeId.set(this.resolveActive(event.urlAfterRedirects)));
   }
 
+  /**
+   * Longest-prefix order matters: `/admin/patients` is its own entry, so it is matched
+   * before the professionals fallback rather than being highlighted as "Professionals".
+   */
   private resolveActive(url: string): string {
-    return url.startsWith('/admin/clinics') ? 'clinics' : 'professionals';
+    if (url.startsWith('/admin/monitoring')) return 'monitoring';
+    if (url.startsWith('/admin/professionals')) return 'professionals';
+    if (url.startsWith('/admin/patients')) return 'patients';
+    if (url.startsWith('/admin/clinics')) return 'clinics';
+    return 'professionals';
   }
 }

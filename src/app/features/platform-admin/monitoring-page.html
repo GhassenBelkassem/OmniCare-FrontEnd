@@ -1,0 +1,77 @@
+<div class="page-stack">
+  <oc-page-header
+    title="Monitoring"
+    description="Operational health and performance for the OmniCare platform. Read-only, served live by the platform monitoring API."
+  >
+    <div ocSecondaryActions class="header-actions">
+      <span class="last-updated">Last updated: {{ lastUpdated() ? format(lastUpdated()!) : 'not yet loaded' }}</span>
+      <oc-button variant="secondary" leadingIcon="reload" [loading]="refreshing()" (click)="refresh()">Refresh</oc-button>
+    </div>
+  </oc-page-header>
+
+  <div class="section-toggle">
+    <oc-segmented-control
+      label="Monitoring sections"
+      [options]="sectionOptions"
+      [selected]="section()"
+      (selectedChange)="handleSectionChange($event)"
+    />
+  </div>
+
+  @if (section() === 'overview') {
+    @if (overview.error(); as error) {
+      <div class="request-error" role="alert">{{ error }}</div>
+    }
+    @if (overview.loading() && !overview.data()) {
+      <p class="section-hint" role="status">Loading the operational overview…</p>
+    } @else if (overview.data(); as data) {
+      <oc-monitoring-overview-panel [overview]="data" />
+    }
+  }
+
+  @if (section() === 'performance') {
+    @if (performance.error(); as error) {
+      <div class="request-error" role="alert">{{ error }}</div>
+    }
+    @if (performance.loading() && !performance.data()) {
+      <p class="section-hint" role="status">Loading performance metrics…</p>
+    } @else if (performance.data(); as data) {
+      <oc-monitoring-performance-panel
+        [performance]="data"
+        [window]="window()"
+        (windowChange)="handleWindowChange($event)"
+      />
+    }
+  }
+
+  @if (section() === 'operations') {
+    @if (operations.error(); as error) {
+      <div class="request-error" role="alert">{{ error }}</div>
+    }
+    @if (operations.loading() && !operations.data()) {
+      <p class="section-hint" role="status">Loading operational backlogs…</p>
+    } @else if (operations.data(); as data) {
+      <oc-monitoring-operations-panel [operations]="data" />
+    }
+  }
+
+  @if (section() === 'alerts') {
+    @if (alerts.error(); as error) {
+      <div class="request-error" role="alert">{{ error }}</div>
+    }
+    @if (alerts.loading() && !alerts.data()) {
+      <p class="section-hint" role="status">Loading active alerts…</p>
+    } @else if (alerts.data(); as data) {
+      <oc-monitoring-alerts-panel [alerts]="data" />
+    }
+  }
+
+  @if (section() === 'diagnostics') {
+    <oc-monitoring-diagnostics-panel />
+  }
+
+  <p class="note-static">
+    Read-only monitoring. Every value comes from the platform monitoring API; no Prometheus,
+    Alertmanager or Elasticsearch endpoint is exposed to the browser.
+  </p>
+</div>

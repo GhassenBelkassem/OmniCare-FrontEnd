@@ -28,5 +28,16 @@ td a { color: var(--oc-color-text-link); font-weight: var(--oc-font-weight-semib
 .definition-grid dt { color: var(--oc-color-text-muted); font-size: 12px; }
 .definition-grid dd { margin: var(--oc-space-1) 0 0; font-weight: var(--oc-font-weight-semibold); overflow-wrap: anywhere; }
 .back-link { color: var(--oc-color-text-link); font-weight: var(--oc-font-weight-semibold); }
-.pagination { display: flex; justify-content: space-between; align-items: center; gap: var(--oc-space-4); }
+.pagination { display: flex; justify-content: space-between; align-items: center; gap: var(--oc-space-4); flex-wrap: wrap; }
+.pagination-controls { display: flex; align-items: center; gap: var(--oc-space-3); font-size: 12px; color: var(--oc-color-text-muted); }
+.pagination-controls span { white-space: nowrap; }
+.toolbar select { min-width: 10rem; }
+
+/* Destructive account actions are grouped so they never read as part of the read-only profile. */
+.panel--danger { border-color: var(--oc-color-critical); }
+
+/* Verification state is informational, not a status badge: it has no account-level severity. */
+.badge-verified, .badge-unverified { display: inline-block; font-size: 12px; font-weight: var(--oc-font-weight-semibold); padding: 0 var(--oc-space-2); border-radius: var(--oc-radius-md); }
+.badge-verified { color: var(--oc-color-success); background: var(--oc-color-success-surface); }
+.badge-unverified { color: var(--oc-color-text-muted); background: var(--oc-color-critical-surface); }
 @media (max-width: 800px) { .form-grid, .definition-grid { grid-template-columns: 1fr; } .form-grid .span-2 { grid-column: auto; } .inline-control { align-items: stretch; flex-direction: column; } th:nth-child(n+4), td:nth-child(n+4) { display: none; } }

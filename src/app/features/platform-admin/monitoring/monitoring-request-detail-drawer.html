@@ -1,0 +1,84 @@
+<oc-detail-panel [open]="open()" [title]="request() ? 'Request ' + request()!.requestId : 'Request detail'" (closed)="close()" (openChange)="open.set($event)">
+  @if (loading()) {
+    <p class="drawer-state" role="status">Loading request detail…</p>
+  } @else if (errorMessage()) {
+    <p class="field-error" role="alert">{{ errorMessage() }}</p>
+  } @else if (request(); as req) {
+    <div class="drawer-stack">
+      <div class="drawer-head">
+        <oc-status-badge [status]="outcomeBadge(req.outcome)" [customLabel]="outcomeLabel(req.outcome)" />
+        @if (req.slow) { <span class="slow-tag">Slow (&ge; {{ req.durationMs }} ms)</span> }
+      </div>
+
+      @if (!req.dataComplete) {
+        <p class="drawer-incomplete" role="note">
+          Some HTTP metadata was not recorded for this request, so it is shown as
+          &ldquo;Not available&rdquo; rather than inferred. Its outcome and slowness are therefore unknown.
+        </p>
+      }
+
+      <oc-card title="Operational summary" [compact]="true">
+        <dl class="drawer-grid">
+          <div><dt>Timestamp</dt><dd>{{ format(req.occurredAtIso) }}</dd></div>
+          <div><dt>Method</dt><dd>{{ formatOptional(req.method) }}</dd></div>
+          <div><dt>Normalized route</dt><dd class="wrap">{{ formatOptional(req.route) }}</dd></div>
+          <div><dt>Status</dt><dd>{{ formatOptional(req.statusCode) }}</dd></div>
+          <div><dt>Duration</dt><dd>{{ formatOptional(req.durationMs, ' ms') }}</dd></div>
+          <div><dt>Outcome</dt><dd>{{ outcomeLabel(req.outcome) }}</dd></div>
+        </dl>
+      </oc-card>
+
+      <oc-card title="Correlation" [compact]="true">
+        <dl class="drawer-grid">
+          <div class="drawer-grid__wide">
+            <dt>Request ID</dt>
+            <dd class="correlation-value">
+              <span class="mono wrap">{{ req.requestId }}</span>
+              <oc-button size="small" variant="quiet" leadingIcon="copy" (click)="copy(req.requestId, 'Request ID')">Copy</oc-button>
+            </dd>
+          </div>
+          <div class="drawer-grid__wide">
+            <dt>Trace ID</dt>
+            <dd class="correlation-value">
+              @if (req.traceId) {
+                <span class="mono wrap">{{ req.traceId }}</span>
+                <oc-button size="small" variant="quiet" leadingIcon="copy" (click)="copy(req.traceId, 'Trace ID')">Copy</oc-button>
+              } @else {
+                <span class="muted">Not sampled — no trace ID</span>
+              }
+            </dd>
+          </div>
+        </dl>
+        <p class="copy-feedback" role="status" aria-live="polite">{{ copiedLabel() ?? '' }}</p>
+        <div class="diag-links">
+          @if (req.detail.logsAvailable) {
+            <span class="link-unavailable">Correlated logs are available in Kibana; the platform API exposes no deep link.</span>
+          } @else {
+            <span class="link-unavailable">Correlated logs are not available for this request.</span>
+          }
+          @if (req.detail.traceAvailable) {
+            <span class="link-unavailable">A trace was sampled for this request; the platform API exposes no deep link.</span>
+          } @else {
+            <span class="link-unavailable">No trace was sampled for this request.</span>
+          }
+        </div>
+      </oc-card>
+
+      <oc-card title="Technical metadata" subtitle="Optional, best-effort fields. Absent values mean the telemetry did not supply them — nothing is inferred." [compact]="true">
+        <dl class="drawer-grid">
+          <div><dt>User role</dt><dd>{{ req.detail.userRole ?? 'Not available' }}</dd></div>
+          <div><dt>Client</dt><dd>{{ req.detail.clientKind ?? 'Not available' }}</dd></div>
+          <div><dt>Feature area</dt><dd>{{ req.detail.featureArea ?? 'Not available' }}</dd></div>
+          <div><dt>Spans</dt><dd>{{ req.detail.spanCount ?? 'Not available' }}</dd></div>
+          <div><dt>DB queries</dt><dd>{{ req.detail.dbQueryCount ?? 'Not available' }}</dd></div>
+          <div><dt>Slowest span</dt><dd>{{ req.detail.slowestSpanMillis !== null && req.detail.slowestSpanMillis !== undefined ? req.detail.slowestSpanMillis + ' ms' : 'Not available' }}</dd></div>
+        </dl>
+        @if (req.detail.outcomeReason) {
+          <p class="drawer-reason">{{ req.detail.outcomeReason }}</p>
+        }
+      </oc-card>
+    </div>
+  } @else {
+    <p class="drawer-state">Select a request to see its details.</p>
+  }
+</oc-detail-panel>

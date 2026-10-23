@@ -1,0 +1,83 @@
+<div class="monitoring-stack">
+  <div class="panel-toolbar">
+    <div>
+      <h2 class="section-title">Alerts and incidents</h2>
+      <p class="section-hint">Read-only view. Acknowledgement, silencing and rule editing are not available in MON-04.</p>
+    </div>
+    <span class="read-only-badge">Read only</span>
+  </div>
+
+  @if (tableState() === 'empty') {
+    <oc-empty-state icon="warning" title="No active alerts" description="There are no firing, pending, silenced or inhibited alerts to display." />
+  } @else {
+    <ul class="incident-list">
+      @for (alert of alerts().active; track alert.id) {
+        <li class="incident-card" [class]="'incident-card incident-card--' + alert.severity">
+          <div class="incident-head">
+            <div class="incident-head__main">
+              <div class="incident-badges">
+                <oc-status-badge [status]="severityBadge(alert.severity)" [customLabel]="severityLabel(alert.severity)" />
+                <oc-status-badge [status]="stateBadge(alert.state)" [customLabel]="stateLabel(alert.state)" />
+              </div>
+              <h3 class="incident-title">{{ alert.summary }}</h3>
+              <p class="incident-impact">{{ alert.impact }}</p>
+            </div>
+            <button
+              type="button"
+              class="incident-toggle"
+              [attr.aria-expanded]="isExpanded(alert)"
+              [attr.aria-controls]="'incident-details-' + alert.id"
+              (click)="toggle(alert)"
+            >
+              {{ isExpanded(alert) ? 'Hide technical details' : 'Technical details' }}
+            </button>
+          </div>
+
+          <dl class="incident-meta">
+            <div><dt>Component</dt><dd>{{ alert.component }}</dd></div>
+            <div><dt>First detected</dt><dd class="table-time">{{ format(alert.firstDetectedIso) }}</dd></div>
+            <div><dt>Last update</dt><dd class="table-time">{{ format(alert.updatedIso) }}</dd></div>
+          </dl>
+
+          <p class="incident-action"><strong>Suggested next step:</strong> {{ alert.suggestedAction }}</p>
+
+          @if (isExpanded(alert)) {
+            <div class="incident-technical" [id]="'incident-details-' + alert.id">
+              <dl class="incident-meta">
+                <div><dt>Alert name</dt><dd class="mono">{{ alert.name }}</dd></div>
+                <div><dt>For</dt><dd>{{ alert.technical.forDuration }}</dd></div>
+                <div><dt>Threshold</dt><dd>{{ alert.technical.threshold }}</dd></div>
+                <div><dt>Observed</dt><dd>{{ alert.technical.observedValue ?? 'Not available' }}</dd></div>
+              </dl>
+              <div class="incident-expression">
+                <dt>Expression summary</dt>
+                <pre class="expression-code"><code>{{ alert.technical.expressionSummary }}</code></pre>
+              </div>
+              <div class="incident-labels">
+                @for (label of labelEntries(alert.technical.labels); track label.key) {
+                  <span class="incident-label"><span class="incident-label__key">{{ label.key }}</span>=<span class="incident-label__value">{{ label.value }}</span></span>
+                }
+              </div>
+              @if (alert.technical.runbook) {
+                <p class="incident-runbook">Runbook: <span class="mono expression-wrap">{{ alert.technical.runbook }}</span></p>
+              }
+              <div class="incident-link">
+                @if (alert.monitoringLink) {
+                  <a class="safe-link" [href]="alert.monitoringLink" target="_blank" rel="noopener noreferrer">Open in Grafana</a>
+                } @else {
+                  <span class="muted">Monitoring link unavailable</span>
+                }
+              </div>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (alerts().unavailableSources.length) {
+    <p class="unavailable-note" role="status">
+      Alert sources unavailable: {{ alerts().unavailableSources.join(', ') }}.
+    </p>
+  }
+</div>

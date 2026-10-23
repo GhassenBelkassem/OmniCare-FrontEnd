@@ -1,0 +1,116 @@
+/* Sectioned detail layout following the professional-detail convention:
+   `page-stack` > back-link > header > `panel` sections with `definition-grid` rows. */
+
+.page-stack {
+  display: grid;
+  gap: var(--oc-space-6);
+  padding: var(--oc-spacing-lg);
+  max-width: var(--oc-max-width-xl);
+  margin: 0 auto;
+}
+
+.panel {
+  display: grid;
+  gap: var(--oc-space-4);
+  justify-items: start;
+  padding: var(--oc-space-5);
+  border: 1px solid var(--oc-color-border);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface);
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: var(--oc-font-size-lg);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.back-link {
+  color: var(--oc-color-link, var(--oc-color-text-link));
+  font-weight: var(--oc-font-weight-semibold);
+  justify-self: start;
+}
+
+.definition-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: var(--oc-space-4);
+  width: 100%;
+  margin: 0;
+}
+
+.definition-grid div {
+  min-width: 0;
+}
+
+.definition-grid dt {
+  color: var(--oc-color-text-muted);
+  font-size: var(--oc-font-size-sm);
+}
+
+.definition-grid dd {
+  margin: var(--oc-space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.team-detail__state {
+  padding: var(--oc-space-10) 0;
+  color: var(--oc-color-text-muted);
+  text-align: center;
+}
+
+.team-detail__hint {
+  margin: 0;
+  font-size: var(--oc-font-size-sm);
+  color: var(--oc-color-text-muted);
+}
+
+.team-detail__notice {
+  margin: 0;
+  padding: var(--oc-space-4) var(--oc-space-5);
+  border: 1px solid var(--oc-color-success);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-text);
+}
+
+.team-detail__error {
+  margin: 0;
+  color: var(--oc-color-critical);
+}
+
+/* Each permission is its own chip so a five-permission grant is readable at a glance
+   and wrap onto multiple lines instead of being flattened into one string. */
+.team-detail__permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-detail__permission {
+  padding: var(--oc-space-1) var(--oc-space-3);
+  border: 1px solid var(--oc-color-border);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-muted, var(--oc-color-surface));
+  font-size: var(--oc-font-size-sm);
+}
+
+.team-detail__permission--empty {
+  color: var(--oc-color-text-muted);
+}
+
+.team-detail__permission-form {
+  display: grid;
+  gap: var(--oc-space-4);
+  width: 100%;
+  max-width: var(--oc-measure-wide);
+}
+
+.team-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-3);
+}

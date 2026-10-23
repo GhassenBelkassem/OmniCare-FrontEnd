@@ -34,6 +34,33 @@ export interface ProfessionalPage {
   readonly totalPages: number;
 }
 
+export interface ProfessionalSearchInput {
+  readonly search?: string;
+  readonly role?: ManagedProfessionalRole;
+  readonly status?: AccountStatus;
+  readonly page?: number;
+  readonly pageSize?: number;
+}
+
+export interface AdminPatient {
+  readonly userId: string;
+  readonly email: string | null;
+  readonly phone: string | null;
+  readonly role: 'PATIENT';
+  readonly status: Exclude<AccountStatus, 'INVITED'>;
+  readonly firstName: string | null;
+  readonly lastName: string | null;
+  readonly lastActiveAt: string | null;
+}
+
+export interface PatientPage {
+  readonly items: readonly AdminPatient[];
+  readonly page: number;
+  readonly pageSize: number;
+  readonly totalElements: number;
+  readonly totalPages: number;
+}
+
 export interface CreateDoctorInput {
   readonly email: string;
   readonly firstName: string;
@@ -42,6 +69,23 @@ export interface CreateDoctorInput {
   readonly professionalLicenseNumber: string;
   readonly specialty: string;
   readonly governorate: string;
+}
+
+export interface CreateProfessionalResult {
+  readonly userId: string;
+  readonly role: ManagedProfessionalRole;
+  readonly email: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly professionalLicenseNumber: string;
+  readonly specialty: string;
+  readonly governorate: string;
+  readonly active: boolean;
+  readonly experienceYears: number | null;
+  readonly practiceLatitude: number | null;
+  readonly practiceLongitude: number | null;
+  readonly invitationStatus: InvitationStatus;
+  readonly invitationExpiresAt: string;
 }
 
 export interface ProfessionalSession {
