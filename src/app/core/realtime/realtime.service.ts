@@ -1,4 +1,14 @@
-import { DestroyRef, Injectable, InjectionToken, PLATFORM_ID, computed, effect, inject, signal, type Signal } from '@angular/core';
+import {
+  DestroyRef,
+  Injectable,
+  InjectionToken,
+  PLATFORM_ID,
+  computed,
+  effect,
+  inject,
+  signal,
+  type Signal,
+} from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Subject } from 'rxjs';
 import { Client, type IMessage, type StompConfig } from '@stomp/stompjs';
@@ -37,12 +47,6 @@ const RECONNECT_DELAY_MS = 5_000;
 const STALE_AFTER_MS = 90_000;
 const HEALTH_TICK_MS = 15_000;
 const SCHEDULED_EVENT_DEDUPE_LIMIT = 256;
-
-export const REALTIME_CLIENT_FACTORY = new InjectionToken<(config: StompConfig) => Client>(
-  'REALTIME_CLIENT_FACTORY',
-  { providedIn: 'root', factory: () => (config) => new Client(config) },
-);
-
 const URGENT_EVENT_NAMES: ReadonlySet<string> = new Set<string>([
   'NEW_OFFER',
   'OFFER_ACCEPTED',
@@ -53,6 +57,11 @@ const URGENT_EVENT_NAMES: ReadonlySet<string> = new Set<string>([
   'DOCTOR_ARRIVED',
   'DOCTOR_LOCATION_UPDATE',
 ]);
+
+export const REALTIME_CLIENT_FACTORY = new InjectionToken<(config: StompConfig) => Client>(
+  'REALTIME_CLIENT_FACTORY',
+  { providedIn: 'root', factory: () => (config) => new Client(config) },
+);
 
 const APPOINTMENT_EVENT_NAMES: ReadonlySet<string> = new Set<string>([
   'BOOKING_CONFIRMED',
@@ -82,6 +91,7 @@ export class RealtimeService {
   private readonly clientFactory = inject(REALTIME_CLIENT_FACTORY);
 
   private client: Client | null = null;
+  /** @deprecated Legacy Patient compatibility only; Doctor sessions never subscribe. */
   private readonly urgentSubject = new Subject<UrgentLiveEvent>();
   private readonly appointmentSubject = new Subject<AppointmentLiveEvent>();
   private readonly scheduledCareSubject = new Subject<ScheduledCareEvent>();
@@ -96,6 +106,7 @@ export class RealtimeService {
   /** Increments on every successful connection, including reconnects. */
   readonly connectionEpoch = signal(0);
   readonly lastEventAt = signal<number | null>(null);
+  /** @deprecated Kept only for the out-of-scope legacy Patient surfaces. */
   readonly urgentEvents$ = this.urgentSubject.asObservable();
   readonly appointmentEvents$ = this.appointmentSubject.asObservable();
   readonly scheduledCareEvents$ = this.scheduledCareSubject.asObservable();
@@ -171,18 +182,16 @@ export class RealtimeService {
         this.connectedAt.set(Date.now());
         this.status.set('connected');
         this.connectionEpoch.update((value) => value + 1);
-        client.subscribe(URGENT_REQUESTS_QUEUE, (message) =>
-          this.onMessage(message, this.urgentSubject, URGENT_EVENT_NAMES),
-        );
+        if (this.tokens.user()?.role === 'PATIENT') {
+          client.subscribe(URGENT_REQUESTS_QUEUE, (message) =>
+            this.onMessage(message, this.urgentSubject, URGENT_EVENT_NAMES),
+          );
+        }
         client.subscribe(APPOINTMENTS_QUEUE, (message) =>
           this.onMessage(message, this.appointmentSubject, APPOINTMENT_EVENT_NAMES),
         );
-        client.subscribe(SCHEDULED_CARE_QUEUE, (message) =>
-          this.onScheduledCareMessage(message),
-        );
-        client.subscribe(NOTIFICATIONS_QUEUE, (message) =>
-          this.onNotificationMessage(message),
-        );
+        client.subscribe(SCHEDULED_CARE_QUEUE, (message) => this.onScheduledCareMessage(message));
+        client.subscribe(NOTIFICATIONS_QUEUE, (message) => this.onNotificationMessage(message));
       },
       onWebSocketClose: () => {
         if (this.status() === 'connected') {

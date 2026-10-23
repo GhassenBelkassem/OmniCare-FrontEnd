@@ -79,7 +79,7 @@ describe('AuthTokenStore', () => {
       AUTH_SESSION_STORAGE_KEY,
       JSON.stringify({
         ...session(),
-        user: { id: 'secretary-1', role: 'SECRETARY', mustChangePassword: false },
+        user: { id: 'unsupported-1', role: 'SUPERUSER', mustChangePassword: false },
       }),
     );
 

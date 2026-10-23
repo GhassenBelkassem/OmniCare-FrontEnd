@@ -4,7 +4,9 @@ import {
   DestroyRef,
   computed,
   inject,
+  output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs/operators';
@@ -16,9 +18,11 @@ import { ActiveCabinetStatus, CareCapabilitiesSettings } from './care-capabiliti
 import { MobileEquipmentSettings } from './mobile-equipment-settings';
 import { PracticeLocationResponse } from './practice-location-api.models';
 import { PracticeLocationApiService } from './practice-location-api.service';
-import { EquipmentOverviewResponse } from './professional-services-api.models';
+import { CareCapability, EquipmentOverviewResponse } from './professional-services-api.models';
 import { MedicalEquipmentApiService } from './professional-services-api.service';
 import { mapServicesSettingsFailure } from './services-settings-errors';
+import { UrgentCareConfigurationSettings } from './urgent-care-configuration-settings';
+import { UrgentCareReadinessSettings } from './urgent-care-readiness-settings';
 
 @Component({
   selector: 'app-services-settings-section',
@@ -28,6 +32,8 @@ import { mapServicesSettingsFailure } from './services-settings-errors';
     OcIcon,
     OcSkeleton,
     CareCapabilitiesSettings,
+    UrgentCareConfigurationSettings,
+    UrgentCareReadinessSettings,
     MobileEquipmentSettings,
     CabinetServiceConfig,
   ],
@@ -40,6 +46,27 @@ export class ServicesSettingsSection {
   private readonly equipmentApi = inject(MedicalEquipmentApiService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly capabilitiesSettings = viewChild(CareCapabilitiesSettings);
+  private readonly urgentSettings = viewChild(UrgentCareConfigurationSettings);
+  private readonly urgentReadiness = viewChild(UrgentCareReadinessSettings);
+
+  readonly urgentConfigurationDirtyChange = output<boolean>();
+  readonly capabilities = signal<readonly CareCapability[]>([]);
+  readonly committedCapabilities = computed(
+    () => this.capabilitiesSettings()?.baseline() ?? ([] as readonly CareCapability[]),
+  );
+  readonly capabilitySelectionLoaded = computed(
+    () => this.capabilitiesSettings()?.revision() !== null,
+  );
+  readonly capabilitySelectionUnavailable = computed(() => {
+    const settings = this.capabilitiesSettings();
+    return (
+      settings !== undefined &&
+      !settings.loading() &&
+      settings.revision() === null &&
+      settings.error() !== null
+    );
+  });
 
   readonly locations = signal<readonly PracticeLocationResponse[]>([]);
   readonly locationsLoading = signal(false);
@@ -105,5 +132,15 @@ export class ServicesSettingsSection {
 
   reAuthenticate(): void {
     this.auth.logout();
+  }
+
+  onCapabilityRevisionCommitted(revision: number): void {
+    this.urgentSettings()?.adoptSharedRevision(revision);
+    this.urgentReadiness()?.refresh();
+  }
+
+  onUrgentRevisionCommitted(revision: number): void {
+    this.capabilitiesSettings()?.adoptSharedRevision(revision);
+    this.urgentReadiness()?.refresh();
   }
 }

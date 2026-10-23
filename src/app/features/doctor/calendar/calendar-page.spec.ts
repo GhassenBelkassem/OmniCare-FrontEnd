@@ -15,19 +15,14 @@ import { en_GB, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { UrgentLiveEvent } from '../../../core/realtime/live-event.models';
 import { RealtimeHealth, RealtimeService } from '../../../core/realtime/realtime.service';
 import { OcTimeField } from '../../../shared/ui/time-field/oc-time-field';
 import type {
   AvailabilityExceptionDto,
   AvailabilityExceptionRequestDto,
   AvailabilityRuleDto,
-  UrgentOfferDto,
 } from '../appointment-api.models';
 import { AppointmentApiService } from '../appointment-api.service';
-import { ActiveMatchedRequestStore } from '../active-matched-request.store';
-import { DoctorUrgentApiService, UrgentRequestSummaryDto } from '../doctor-urgent-api.service';
-import { UrgentAcceptedStore } from '../urgent-accepted.store';
 import { ScheduledAppointmentDetailPanel } from '../scheduled-care/scheduled-appointment-detail-panel';
 import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
@@ -113,45 +108,10 @@ function exception(id: string, type: 'BLOCK' | 'EXTRA' = 'BLOCK'): AvailabilityE
   };
 }
 
-function urgentSummary(overrides: Partial<UrgentRequestSummaryDto> = {}): UrgentRequestSummaryDto {
-  return {
-    id: 'urgent-1',
-    status: 'MATCHED',
-    selectedOfferId: 'offer-1',
-    matchedAt: '2031-04-08T14:20:00.000Z',
-    arrivedAt: null,
-    ...overrides,
-  };
-}
-
-function urgentOffer(overrides: Partial<UrgentOfferDto> = {}): UrgentOfferDto {
-  return {
-    offerId: 'offer-1',
-    requestId: 'urgent-1',
-    doctorId: 'doctor-1',
-    status: 'ACCEPTED',
-    sentAt: '2031-04-08T14:00:00.000Z',
-    respondedAt: '2031-04-08T14:05:00.000Z',
-    patientName: 'Leïla Trabelsi',
-    patientLatitude: 36.8,
-    patientLongitude: 10.18,
-    visitPreference: 'CABINET_VISIT',
-    notes: null,
-    requestStatus: 'MATCHED',
-    ...overrides,
-  };
-}
-
 describe('CalendarPage', () => {
   let fixture: ComponentFixture<CalendarPage>;
   let component: CalendarPage;
   let api: AppointmentApiStub;
-  let urgentEvents: Subject<UrgentLiveEvent>;
-  let urgentRequestIds: WritableSignal<ReadonlySet<string>>;
-  let acceptedOffers: WritableSignal<readonly UrgentOfferDto[]>;
-  let urgentApi: {
-    readonly request: ReturnType<typeof vi.fn<(id: string) => Observable<UrgentRequestSummaryDto>>>;
-  };
   let realtimeHealth: WritableSignal<RealtimeHealth>;
   let calendarApi: Pick<Calendar, 'changeView' | 'next' | 'prev' | 'today'>;
   let detailPanel: ScheduledAppointmentDetailPanel;
@@ -163,10 +123,6 @@ describe('CalendarPage', () => {
   let projectionInvalidationEpoch: WritableSignal<number>;
 
   beforeEach(async () => {
-    urgentEvents = new Subject<UrgentLiveEvent>();
-    urgentRequestIds = signal<ReadonlySet<string>>(new Set());
-    acceptedOffers = signal<readonly UrgentOfferDto[]>([]);
-    urgentApi = { request: vi.fn(() => of(urgentSummary())) };
     realtimeHealth = signal<RealtimeHealth>('live');
     projectionInvalidationEpoch = signal(0);
     scheduledApi = { getDoctorScheduledCare: vi.fn(() => of(agenda([]))) };
@@ -197,13 +153,9 @@ describe('CalendarPage', () => {
             cancelAppointment: vi.fn(),
           },
         },
-        { provide: DoctorUrgentApiService, useValue: urgentApi },
-        { provide: ActiveMatchedRequestStore, useValue: { requestIds: urgentRequestIds } },
-        { provide: UrgentAcceptedStore, useValue: { offers: acceptedOffers } },
         {
           provide: RealtimeService,
           useValue: {
-            urgentEvents$: urgentEvents,
             health: vi.fn(() => realtimeHealth),
           },
         },
@@ -576,7 +528,6 @@ describe('CalendarPage', () => {
     expect(classesFor({ kind: 'appointment', status: 'CONFIRMED' })).toContain(
       'omnicare-fc-event--appointment omnicare-fc-event--confirmed',
     );
-    expect(classesFor({ kind: 'urgent-estimate' })).toContain('omnicare-fc-event--urgent');
     expect(classesFor({ kind: 'exception-annotation', exceptionType: 'BLOCK' })).toContain(
       'omnicare-fc-event--block',
     );
@@ -793,95 +744,5 @@ describe('CalendarPage', () => {
     expect(component.calendarEvents()).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ extendedProps: { kind: 'free-slot' } })]),
     );
-  });
-
-  it('projects matched urgent state from the existing stores', () => {
-    acceptedOffers.set([urgentOffer()]);
-    urgentRequestIds.set(new Set(['urgent-1']));
-    TestBed.flushEffects();
-
-    expect(urgentApi.request).toHaveBeenCalledWith('urgent-1');
-    expect(component.urgentEvents()[0]).toMatchObject({
-      id: 'urgent:urgent-1',
-      extendedProps: {
-        kind: 'urgent-estimate',
-        patientLabel: 'Leïla Trabelsi',
-        estimatedMinutes: 30,
-      },
-    });
-  });
-
-  it('recomputes urgent presentation after the existing realtime stream reports arrival', () => {
-    acceptedOffers.set([urgentOffer()]);
-    urgentRequestIds.set(new Set(['urgent-1']));
-    TestBed.flushEffects();
-
-    urgentEvents.next({
-      name: 'DOCTOR_ARRIVED',
-      data: { requestId: 'urgent-1', doctorName: 'Dr Test' },
-      timestamp: '2031-04-08T14:42:00.000Z',
-    });
-
-    expect(component.urgentEvents()[0]).toMatchObject({
-      className: 'omnicare-urgent-event--arrived',
-      extendedProps: { kind: 'urgent-estimate' },
-    });
-  });
-
-  it('removes a cancelled urgent record from the agenda', () => {
-    acceptedOffers.set([urgentOffer()]);
-    urgentRequestIds.set(new Set(['urgent-1']));
-    TestBed.flushEffects();
-
-    urgentEvents.next({
-      name: 'REQUEST_CANCELLED',
-      data: { requestId: 'urgent-1' },
-      timestamp: '2031-04-08T14:45:00.000Z',
-    });
-
-    expect(component.urgentEvents()).toEqual([]);
-  });
-
-  it('keeps the production non-destructive no-click behavior for urgent entries', () => {
-    const openWith = vi.spyOn(detailPanel, 'openWith');
-
-    component.onEventClick({
-      event: { extendedProps: { kind: 'urgent-estimate', requestId: 'urgent-1' } },
-    } as unknown as EventClickInfo);
-
-    expect(openWith).not.toHaveBeenCalled();
-    expect(component.selectedException()).toBeNull();
-  });
-
-  it('combines appointment and urgent events without ID collision', () => {
-    component.appointments.set([appointment('urgent-1')]);
-    acceptedOffers.set([urgentOffer()]);
-    urgentRequestIds.set(new Set(['urgent-1']));
-    TestBed.flushEffects();
-
-    expect(component.calendarEvents().map((event) => event.id)).toEqual(
-      expect.arrayContaining(['appointment:urgent-1', 'urgent:urgent-1']),
-    );
-  });
-
-  it('provides urgent accessible text and a compact month label', () => {
-    const info = {
-      event: {
-        start: new Date('2031-04-08T14:20:00.000Z'),
-        end: new Date('2031-04-08T14:50:00.000Z'),
-        extendedProps: {
-          kind: 'urgent-estimate',
-          requestId: 'urgent-1',
-          patientLabel: 'Leïla Trabelsi',
-          estimatedMinutes: 30,
-          statusLabel: 'Arrivée estimée',
-          arrivedAtInstant: null,
-        },
-      },
-    } as unknown as EventDisplayInfo;
-
-    expect(component.eventAccessibleLabel(info)).toContain('Urgence');
-    expect(component.eventAccessibleLabel(info)).toContain('30 minutes estimées');
-    expect(component.urgentMonthLabel(info)).toMatch(/^Urgent · \d{2}:\d{2}$/);
   });
 });

@@ -8,17 +8,15 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { forkJoin, interval, of } from 'rxjs';
-import { catchError, filter } from 'rxjs/operators';
+import { filter } from 'rxjs/operators';
 
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
 import { RealtimeService } from '../../core/realtime/realtime.service';
-import { UrgentLiveEvent } from '../../core/realtime/live-event.models';
+import { AuthService } from '../../core/auth/auth.service';
 import {
   OcAvatar,
-  OcButton,
   OcIcon,
   OcPopover,
   OcSheet,
@@ -27,27 +25,18 @@ import {
   SidebarNavigationItem,
   SidebarUserProfile,
 } from '../../shared/ui';
-import { AppointmentApiService } from './appointment-api.service';
 import { DoctorNotificationApiService } from './doctor-notification-api.service';
-import { DoctorUrgentApiService } from './doctor-urgent-api.service';
-import { ActiveMatchedRequestStore } from './active-matched-request.store';
-import { DoctorLocationPushService } from './doctor-location-push.service';
 import { PatientLookupDialog } from './patient-lookup-dialog';
 import { MockPatientMatch } from './doctor-mock.models';
 import { DoctorMockService } from './doctor-mock.service';
-import { NotificationItemDto, UrgentOfferDto } from './appointment-api.models';
-import { UrgentRequestSummaryDto } from './doctor-urgent-api.service';
+import { NotificationItemDto } from './appointment-api.models';
 
 import { UrgentAcceptedStore } from './urgent-accepted.store';
+import { ActiveConsultationStore } from './active-consultation.store';
 
-const DOCTOR_POLL_SAFETY_NET_MS = 120_000;
-const URGENT_OFFER_TTL_SECONDS = 120;
-const URGENT_LATITUDE = 36.8065;
-const URGENT_LONGITUDE = 10.1815;
-const URGENT_LOCATION_LABEL = 'Tunis, Tunisie - 36.8065, 10.1815';
 const DOCTOR_SIDEBAR_LABELS: Partial<SidebarLabels> = {
   landmark: 'Navigation principale du médecin',
-  workspace: 'Espace clinique',
+  workspace: 'Espace médecin',
   navigation: 'Espace médecin',
   noResults: 'Aucune navigation ne correspond à',
   signOut: 'Se déconnecter',
@@ -61,7 +50,6 @@ const DOCTOR_SIDEBAR_LABELS: Partial<SidebarLabels> = {
     RouterOutlet,
     NzIconModule,
     OcAvatar,
-    OcButton,
     OcIcon,
     OcPopover,
     OcSheet,
@@ -77,34 +65,18 @@ const DOCTOR_SIDEBAR_LABELS: Partial<SidebarLabels> = {
 })
 export class DoctorShell {
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
   private readonly mock = inject(DoctorMockService);
-  private readonly urgentApi = inject(DoctorUrgentApiService);
   private readonly notificationApi = inject(DoctorNotificationApiService);
-  private readonly tokens = inject(AuthTokenStore);
   private readonly acceptedStore = inject(UrgentAcceptedStore);
   private readonly realtime = inject(RealtimeService);
-  private readonly matchedRequests = inject(ActiveMatchedRequestStore);
-  private readonly locationPush = inject(DoctorLocationPushService);
   private readonly destroyRef = inject(DestroyRef);
-  private offerCountdownTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly auth = inject(AuthService);
+  private readonly tokens = inject(AuthTokenStore);
+  readonly activeConsultation = inject(ActiveConsultationStore);
 
   readonly sidebarCollapsed = signal(false);
   readonly mobileNavigationOpen = signal(false);
   readonly lookupOpen = signal(false);
-
-  readonly urgentToggleSaving = signal(false);
-  readonly urgentToggleError = signal<string | null>(null);
-  readonly acceptsHomeVisits = signal(false);
-  readonly acceptsCabinetVisits = signal(false);
-  readonly emergencyAvailable = computed(
-    () => this.acceptsHomeVisits() || this.acceptsCabinetVisits(),
-  );
-  readonly emergencyLocation = signal<string | null>(null);
-  readonly incomingOffer = signal<UrgentOfferDto | null>(null);
-  readonly incomingOfferCountdown = signal(0);
-  readonly incomingOfferLoading = signal(false);
-  readonly incomingOfferError = signal<string | null>(null);
 
   readonly notificationUnread = signal(0);
   readonly notifications = signal<readonly NotificationItemDto[]>([]);
@@ -123,9 +95,7 @@ export class DoctorShell {
   readonly activeNav = signal('command');
 
   /** Live connection health, shown as a chip in the topbar. */
-  readonly expectsRealtimeActivity = computed(
-    () => this.emergencyAvailable() || this.matchedRequests.hasActive(),
-  );
+  readonly expectsRealtimeActivity = signal(false);
   readonly realtimeHealth = this.realtime.health(this.expectsRealtimeActivity);
   readonly realtimeLabel = computed(() => {
     switch (this.realtimeHealth()) {
@@ -138,80 +108,97 @@ export class DoctorShell {
     }
   });
 
-  readonly navigation: readonly SidebarNavigationItem[] = [
-    {
-      id: 'daily-work',
-      label: 'Activité clinique',
-      icon: 'workspace',
-      children: [
-        { id: 'command', label: 'Accueil', icon: 'workspace', route: '/doctor/command' },
-        { id: 'patients', label: 'Mes patients', icon: 'staff', route: '/doctor/patients' },
-        { id: 'calendar', label: 'Calendrier', icon: 'calendar', route: '/doctor/calendar' },
+  readonly isSecretary = computed(() => this.tokens.user()?.role === 'SECRETARY');
+
+  readonly navigation = computed<readonly SidebarNavigationItem[]>(() => {
+    if (this.isSecretary()) {
+      return [
         {
-          id: 'waiting-room',
-          label: 'Salle d’attente',
-          icon: 'waiting',
-          route: '/doctor/waiting-room',
+          id: 'secretary-agenda',
+          label: 'Agenda',
+          icon: 'calendar',
+          route: '/doctor/secretary-agenda',
         },
-        {
-          id: 'consultation',
-          label: 'Consultation',
-          icon: 'clinical',
-          route: '/doctor/consultation/new',
-        },
-      ],
-    },
-    {
-      id: 'clinical-follow-up',
-      label: 'Suivi clinique',
-      icon: 'tasks',
-      children: [
-        {
-          id: 'prescriptions',
-          label: 'Prescriptions',
-          icon: 'prescription',
-          route: '/doctor/prescriptions',
-        },
-        {
-          id: 'results',
-          label: 'Résultats et suivi',
-          icon: 'results',
-          route: '/doctor/results',
-        },
-        { id: 'requests', label: 'Demandes', icon: 'requests', route: '/doctor/requests' },
-      ],
-    },
-    {
-      id: 'urgent-readiness',
-      label: 'Préparation urgences',
-      icon: 'emergency',
-      route: '/doctor/urgent-readiness',
-    },
-    {
-      id: 'management',
-      label: 'Pilotage',
-      icon: 'settings',
-      children: [
-        { id: 'analytics', label: 'Analyses', icon: 'analytics', route: '/doctor/analytics' },
-        { id: 'settings', label: 'Paramètres', icon: 'settings', route: '/doctor/settings' },
-      ],
-    },
-  ];
+      ];
+    }
+
+    return [
+      {
+        id: 'daily-work',
+        label: 'Activité clinique',
+        icon: 'workspace',
+        children: [
+          { id: 'command', label: 'Accueil', icon: 'workspace', route: '/doctor/command' },
+          { id: 'patients', label: 'Mes patients', icon: 'staff', route: '/doctor/patients' },
+          { id: 'calendar', label: 'Calendrier', icon: 'calendar', route: '/doctor/calendar' },
+          {
+            id: 'waiting-room',
+            label: 'Salle d’attente',
+            icon: 'waiting',
+            route: '/doctor/waiting-room',
+          },
+          {
+            id: 'consultation',
+            label: 'Consultation',
+            icon: 'clinical',
+            route: this.activeConsultation.consultationId()
+              ? `/doctor/consultation/${this.activeConsultation.consultationId()}`
+              : '/doctor/command',
+          },
+        ],
+      },
+      {
+        id: 'clinical-follow-up',
+        label: 'Suivi clinique',
+        icon: 'tasks',
+        children: [
+          {
+            id: 'prescriptions',
+            label: 'Prescriptions',
+            icon: 'prescription',
+            route: '/doctor/prescriptions',
+          },
+          {
+            id: 'results',
+            label: 'Résultats et suivi',
+            icon: 'results',
+            route: '/doctor/results',
+          },
+          { id: 'requests', label: 'Demandes', icon: 'requests', route: '/doctor/requests' },
+        ],
+      },
+      {
+        id: 'urgent-readiness',
+        label: 'Préparation urgences',
+        icon: 'emergency',
+        route: '/doctor/urgent-readiness',
+      },
+      {
+        id: 'management',
+        label: 'Pilotage',
+        icon: 'settings',
+        children: [
+          { id: 'analytics', label: 'Analyses', icon: 'analytics', route: '/doctor/analytics' },
+          { id: 'settings', label: 'Paramètres', icon: 'settings', route: '/doctor/settings' },
+        ],
+      },
+    ];
+  });
   readonly sidebarLabels = DOCTOR_SIDEBAR_LABELS;
   readonly expandedNavigationGroups = computed(
     () =>
       new Set(
-        this.navigation
+        this.navigation()
           .filter((item) => item.children?.some((child) => child.id === this.activeNav()))
           .map((item) => item.id),
       ),
   );
 
-  readonly sidebarProfile: SidebarUserProfile = {
-    initials: 'BS',
-    name: 'Dr Ben Salah',
-    context: 'Médecine générale',
-  };
+  readonly sidebarProfile = computed<SidebarUserProfile>(() =>
+    this.isSecretary()
+      ? { initials: 'SC', name: 'Secrétaire', context: 'Agenda du cabinet' }
+      : { initials: 'BS', name: 'Dr Ben Salah', context: 'Médecine générale' },
+  );
 
   constructor() {
     this.syncActiveNavigation(this.router.url);
@@ -221,32 +208,22 @@ export class DoctorShell {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((event) => this.syncActiveNavigation(event.urlAfterRedirects));
-    this.loadUrgentStatus();
-    this.hydrateMatchedRequests();
-    this.refreshUnreadCount();
-    // The interval is an urgent-offer safety net only. Notification freshness
-    // is REST-on-login plus private realtime invalidation/reconnect/tab resync.
-    interval(DOCTOR_POLL_SAFETY_NET_MS)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.pollTick());
-    this.realtime.urgentEvents$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event) => this.onUrgentEvent(event));
-    this.realtime.notificationEvents$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+    if (!this.isSecretary()) {
+      this.acceptedStore.purgeLegacyCache();
       this.refreshUnreadCount();
-      if (this.notificationPanelOpen()) this.loadNotifications(true);
-    });
-    this.destroyRef.onDestroy(() => {
-      if (this.offerCountdownTimer) clearInterval(this.offerCountdownTimer);
-    });
-    let observedConnectionEpoch = this.realtime.connectionEpoch();
-    effect(() => {
-      const epoch = this.realtime.connectionEpoch();
-      if (epoch === observedConnectionEpoch) return;
-      observedConnectionEpoch = epoch;
-      this.refreshUnreadCount();
-      if (this.notificationPanelOpen()) this.loadNotifications(true);
-    });
+      this.realtime.notificationEvents$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+        this.refreshUnreadCount();
+        if (this.notificationPanelOpen()) this.loadNotifications(true);
+      });
+      let observedConnectionEpoch = this.realtime.connectionEpoch();
+      effect(() => {
+        const epoch = this.realtime.connectionEpoch();
+        if (epoch === observedConnectionEpoch) return;
+        observedConnectionEpoch = epoch;
+        this.refreshUnreadCount();
+        if (this.notificationPanelOpen()) this.loadNotifications(true);
+      });
+    }
   }
 
   private syncActiveNavigation(url: string): void {
@@ -254,7 +231,7 @@ export class DoctorShell {
     const segment = path.split('/').filter(Boolean)[1] ?? 'command';
     const id = segment === 'patient' ? 'patients' : segment;
     if (
-      this.navigation.some(
+      this.navigation().some(
         (item) => item.id === id || item.children?.some((child) => child.id === id),
       )
     ) {
@@ -262,53 +239,20 @@ export class DoctorShell {
     }
   }
 
-  private onUrgentEvent(event: UrgentLiveEvent): void {
-    switch (event.name) {
-      case 'NEW_OFFER':
-      case 'OFFER_ACCEPTED':
-        this.refreshIncoming();
-        break;
-      case 'REQUEST_MATCHED':
-        this.matchedRequests.markMatched(event.data.requestId);
-        break;
-      case 'REQUEST_CANCELLED':
-      case 'REQUEST_EXPIRED':
-        this.matchedRequests.markClosed(event.data.requestId);
-        break;
-      default:
-        break;
-    }
-  }
-
-  /** REST hydration of MATCHED requests (covers events missed while offline). */
-  private hydrateMatchedRequests(): void {
-    const offers = this.acceptedStore.offers();
-    if (!offers.length) return;
-    forkJoin(
-      offers.map((offer) =>
-        this.urgentApi.request(offer.requestId).pipe(catchError(() => of(null))),
-      ),
-    )
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((summaries) => {
-        const matched = summaries
-          .filter((s): s is UrgentRequestSummaryDto => s !== null && s.status === 'MATCHED')
-          .map((s) => s.id);
-        this.matchedRequests.reset(matched);
-      });
-  }
-
-  private pollTick(): void {
-    if (this.emergencyAvailable()) this.refreshIncoming();
-  }
-
   onVisibilityChange(): void {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible' || this.isSecretary()) return;
     this.refreshUnreadCount();
     if (this.notificationPanelOpen()) this.loadNotifications(true);
+    void this.activeConsultation.refresh();
+  }
+
+  logout(): void {
+    this.activeConsultation.detach();
+    this.auth.logout();
   }
 
   openLookup(): void {
+    if (this.isSecretary()) return;
     this.lookupOpen.set(true);
   }
 
@@ -322,145 +266,6 @@ export class DoctorShell {
     void this.router.navigate(['/doctor', 'consultation', consultationId], {
       queryParams: { source: 'manual' },
     });
-  }
-
-  toggleEmergency(): void {
-    if (this.urgentToggleSaving()) return;
-    const next = !this.emergencyAvailable();
-    this.urgentToggleSaving.set(true);
-    this.urgentToggleError.set(null);
-    this.urgentApi
-      .toggle({
-        acceptsHomeVisits: next,
-        acceptsCabinetVisits: next,
-        currentLatitude: URGENT_LATITUDE,
-        currentLongitude: URGENT_LONGITUDE,
-      })
-      .subscribe({
-        next: (status) => {
-          this.urgentToggleSaving.set(false);
-          this.acceptsHomeVisits.set(status.acceptsHomeVisits);
-          this.acceptsCabinetVisits.set(status.acceptsCabinetVisits);
-          this.emergencyLocation.set(status.availableForUrgent ? URGENT_LOCATION_LABEL : null);
-          if (status.availableForUrgent) this.refreshIncoming();
-        },
-        error: () => {
-          this.urgentToggleSaving.set(false);
-          this.urgentToggleError.set('Impossible de mettre a jour votre disponibilite urgente.');
-        },
-      });
-  }
-
-  loadUrgentStatus(): void {
-    this.urgentApi.getStatus().subscribe({
-      next: (status) => {
-        this.acceptsHomeVisits.set(status.acceptsHomeVisits);
-        this.acceptsCabinetVisits.set(status.acceptsCabinetVisits);
-        this.emergencyLocation.set(status.availableForUrgent ? URGENT_LOCATION_LABEL : null);
-        if (status.availableForUrgent) this.refreshIncoming();
-      },
-      error: () => {},
-    });
-  }
-
-  refreshIncoming(): void {
-    this.incomingOfferError.set(null);
-    if (!this.incomingOffer()) this.incomingOfferLoading.set(true);
-    this.urgentApi.incoming().subscribe({
-      next: (offers) => {
-        this.incomingOfferLoading.set(false);
-        const pending = offers.find((o) => o.status === 'PENDING') ?? null;
-        if (pending) {
-          this.incomingOffer.set(pending);
-          this.startOfferCountdown(pending);
-        } else {
-          this.clearIncomingOffer();
-        }
-      },
-      error: () => {
-        this.incomingOfferLoading.set(false);
-        this.incomingOfferError.set('Impossible de recuperer les demandes urgentes entrantes.');
-      },
-    });
-  }
-
-  private startOfferCountdown(offer: UrgentOfferDto): void {
-    this.stopOfferCountdown();
-    const deadline = new Date(offer.sentAt).getTime() + URGENT_OFFER_TTL_SECONDS * 1000;
-    const update = (): void => {
-      const remaining = Math.max(0, Math.round((deadline - Date.now()) / 1000));
-      this.incomingOfferCountdown.set(remaining);
-      if (remaining <= 0) this.clearIncomingOffer();
-    };
-    update();
-    this.offerCountdownTimer = setInterval(update, 1000);
-  }
-
-  private stopOfferCountdown(): void {
-    if (this.offerCountdownTimer) clearInterval(this.offerCountdownTimer);
-    this.offerCountdownTimer = null;
-  }
-
-  private clearIncomingOffer(): void {
-    this.stopOfferCountdown();
-    this.incomingOffer.set(null);
-    this.incomingOfferCountdown.set(0);
-  }
-
-  acceptUrgent(): void {
-    const offer = this.incomingOffer();
-    if (!offer) return;
-    this.urgentApi.accept(offer.offerId).subscribe({
-      next: () => {
-        this.acceptedStore.add(offer);
-        this.clearIncomingOffer();
-        this.refreshIncoming();
-      },
-      error: () => {
-        this.incomingOfferError.set("Impossible d'accepter la demande urgente.");
-      },
-    });
-  }
-
-  declineUrgent(): void {
-    const offer = this.incomingOffer();
-    if (!offer) return;
-    this.urgentApi.decline(offer.offerId).subscribe({
-      next: () => {
-        this.clearIncomingOffer();
-        this.refreshIncoming();
-      },
-      error: () => {
-        this.incomingOfferError.set('Impossible de refuser la demande urgente.');
-      },
-    });
-  }
-
-  incomingDistance(offer: UrgentOfferDto): string {
-    const earthRadiusKm = 6371;
-    const toRad = (d: number) => (d * Math.PI) / 180;
-    const dLat = toRad(offer.patientLatitude - URGENT_LATITUDE);
-    const dLng = toRad(offer.patientLongitude - URGENT_LONGITUDE);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(URGENT_LATITUDE)) *
-        Math.cos(toRad(offer.patientLatitude)) *
-        Math.sin(dLng / 2) ** 2;
-    const km = 2 * earthRadiusKm * Math.asin(Math.sqrt(a));
-    return `${km < 10 ? km.toFixed(1) : Math.round(km)} km`;
-  }
-
-  incomingLocation(offer: UrgentOfferDto): string {
-    switch (offer.visitPreference) {
-      case 'HOME_VISIT':
-        return 'A domicile';
-      case 'CABINET_VISIT':
-        return 'Au cabinet';
-      case 'EITHER':
-        return 'Domicile ou cabinet';
-      default:
-        return 'Position patient';
-    }
   }
 
   refreshUnreadCount(): void {

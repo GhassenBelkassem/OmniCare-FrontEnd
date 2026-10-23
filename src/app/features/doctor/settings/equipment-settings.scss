@@ -73,6 +73,7 @@
 }
 
 .equipment-settings__context {
+  color: var(--oc-color-text-secondary);
   padding: var(--oc-space-2) var(--oc-space-3);
   border-inline-start: 3px solid var(--oc-color-brand-primary);
   border-radius: var(--oc-radius-md);
@@ -141,6 +142,7 @@
 
 .equipment-settings__description {
   display: block;
+  color: var(--oc-color-text-secondary);
 }
 
 .equipment-settings__actions {

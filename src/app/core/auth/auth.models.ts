@@ -1,6 +1,7 @@
 export type DashboardRole =
   | 'PATIENT'
   | 'DOCTOR'
+  | 'SECRETARY'
   | 'NURSE'
   | 'KINE'
   | 'CLINIC_MEDECIN'
@@ -13,6 +14,7 @@ export type DashboardRole =
 export const DASHBOARD_ROLES: readonly DashboardRole[] = [
   'PATIENT',
   'DOCTOR',
+  'SECRETARY',
   'NURSE',
   'KINE',
   'CLINIC_MEDECIN',
@@ -30,6 +32,7 @@ export function isDashboardRole(value: unknown): value is DashboardRole {
 export function dashboardRouteFor(role: DashboardRole): string {
   if (role === 'ADMIN') return '/admin';
   if (role === 'DOCTOR') return '/doctor';
+  if (role === 'SECRETARY') return '/doctor';
   // Patient care is delivered by the Flutter mobile application. The legacy
   // Angular Patient workspace is development-only and must never become the
   // authenticated production landing page.

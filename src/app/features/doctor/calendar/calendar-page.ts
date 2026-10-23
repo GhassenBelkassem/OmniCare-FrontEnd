@@ -33,14 +33,7 @@ import themePlugin from '@fullcalendar/angular/themes/monarch';
 import timeGridPlugin from '@fullcalendar/angular/timegrid';
 import frLocale from 'fullcalendar/locales/fr';
 import { NzModalModule } from 'ng-zorro-antd/modal';
-import { forkJoin, interval, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-
-import type {
-  DoctorArrivedData,
-  RequestIdData,
-  UrgentLiveEvent,
-} from '../../../core/realtime/live-event.models';
+import { interval } from 'rxjs';
 import { RealtimeService } from '../../../core/realtime/realtime.service';
 import { OcButton } from '../../../shared/ui/button/oc-button';
 import { OcPageHeader } from '../../../shared/ui/page-header/oc-page-header';
@@ -53,16 +46,12 @@ import type {
   AvailabilityExceptionDto,
   AvailabilityExceptionRequestDto,
   AvailabilityRuleDto,
-  UrgentOfferDto,
 } from '../appointment-api.models';
 import { AppointmentApiService } from '../appointment-api.service';
 import {
   AvailabilityExceptionScope,
   fullWorkingDayWindow,
 } from '../availability-exception.adapter';
-import { ActiveMatchedRequestStore } from '../active-matched-request.store';
-import { DoctorUrgentApiService } from '../doctor-urgent-api.service';
-import { UrgentAcceptedStore } from '../urgent-accepted.store';
 import { ScheduledAppointmentDetailPanel } from '../scheduled-care/scheduled-appointment-detail-panel';
 import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
@@ -70,12 +59,8 @@ import type { DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.m
 import {
   AppointmentEventMetadata,
   ExceptionEventMetadata,
-  UrgentCalendarRecord,
-  UrgentEventMetadata,
   projectScheduledAppointmentEvents,
   projectExceptionEvents,
-  projectUrgentEvents,
-  toUrgentCalendarRecord,
 } from './calendar-event.adapter';
 import {
   CalendarVisibleRange,
@@ -98,8 +83,7 @@ function escapeHeaderText(value: string): string {
 
 type CalendarViewMode = 'day' | 'week' | 'month';
 type FullCalendarView = 'timeGridDay' | 'timeGridWeek' | 'dayGridMonth';
-type CalendarEventMetadata =
-  AppointmentEventMetadata | ExceptionEventMetadata | UrgentEventMetadata;
+type CalendarEventMetadata = AppointmentEventMetadata | ExceptionEventMetadata;
 
 const REALTIME_FALLBACK_REFETCH_MS = 120_000;
 const CALENDAR_VIEW_BY_MODE: Readonly<Record<CalendarViewMode, FullCalendarView>> = {
@@ -141,9 +125,6 @@ export class CalendarPage {
   private readonly scheduledCareApi = inject(ScheduledCareApiService);
   private readonly scheduledCare = inject(ScheduledCareFacade);
   private readonly realtime = inject(RealtimeService);
-  private readonly urgentApi = inject(DoctorUrgentApiService);
-  private readonly matchedRequests = inject(ActiveMatchedRequestStore);
-  private readonly acceptedOffers = inject(UrgentAcceptedStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
@@ -156,15 +137,12 @@ export class CalendarPage {
   private pendingRangeKey: string | null = null;
   private rangeLoadGeneration = 0;
   private rulesLoadAttempted = false;
-  private urgentCandidateKey: string | null = null;
-  private urgentLoadGeneration = 0;
 
   readonly viewMode = signal<CalendarViewMode>('month');
   readonly visibleTitle = signal('');
   readonly appointments = signal<readonly DoctorScheduledCareItem[]>([]);
   readonly rules = signal<readonly AvailabilityRuleDto[]>([]);
   readonly exceptions = signal<readonly AvailabilityExceptionDto[]>([]);
-  readonly urgentRecords = signal<readonly UrgentCalendarRecord[]>([]);
   readonly selectedException = signal<AvailabilityExceptionDto | null>(null);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
@@ -192,10 +170,8 @@ export class CalendarPage {
   readonly exceptionEvents = computed(() =>
     projectExceptionEvents(this.exceptions(), this.viewMode()),
   );
-  readonly urgentEvents = computed(() => projectUrgentEvents(this.urgentRecords()));
   readonly calendarEvents = computed(() => [
     ...this.appointmentEvents(),
-    ...this.urgentEvents(),
     ...this.exceptionEvents(),
   ]);
 
@@ -293,21 +269,6 @@ export class CalendarPage {
   });
 
   constructor() {
-    effect(() => {
-      const offers = this.acceptedOffers.offers();
-      const candidateIds = new Set<string>([
-        ...this.matchedRequests.requestIds(),
-        ...offers.map((offer) => offer.requestId),
-      ]);
-      const key = [...candidateIds]
-        .sort()
-        .map((id) => `${id}:${offers.find((offer) => offer.requestId === id)?.patientName ?? ''}`)
-        .join('|');
-      if (key === this.urgentCandidateKey) return;
-      this.urgentCandidateKey = key;
-      this.refreshUrgentRecords([...candidateIds], offers);
-    });
-
     let observedProjectionEpoch = this.scheduledCare.projectionInvalidationEpoch();
     effect(() => {
       const epoch = this.scheduledCare.projectionInvalidationEpoch();
@@ -316,9 +277,6 @@ export class CalendarPage {
       const range = this.visibleRange();
       if (range !== null) this.loadVisibleRange(range, true, true);
     });
-    this.realtime.urgentEvents$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event) => this.onUrgentRealtimeEvent(event));
     interval(REALTIME_FALLBACK_REFETCH_MS)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.refreshIfRealtimeDegraded());
@@ -381,7 +339,6 @@ export class CalendarPage {
     const range = this.visibleRange();
     if (range !== null && this.realtimeHealth() !== 'live') {
       this.loadVisibleRange(range, true, true);
-      this.refreshUrgentRecords();
     }
   }
   configureSchedule(): void {
@@ -489,8 +446,6 @@ export class CalendarPage {
       if (metadata.status === 'CONFIRMED') classes.push('omnicare-fc-event--confirmed');
       if (metadata.status === 'IN_PROGRESS') classes.push('omnicare-fc-event--in-progress');
       if (metadata.status === 'COMPLETED') classes.push('omnicare-fc-event--completed');
-    } else if (metadata.kind === 'urgent-estimate') {
-      classes.push('omnicare-fc-event--urgent');
     } else if (metadata.exceptionType === 'BLOCK') {
       classes.push('omnicare-fc-event--block');
     } else {
@@ -502,19 +457,12 @@ export class CalendarPage {
   isAppointmentEvent(info: EventDisplayInfo): boolean {
     return this.eventMetadata(info).kind === 'appointment';
   }
-  isUrgentEvent(info: EventDisplayInfo): boolean {
-    return this.eventMetadata(info).kind === 'urgent-estimate';
-  }
   eventTime(info: EventDisplayInfo): string {
     return formatCalendarTime(info.event.start);
   }
   eventTimeRange(info: EventDisplayInfo): string {
     return formatCalendarTimeRange(info.event.start, info.event.end);
   }
-  urgentMonthLabel(info: EventDisplayInfo): string {
-    return `Urgent · ${this.eventTime(info)}`;
-  }
-
   compactPatientLabel(info: EventDisplayInfo): string {
     const metadata = this.eventMetadata(info);
     if (metadata.kind !== 'appointment') return '';
@@ -529,73 +477,7 @@ export class CalendarPage {
     if (metadata.kind === 'appointment') {
       return `${metadata.patientLabel}, ${this.eventTimeRange(info)}, ${metadata.statusLabel}`;
     }
-    if (metadata.kind === 'urgent-estimate') {
-      return `Urgence, ${metadata.patientLabel}, ${this.eventTimeRange(info)}, ${metadata.estimatedMinutes} minutes estimées, ${metadata.statusLabel}`;
-    }
     return [metadata.typeLabel, metadata.reason, metadata.timeLabel].filter(Boolean).join(', ');
-  }
-
-  private refreshUrgentRecords(
-    candidateIds = [
-      ...new Set<string>([
-        ...this.matchedRequests.requestIds(),
-        ...this.acceptedOffers.offers().map((offer) => offer.requestId),
-      ]),
-    ],
-    offers: readonly UrgentOfferDto[] = this.acceptedOffers.offers(),
-  ): void {
-    const generation = ++this.urgentLoadGeneration;
-    if (candidateIds.length === 0) {
-      this.urgentRecords.set([]);
-      return;
-    }
-
-    forkJoin(candidateIds.map((id) => this.urgentApi.request(id).pipe(catchError(() => of(null)))))
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((summaries) => {
-        if (generation !== this.urgentLoadGeneration) return;
-        const records = summaries.reduce<UrgentCalendarRecord[]>((visible, summary) => {
-          if (summary === null) return visible;
-          const offer = offers.find((candidate) => candidate.requestId === summary.id);
-          const record = toUrgentCalendarRecord(summary, offer);
-          if (record !== null) visible.push(record);
-          return visible;
-        }, []);
-        this.urgentRecords.set(
-          records.sort(
-            (left, right) =>
-              new Date(left.startInstant).getTime() - new Date(right.startInstant).getTime(),
-          ),
-        );
-      });
-  }
-
-  private onUrgentRealtimeEvent(event: UrgentLiveEvent): void {
-    switch (event.name) {
-      case 'REQUEST_MATCHED':
-        this.refreshUrgentRecords();
-        break;
-      case 'DOCTOR_ARRIVED': {
-        const requestId = (event.data as DoctorArrivedData).requestId;
-        const arrivedAt = new Date().toISOString();
-        this.urgentRecords.update((records) =>
-          records.map((record) =>
-            record.requestId === requestId ? { ...record, arrivedAtInstant: arrivedAt } : record,
-          ),
-        );
-        break;
-      }
-      case 'REQUEST_CANCELLED':
-      case 'REQUEST_EXPIRED': {
-        const requestId = (event.data as RequestIdData).requestId;
-        this.urgentRecords.update((records) =>
-          records.filter((record) => record.requestId !== requestId),
-        );
-        break;
-      }
-      default:
-        break;
-    }
   }
 
   private loadRules(force = false): void {

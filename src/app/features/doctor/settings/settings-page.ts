@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -53,6 +54,7 @@ import { NotificationSettingsSection } from './notification-settings-section';
 import { AccountSecuritySection } from './account-security-section';
 import { ScheduledCarePrototypeStore } from '../scheduled-care-prototype.store';
 import { activeSlot } from '../scheduled-care-prototype.models';
+import { UnsavedChangesAware } from '../unsaved-changes.guard';
 import {
   AvailabilityExceptionScope,
   fullWorkingDayWindow,
@@ -98,15 +100,18 @@ function exceptionWindowValidator(control: AbstractControl): ValidationErrors | 
   templateUrl: './settings-page.html',
   styleUrl: './settings-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
 })
-export class SettingsPage {
+export class SettingsPage implements UnsavedChangesAware {
   private readonly appointmentApi = inject(AppointmentApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly document = inject(DOCUMENT);
   readonly scheduledCare = inject(ScheduledCarePrototypeStore);
 
   readonly activeTab = signal('overview');
+  readonly urgentConfigurationDirty = signal(false);
 
   readonly tabs = signal([
     { id: 'overview', label: 'Vue d’ensemble', icon: 'dashboard' },
@@ -234,18 +239,36 @@ export class SettingsPage {
 
   constructor() {
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      if (params['tab']) {
-        const tab = this.normalizeTab(params['tab']);
-        this.activeTab.set(tab);
-        if (tab === 'schedule') {
-          this.ensureExceptionsLoaded();
-        }
+      const tab = this.normalizeTab(params['tab']);
+      if (
+        this.activeTab() === 'services' &&
+        tab !== 'services' &&
+        !this.confirmDiscardUrgentChanges()
+      ) {
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { tab: 'services' },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+        return;
+      }
+      this.activeTab.set(tab);
+      if (tab === 'schedule') {
+        this.ensureExceptionsLoaded();
       }
     });
     this.loadSchedule();
   }
 
   onTabChange(id: string): void {
+    if (
+      this.activeTab() === 'services' &&
+      id !== 'services' &&
+      !this.confirmDiscardUrgentChanges()
+    ) {
+      return;
+    }
     this.activeTab.set(id);
     if (id === 'schedule') {
       this.ensureExceptionsLoaded();
@@ -256,6 +279,16 @@ export class SettingsPage {
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
+  }
+
+  canDeactivate(): boolean {
+    return this.confirmDiscardUrgentChanges();
+  }
+
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (!this.urgentConfigurationDirty()) return;
+    event.preventDefault();
+    event.returnValue = '';
   }
 
   onScheduleContextChange(contextId: string): void {
@@ -607,6 +640,15 @@ export class SettingsPage {
   private normalizeTab(value: unknown): string {
     if (value === 'preferences') return 'notifications';
     return this.tabs().some((tab) => tab.id === value) ? String(value) : 'overview';
+  }
+
+  private confirmDiscardUrgentChanges(): boolean {
+    if (!this.urgentConfigurationDirty()) return true;
+    return (
+      this.document.defaultView?.confirm(
+        'Des modifications de configuration urgente ne sont pas enregistrées. Voulez-vous les abandonner ?',
+      ) ?? false
+    );
   }
 
   private ruleConflictsWithCommitment(rule: AvailabilityRuleDto, cabinetId: string): boolean {

@@ -1,10 +1,11 @@
-import { DASHBOARD_ROLES, DashboardRole, dashboardRouteFor, isDashboardRole } from './auth.models';
+import { DASHBOARD_ROLES, dashboardRouteFor, isDashboardRole } from './auth.models';
 
 describe('dashboard role contract', () => {
-  it('recognizes the implemented role vocabulary and rejects unsupported SECRETARY', () => {
+  it('recognizes the implemented role vocabulary', () => {
     expect(DASHBOARD_ROLES).toEqual([
       'PATIENT',
       'DOCTOR',
+      'SECRETARY',
       'NURSE',
       'KINE',
       'CLINIC_MEDECIN',
@@ -15,13 +16,13 @@ describe('dashboard role contract', () => {
       'ADMIN',
     ]);
     expect(isDashboardRole('DOCTOR')).toBe(true);
-    expect(isDashboardRole('SECRETARY')).toBe(false);
+    expect(isDashboardRole('SECRETARY')).toBe(true);
   });
 
-  it('routes unsupported roles to forbidden rather than the Doctor workspace', () => {
+  it('routes each web role to its supported workspace', () => {
     expect(dashboardRouteFor('DOCTOR')).toBe('/doctor');
+    expect(dashboardRouteFor('SECRETARY')).toBe('/doctor');
     expect(dashboardRouteFor('PATIENT')).toBe('/forbidden');
     expect(dashboardRouteFor('ADMIN')).toBe('/admin');
-    expect(dashboardRouteFor('SECRETARY' as DashboardRole)).toBe('/forbidden');
   });
 });

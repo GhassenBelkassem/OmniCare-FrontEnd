@@ -22,15 +22,18 @@ export interface NotificationInvalidation {
 export function isNotificationInvalidation(value: unknown): value is NotificationInvalidation {
   if (value === null || typeof value !== 'object') return false;
   const event = value as Partial<NotificationInvalidation>;
-  return event.eventType === 'NOTIFICATION_CREATED' &&
-    typeof event.notificationId === 'string' && event.notificationId.length > 0 &&
-    typeof event.occurredAt === 'string';
+  return (
+    event.eventType === 'NOTIFICATION_CREATED' &&
+    typeof event.notificationId === 'string' &&
+    event.notificationId.length > 0 &&
+    typeof event.occurredAt === 'string'
+  );
 }
 
 export interface ScheduledCareEvent {
   readonly eventId: string;
   readonly eventType: string;
-  readonly resourceType: 'BOOKING_REQUEST' | 'APPOINTMENT';
+  readonly resourceType: 'BOOKING_REQUEST' | 'APPOINTMENT' | 'CONSULTATION';
   readonly resourceId: string;
   readonly version: number;
   readonly occurredAt: string;
@@ -42,7 +45,9 @@ export function isScheduledCareEvent(value: unknown): value is ScheduledCareEven
   return (
     typeof event.eventId === 'string' &&
     typeof event.eventType === 'string' &&
-    (event.resourceType === 'BOOKING_REQUEST' || event.resourceType === 'APPOINTMENT') &&
+    (event.resourceType === 'BOOKING_REQUEST' ||
+      event.resourceType === 'APPOINTMENT' ||
+      event.resourceType === 'CONSULTATION') &&
     typeof event.resourceId === 'string' &&
     typeof event.version === 'number' &&
     typeof event.occurredAt === 'string'
@@ -60,10 +65,7 @@ export type UrgentLiveEventName =
   | 'DOCTOR_LOCATION_UPDATE';
 
 export type AppointmentLiveEventName =
-  | 'BOOKING_CONFIRMED'
-  | 'APPOINTMENT_CANCELLED'
-  | 'APPOINTMENT_STARTED'
-  | 'APPOINTMENT_COMPLETED';
+  'BOOKING_CONFIRMED' | 'APPOINTMENT_CANCELLED' | 'APPOINTMENT_STARTED' | 'APPOINTMENT_COMPLETED';
 
 export interface NewOfferData {
   readonly requestId: string;

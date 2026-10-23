@@ -37,15 +37,14 @@
   height: 36px;
   flex: 0 0 36px;
   place-items: center;
-  border-radius: var(--oc-radius-md);
-  background: var(--oc-color-surface-selected);
-  color: var(--oc-color-brand-primary);
-  font-size: 17px;
-  font-weight: var(--oc-font-weight-strong);
+  overflow: hidden;
 }
 
-.oc-sidebar__brand-mark span {
-  color: var(--oc-color-brand-primary-active);
+.oc-sidebar__brand-mark img {
+  width: 36px;
+  height: 36px;
+  max-width: none;
+  transform: scale(1.65);
 }
 .oc-sidebar__brand-name,
 .oc-sidebar__profile-copy {

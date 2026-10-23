@@ -104,6 +104,18 @@ describe('SettingsPage schedule correctness', () => {
     expect(api.listExceptions).toHaveBeenCalledOnce();
   });
 
+  it('protects a dirty urgent configuration from tab and route navigation', () => {
+    const { component } = createComponent({ tab: 'services' });
+    component.urgentConfigurationDirty.set(true);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    component.onTabChange('overview');
+
+    expect(component.activeTab()).toBe('services');
+    expect(component.canDeactivate()).toBe(false);
+    expect(confirm).toHaveBeenCalled();
+  });
+
   it('keeps the real Doctor-wide schedule authoritative by default', () => {
     const { component } = createComponent(
       { tab: 'schedule' },

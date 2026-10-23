@@ -461,7 +461,9 @@
 
     @if (activeTab() === 'services') {
       <div class="settings-page__tab-content">
-        <app-services-settings-section />
+        <app-services-settings-section
+          (urgentConfigurationDirtyChange)="urgentConfigurationDirty.set($event)"
+        />
       </div>
     }
 

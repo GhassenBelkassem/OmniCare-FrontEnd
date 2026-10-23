@@ -4,10 +4,12 @@ import { Router } from '@angular/router';
 import { of } from 'rxjs';
 
 import { AppointmentApiService } from '../appointment-api.service';
-import { DoctorUrgentApiService } from '../doctor-urgent-api.service';
+import { ActiveConsultationStore } from '../active-consultation.store';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
-import type { DoctorHomeSummary, DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.models';
-import { UrgentAcceptedStore } from '../urgent-accepted.store';
+import type {
+  DoctorHomeSummary,
+  DoctorScheduledCareItem,
+} from '../scheduled-care/scheduled-care.models';
 import { CommandCenterPage } from './command-center-page';
 
 function item(
@@ -23,14 +25,21 @@ function item(
     status: resourceType === 'BOOKING_REQUEST' ? 'PENDING_DOCTOR' : 'CONFIRMED',
     doctor: { displayName: 'Dr Test', specialty: null },
     subject: { subjectType: 'SELF', displayName: 'Patient Test', relationship: 'Patient' },
-    cabinet: { name: 'Cabinet Tunis', address: '', city: 'Tunis', governorate: 'Tunis', timezone: 'Africa/Tunis' },
+    cabinet: {
+      name: 'Cabinet Tunis',
+      address: '',
+      city: 'Tunis',
+      governorate: 'Tunis',
+      timezone: 'Africa/Tunis',
+    },
     start: '2026-10-12T08:00:00Z',
     end: '2026-10-12T08:30:00Z',
     timezone: 'Africa/Tunis',
     responseDeadline: resourceType === 'BOOKING_REQUEST' ? '2026-10-09T08:00:00Z' : null,
     cancellation: null,
     intakeStatus: null,
-    availableActions: resourceType === 'BOOKING_REQUEST' ? ['ACCEPT_REQUEST'] : ['CANCEL_APPOINTMENT'],
+    availableActions:
+      resourceType === 'BOOKING_REQUEST' ? ['ACCEPT_REQUEST'] : ['CANCEL_APPOINTMENT'],
     sortAt: '2026-10-12T08:00:00Z',
     updatedAt: '2026-10-08T08:00:00Z',
   };
@@ -62,9 +71,8 @@ describe('CommandCenterPage scheduled-care authority', () => {
             listRules: vi.fn(() => of([])),
           },
         },
-        { provide: DoctorUrgentApiService, useValue: { incoming: vi.fn(() => of([])) } },
-        { provide: UrgentAcceptedStore, useValue: { add: vi.fn() } },
         { provide: ScheduledCareFacade, useValue: care },
+        { provide: ActiveConsultationStore, useValue: { refresh: vi.fn() } },
       ],
     });
 
@@ -76,5 +84,53 @@ describe('CommandCenterPage scheduled-care authority', () => {
     expect(page.pendingScheduledRequest()?.requestId).not.toBe(
       page.nextScheduledAppointment()?.appointmentId,
     );
+  });
+
+  it('routes with the canonical consultation id and never the appointment id', async () => {
+    const navigate = vi.fn();
+    const refresh = vi.fn().mockResolvedValue({
+      consultationId: '11111111-1111-4111-8111-111111111111',
+      sourceType: 'SCHEDULED_APPOINTMENT',
+      sourceId: 'appointment-9',
+      status: 'IN_PROGRESS',
+      medicalAccessStatus: 'NONE',
+      version: 1,
+      startedAt: '2026-10-22T09:00:00Z',
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        CommandCenterPage,
+        { provide: Router, useValue: { navigate } },
+        {
+          provide: AppointmentApiService,
+          useValue: {
+            todayStats: vi.fn(() => of({ consultations: 0, upcoming: 0, finished: 0 })),
+            listAppointments: vi.fn(() => of([])),
+            listRules: vi.fn(() => of([])),
+          },
+        },
+        {
+          provide: ScheduledCareFacade,
+          useValue: {
+            home: signal<DoctorHomeSummary | null>(null),
+            homeLoading: signal(false),
+            homeError: signal<string | null>(null),
+            loadHome: vi.fn(),
+          },
+        },
+        { provide: ActiveConsultationStore, useValue: { refresh } },
+      ],
+    });
+    const page = TestBed.inject(CommandCenterPage);
+
+    page.startConsultation('appointment-9');
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledOnce());
+
+    expect(navigate).toHaveBeenCalledWith([
+      '/doctor',
+      'consultation',
+      '11111111-1111-4111-8111-111111111111',
+    ]);
+    expect(navigate).not.toHaveBeenCalledWith(['/doctor', 'consultation', 'appointment-9']);
   });
 });

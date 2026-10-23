@@ -13,7 +13,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
           <p>{{ description() }}</p>
         }
       </div>
-      <div class="oc-page-header__actions" aria-label="Page actions">
+      <div class="oc-page-header__actions" role="group" aria-label="Page actions">
         <ng-content select="[ocSecondaryActions]" />
         <ng-content select="[ocPrimaryAction]" />
       </div>

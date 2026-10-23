@@ -3,11 +3,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { AuthTokenStore } from '../auth/auth-token.store';
 import { RUNTIME_CONFIG } from '../config/runtime-config';
-import {
-  REALTIME_CLIENT_FACTORY,
-  RealtimeService,
-  type UrgentLiveEvent,
-} from './realtime.service';
+import { REALTIME_CLIENT_FACTORY, RealtimeService } from './realtime.service';
 
 interface MockClientConfig {
   connectHeaders: Record<string, string>;
@@ -71,14 +67,17 @@ const stomp = (() => {
   return { MockClient };
 })();
 
-function session(token: string): Parameters<AuthTokenStore['setSession']>[0] {
+function session(
+  token: string,
+  role: Parameters<AuthTokenStore['setSession']>[0]['user']['role'] = 'DOCTOR',
+): Parameters<AuthTokenStore['setSession']>[0] {
   return {
     accessToken: token,
     tokenType: 'Bearer',
     expiresAt: '2026-08-21T23:59:59Z',
     refreshToken: 'refresh-token',
     refreshExpiresAt: '2026-08-22T23:59:59Z',
-    user: { id: 'user-1', role: 'PATIENT', mustChangePassword: false },
+    user: { id: 'user-1', role, mustChangePassword: false },
   };
 }
 
@@ -108,9 +107,7 @@ describe('RealtimeService', () => {
     return { service, tokens };
   }
 
-  function lastClient():
-    | InstanceType<typeof stomp.MockClient>
-    | undefined {
+  function lastClient(): InstanceType<typeof stomp.MockClient> | undefined {
     return stomp.MockClient.instances.at(-1);
   }
 
@@ -119,7 +116,7 @@ describe('RealtimeService', () => {
     vi.useRealTimers();
   });
 
-  it('connects with the Bearer header and subscribes to every user queue', () => {
+  it('connects with the Bearer header and excludes the legacy urgent queue', () => {
     const { service } = create({ token: 'token-a' });
 
     expect(stomp.MockClient.instances).toHaveLength(1);
@@ -130,11 +127,13 @@ describe('RealtimeService', () => {
     client.config.onConnect?.();
     expect(service.status()).toBe('connected');
     expect(client.subscriptions.map((sub) => sub.destination)).toEqual([
-      '/user/queue/urgent-requests',
       '/user/queue/appointments',
       '/user/queue/scheduled-care',
       '/user/queue/notifications',
     ]);
+    expect(client.subscriptions.map((sub) => sub.destination)).not.toContain(
+      '/user/queue/urgent-requests',
+    );
     expect(service.connectionEpoch()).toBe(1);
   });
 
@@ -151,36 +150,6 @@ describe('RealtimeService', () => {
     expect(stomp.MockClient.instances).toHaveLength(0);
   });
 
-  it('emits parsed urgent events and drops malformed frames', () => {
-    const { service } = create({ token: 'token-a' });
-    const client = lastClient()!;
-    client.config.onConnect?.();
-
-    const received: UrgentLiveEvent[] = [];
-    service.urgentEvents$.subscribe((event) => received.push(event));
-
-    const handler = client.subscriptions[0].handler;
-    handler({
-      body: JSON.stringify({
-        event: 'REQUEST_MATCHED',
-        data: { requestId: 'r-1', doctorId: 'doc-1' },
-        timestamp: '2026-08-21T10:00:00Z',
-      }),
-    });
-    handler({ body: 'not-json' });
-    handler({
-      body: JSON.stringify({ event: 'UNKNOWN_EVENT', data: {}, timestamp: '2026-08-21T10:00:01Z' }),
-    });
-    handler({
-      body: JSON.stringify({ event: 'REQUEST_MATCHED', data: null, timestamp: '2026-08-21T10:00:02Z' }),
-    });
-
-    expect(received).toHaveLength(1);
-    expect(received[0].name).toBe('REQUEST_MATCHED');
-    expect(received[0].data).toEqual({ requestId: 'r-1', doctorId: 'doc-1' });
-    expect(service.lastEventAt()).not.toBeNull();
-  });
-
   it('routes appointment events to their own stream', () => {
     const { service } = create({ token: 'token-a' });
     const client = lastClient()!;
@@ -189,7 +158,7 @@ describe('RealtimeService', () => {
     const appointments: string[] = [];
     service.appointmentEvents$.subscribe((event) => appointments.push(event.name));
 
-    client.subscriptions[1].handler({
+    client.subscriptions[0].handler({
       body: JSON.stringify({
         event: 'APPOINTMENT_STARTED',
         data: { appointmentId: 'a-1' },
@@ -217,8 +186,8 @@ describe('RealtimeService', () => {
       }),
     };
 
-    client.subscriptions[2].handler(frame);
-    client.subscriptions[2].handler(frame);
+    client.subscriptions[1].handler(frame);
+    client.subscriptions[1].handler(frame);
 
     expect(received).toEqual(['event-1']);
   });
@@ -230,14 +199,14 @@ describe('RealtimeService', () => {
     const received: string[] = [];
     service.notificationEvents$.subscribe((event) => received.push(event.notificationId));
 
-    client.subscriptions[3].handler({
+    client.subscriptions[2].handler({
       body: JSON.stringify({
         eventType: 'NOTIFICATION_CREATED',
         notificationId: 'notification-1',
         occurredAt: '2026-10-09T10:00:00Z',
       }),
     });
-    client.subscriptions[3].handler({ body: JSON.stringify({ eventType: 'UNKNOWN' }) });
+    client.subscriptions[2].handler({ body: JSON.stringify({ eventType: 'UNKNOWN' }) });
 
     expect(received).toEqual(['notification-1']);
   });
@@ -288,8 +257,8 @@ describe('RealtimeService', () => {
 
     client.subscriptions[0].handler({
       body: JSON.stringify({
-        event: 'NEW_OFFER',
-        data: { requestId: 'r-9', patientName: 'Hedi' },
+        event: 'APPOINTMENT_STARTED',
+        data: { appointmentId: 'appointment-9' },
         timestamp: '2026-08-21T10:02:00Z',
       }),
     });

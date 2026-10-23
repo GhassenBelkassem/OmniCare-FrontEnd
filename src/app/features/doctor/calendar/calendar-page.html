@@ -139,35 +139,6 @@
               >
             }
           </div>
-        } @else if (isUrgentEvent(info)) {
-          <div
-            class="omnicare-urgent-event"
-            [class.omnicare-urgent-event--arrived]="
-              $any(eventMetadata(info)).arrivedAtInstant !== null
-            "
-            [attr.aria-label]="eventAccessibleLabel(info)"
-          >
-            @if (info.view.type === 'timeGridDay') {
-              <strong class="omnicare-urgent-event__tag">Urgence</strong>
-              <span class="omnicare-urgent-event__patient">{{
-                $any(eventMetadata(info)).patientLabel
-              }}</span>
-              <span class="omnicare-urgent-event__meta">
-                {{ eventTime(info) }} · {{ $any(eventMetadata(info)).estimatedMinutes }} min
-                estimées
-              </span>
-              <span class="omnicare-urgent-event__status">{{
-                $any(eventMetadata(info)).statusLabel
-              }}</span>
-            } @else if (info.view.type === 'timeGridWeek') {
-              <strong class="omnicare-urgent-event__tag"
-                >Urgence · {{ $any(eventMetadata(info)).patientLabel }}</strong
-              >
-              <span class="omnicare-urgent-event__meta">{{ eventTime(info) }}</span>
-            } @else {
-              <strong class="omnicare-urgent-event__month">{{ urgentMonthLabel(info) }}</strong>
-            }
-          </div>
         } @else {
           <div
             class="omnicare-exception-annotation"

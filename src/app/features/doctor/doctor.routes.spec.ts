@@ -72,7 +72,7 @@ describe('doctor routes', () => {
     await expect(urgentReadiness?.loadComponent?.()).resolves.toBe(UrgentReadinessPage);
   });
 
-  it('allows a DOCTOR session into the workspace', async () => {
+  it('allows DOCTOR and SECRETARY sessions into the workspace', async () => {
     const tokens = TestBed.inject(AuthTokenStore);
     const roleCheck = DOCTOR_ROUTES[0].canActivate?.[1] as CanActivateFn;
     const emptySnapshot = {} as ActivatedRouteSnapshot;
@@ -86,6 +86,11 @@ describe('doctor routes', () => {
       refreshExpiresAt: '2999-08-06T23:59:59Z',
       user: { id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false },
     });
+    await expect(
+      TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState)),
+    ).resolves.toBe(true);
+
+    tokens.setSession(sessionFor('SECRETARY'));
     await expect(
       TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState)),
     ).resolves.toBe(true);
@@ -109,17 +114,13 @@ describe('doctor routes', () => {
     },
   );
 
-  it('rejects an unsupported SECRETARY session before the lazy Doctor shell can load', async () => {
-    const tokens = TestBed.inject(AuthTokenStore);
-    const roleCheck = DOCTOR_ROUTES[0].canActivate?.[1] as CanActivateFn;
-    const emptySnapshot = {} as ActivatedRouteSnapshot;
-    const emptyState = {} as RouterStateSnapshot;
+  it('lets a secretary reach only the delegated agenda', () => {
+    const children = DOCTOR_ROUTES[0].children ?? [];
+    const openPaths = children
+      .filter((route) => route.path !== '' && route.canActivate === undefined)
+      .map((route) => route.path);
 
-    tokens.setSession(sessionFor('SECRETARY' as DashboardRole));
-    const result = await TestBed.runInInjectionContext(() => roleCheck(emptySnapshot, emptyState));
-
-    expect(result).toBeInstanceOf(UrlTree);
-    expect((result as UrlTree).toString()).toBe('/forbidden');
+    expect(openPaths).toEqual(['secretary-agenda']);
   });
 });
 

@@ -38,6 +38,21 @@ describe('OcSidebar', () => {
     });
   });
 
+  it('renders the OmniCare icon in the dashboard brand', () => {
+    const fixture = TestBed.createComponent(OcSidebar);
+    fixture.componentRef.setInput('items', navigation);
+    fixture.componentRef.setInput('activeId', 'appointments');
+    fixture.detectChanges();
+
+    const icon = fixture.nativeElement.querySelector(
+      '.oc-sidebar__brand-mark img',
+    ) as HTMLImageElement;
+    expect(icon.getAttribute('ngsrc')).toBe('assets/icon/app_icon.png');
+    expect(icon.alt).toBe('');
+    expect(icon.width).toBe(36);
+    expect(icon.height).toBe(36);
+  });
+
   it('expands and collapses navigation groups with aria state', () => {
     const fixture = TestBed.createComponent(OcSidebar);
     fixture.componentRef.setInput('items', navigation);

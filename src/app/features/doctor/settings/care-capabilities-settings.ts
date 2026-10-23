@@ -5,6 +5,7 @@ import {
   computed,
   inject,
   input,
+  output,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -42,13 +43,6 @@ const CAPABILITY_OPTIONS: readonly CareCapabilityOption[] = [
     icon: 'building',
   },
   {
-    value: 'HOME_VISIT',
-    label: 'Visite à domicile',
-    description: 'Indique que vous pouvez prendre en charge des patients à leur domicile.',
-    requiresActiveCabinet: false,
-    icon: 'home',
-  },
-  {
     value: 'URGENT_HOME',
     label: 'Urgence à domicile',
     description: 'Configure votre participation aux prises en charge urgentes à domicile.',
@@ -77,10 +71,13 @@ export class CareCapabilitiesSettings {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeCabinetStatus = input<ActiveCabinetStatus>('loading');
+  readonly capabilitiesChange = output<readonly CareCapability[]>();
+  readonly revisionCommitted = output<number>();
   readonly options = CAPABILITY_OPTIONS;
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly revision = signal<number | null>(null);
+  private readonly sharedRevisionFloor = signal(0);
   readonly baseline = signal<readonly CareCapability[]>([]);
   readonly draft = signal<readonly CareCapability[]>([]);
   readonly error = signal<string | null>(null);
@@ -124,6 +121,7 @@ export class CareCapabilitiesSettings {
         ? current.filter((value) => value !== option.value)
         : [...current, option.value],
     );
+    this.capabilitiesChange.emit(this.draft());
   }
 
   save(): void {
@@ -148,9 +146,11 @@ export class CareCapabilitiesSettings {
       )
       .subscribe({
         next: (response) => {
-          this.revision.set(response.revision);
+          this.revision.set(Math.max(response.revision, this.sharedRevisionFloor()));
           this.baseline.set(response.capabilities);
           this.draft.set(response.capabilities);
+          this.capabilitiesChange.emit(response.capabilities);
+          this.revisionCommitted.emit(response.revision);
           this.success.set('Modes de prise en charge enregistrés.');
         },
         error: (error: unknown) => this.handleError(error, 'save'),
@@ -172,9 +172,10 @@ export class CareCapabilitiesSettings {
       )
       .subscribe({
         next: (response) => {
-          this.revision.set(response.revision);
+          this.revision.set(Math.max(response.revision, this.sharedRevisionFloor()));
           this.baseline.set(response.capabilities);
           this.draft.set(response.capabilities);
+          this.capabilitiesChange.emit(response.capabilities);
         },
         error: (error: unknown) => this.handleError(error, 'load'),
       });
@@ -182,6 +183,12 @@ export class CareCapabilitiesSettings {
 
   reAuthenticate(): void {
     this.auth.logout();
+  }
+
+  adoptSharedRevision(revision: number): void {
+    this.sharedRevisionFloor.update((current) => Math.max(current, revision));
+    const current = this.revision();
+    if (current !== null && revision > current) this.revision.set(revision);
   }
 
   private handleError(error: unknown, operation: 'load' | 'save'): void {

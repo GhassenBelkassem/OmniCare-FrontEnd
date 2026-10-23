@@ -1,4 +1,6 @@
 .oc-tabs {
+  min-width: 0;
+  max-width: 100%;
   border-block-end: 1px solid var(--oc-color-border-subtle);
 }
 
@@ -31,7 +33,8 @@
   font-weight: var(--oc-font-weight-medium);
   white-space: nowrap;
   text-decoration: none;
-  transition: color var(--oc-motion-fast) var(--oc-ease-standard),
+  transition:
+    color var(--oc-motion-fast) var(--oc-ease-standard),
     border-color var(--oc-motion-fast) var(--oc-ease-standard);
 }
 
@@ -39,9 +42,14 @@
   color: var(--oc-color-text-primary);
 }
 
+.oc-tabs__item:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: -3px;
+}
+
 .oc-tabs__item--active {
-  color: var(--oc-color-brand-primary);
-  border-block-end-color: var(--oc-color-brand-primary);
+  color: var(--oc-color-brand-primary-active);
+  border-block-end-color: var(--oc-color-brand-primary-active);
   font-weight: var(--oc-font-weight-semibold);
 }
 

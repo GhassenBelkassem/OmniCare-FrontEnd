@@ -1,0 +1,240 @@
+<section class="urgent-configuration" aria-labelledby="urgent-configuration-title">
+  <header class="urgent-configuration__header">
+    <span class="urgent-configuration__section-icon" aria-hidden="true">
+      <oc-icon name="emergency" />
+    </span>
+    <div>
+      <h3 id="urgent-configuration-title">Configuration permanente des urgences</h3>
+      <p>Définissez les paramètres HOME et CABINET sans modifier votre disponibilité actuelle.</p>
+    </div>
+  </header>
+
+  <div class="urgent-configuration__context" role="note">
+    <oc-icon name="info" />
+    <p>
+      Ces valeurs préparent uniquement les modes urgents sélectionnés. La disponibilité en temps
+      réel et les offres urgentes restent gérées exclusivement dans l’application mobile OmniCare
+      Médecin.
+    </p>
+  </div>
+
+  @if (error(); as message) {
+    <div class="urgent-configuration__notice urgent-configuration__notice--danger" role="alert">
+      <p>{{ message }}</p>
+      @if (authenticationError()) {
+        <oc-button variant="secondary" size="small" (click)="reAuthenticate()">
+          Se reconnecter
+        </oc-button>
+      } @else if (conflict()) {
+        <oc-button variant="secondary" size="small" (click)="load(true)">
+          Réconcilier avec le serveur
+        </oc-button>
+      } @else if (revision() === null) {
+        <oc-button variant="secondary" size="small" (click)="load(false)">Réessayer</oc-button>
+      }
+    </div>
+  }
+
+  @if (capabilitySelectionUnavailable()) {
+    <div class="urgent-configuration__notice" role="note">
+      <p>
+        Les modes urgents sélectionnés n’ont pas pu être confirmés. Utilisez l’action proposée dans
+        « Modes de prise en charge » avant de modifier leur configuration.
+      </p>
+    </div>
+  } @else if (!capabilitySelectionLoaded()) {
+    <div
+      class="urgent-configuration__loading"
+      role="status"
+      aria-label="Chargement des modes urgents sélectionnés"
+    >
+      <oc-skeleton variant="block" />
+    </div>
+  } @else if (!homeEnabled() && !cabinetEnabled()) {
+    <div class="urgent-configuration__empty" role="note">
+      <oc-icon name="info" aria-hidden="true" />
+      <p>
+        Sélectionnez « Urgence à domicile » ou « Urgence au cabinet » dans les modes de prise en
+        charge pour afficher leur configuration. Les valeurs déjà enregistrées restent conservées.
+      </p>
+    </div>
+  } @else if (loading() && revision() === null) {
+    <div
+      class="urgent-configuration__loading"
+      role="status"
+      aria-label="Chargement de la configuration urgente"
+    >
+      <oc-skeleton variant="block" />
+      <oc-skeleton variant="block" />
+    </div>
+  } @else if (revision() !== null) {
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div
+        class="urgent-configuration__groups"
+        [class.urgent-configuration__groups--single]="homeEnabled() !== cabinetEnabled()"
+      >
+        @if (homeEnabled()) {
+          <fieldset class="urgent-configuration__group">
+            <legend>
+              <span>Urgence à domicile</span>
+              <oc-status-badge
+                [status]="homeActivationPending() ? 'draft' : 'confirmed'"
+                [customLabel]="homeActivationPending() ? 'À enregistrer' : 'Capacité activée'"
+              />
+            </legend>
+            <p class="urgent-configuration__group-description">
+              Paramètres permanents pour URGENT_HOME. La distance routière part de la position GPS
+              en direct transmise par l’application mobile OmniCare Médecin ; ce tableau de bord ne
+              lit pas votre position.
+            </p>
+            @if (homeActivationPending()) {
+              <p class="urgent-configuration__pending" role="status">
+                Enregistrez d’abord « Urgence à domicile » dans les modes de prise en charge. La
+                configuration sera ensuite modifiable.
+              </p>
+            }
+            <div class="urgent-configuration__fields">
+              <oc-field
+                controlId="urgent-home-fee"
+                label="Tarif de consultation à domicile"
+                hint="TND, jusqu’à 3 décimales. Laissez vide pour non configuré ; 0 est un tarif configuré."
+                [error]="fieldError('homeFeeTnd')"
+              >
+                <div class="urgent-configuration__input-affix">
+                  <input
+                    id="urgent-home-fee"
+                    class="urgent-configuration__input"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="Ex. 75.000"
+                    formControlName="homeFeeTnd"
+                    [readOnly]="loading() || saving() || homeActivationPending()"
+                    [attr.aria-invalid]="fieldError('homeFeeTnd') ? 'true' : null"
+                    [attr.aria-describedby]="
+                      'urgent-home-fee-hint' +
+                      (fieldError('homeFeeTnd') ? ' urgent-home-fee-error' : '')
+                    "
+                  />
+                  <span aria-hidden="true">TND</span>
+                </div>
+              </oc-field>
+
+              <oc-field
+                controlId="urgent-home-distance"
+                label="Distance maximale d’intervention"
+                hint="Kilomètres par trajet routier, jusqu’à 6 décimales. Laissez vide pour non configuré."
+                [error]="fieldError('maxHomeTravelKm')"
+              >
+                <div class="urgent-configuration__input-affix">
+                  <input
+                    id="urgent-home-distance"
+                    class="urgent-configuration__input"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="Ex. 20.5"
+                    formControlName="maxHomeTravelKm"
+                    [readOnly]="loading() || saving() || homeActivationPending()"
+                    [attr.aria-invalid]="fieldError('maxHomeTravelKm') ? 'true' : null"
+                    [attr.aria-describedby]="
+                      'urgent-home-distance-hint' +
+                      (fieldError('maxHomeTravelKm') ? ' urgent-home-distance-error' : '')
+                    "
+                  />
+                  <span aria-hidden="true">km</span>
+                </div>
+              </oc-field>
+            </div>
+          </fieldset>
+        }
+
+        @if (cabinetEnabled()) {
+          <fieldset class="urgent-configuration__group">
+            <legend>
+              <span>Urgence au cabinet</span>
+              <oc-status-badge
+                [status]="cabinetActivationPending() ? 'draft' : 'confirmed'"
+                [customLabel]="cabinetActivationPending() ? 'À enregistrer' : 'Capacité activée'"
+              />
+            </legend>
+            <p class="urgent-configuration__group-description">
+              Tarif permanent et indépendant des consultations planifiées. Le lieu utilisé provient
+              du cabinet actif enregistré dans l’onglet Cabinets ; aucun second lieu n’est créé ici.
+            </p>
+            @if (cabinetActivationPending()) {
+              <p class="urgent-configuration__pending" role="status">
+                Enregistrez d’abord « Urgence au cabinet » dans les modes de prise en charge. La
+                configuration sera ensuite modifiable.
+              </p>
+            }
+            @if (activeCabinetStatus() === 'none') {
+              <p class="urgent-configuration__prerequisite" role="status">
+                Un cabinet actif est requis pour activer URGENT_CABINET.
+              </p>
+            } @else if (activeCabinetStatus() === 'unknown') {
+              <p class="urgent-configuration__prerequisite" role="status">
+                La présence d’un cabinet actif n’a pas pu être vérifiée.
+              </p>
+            }
+            <oc-field
+              controlId="urgent-cabinet-fee"
+              label="Tarif de consultation urgente au cabinet"
+              hint="TND, jusqu’à 3 décimales. Laissez vide pour non configuré ; 0 est un tarif configuré."
+              [error]="fieldError('cabinetFeeTnd')"
+            >
+              <div class="urgent-configuration__input-affix">
+                <input
+                  id="urgent-cabinet-fee"
+                  class="urgent-configuration__input"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  placeholder="Ex. 60.000"
+                  formControlName="cabinetFeeTnd"
+                  [readOnly]="loading() || saving() || cabinetActivationPending()"
+                  [attr.aria-invalid]="fieldError('cabinetFeeTnd') ? 'true' : null"
+                  [attr.aria-describedby]="
+                    'urgent-cabinet-fee-hint' +
+                    (fieldError('cabinetFeeTnd') ? ' urgent-cabinet-fee-error' : '')
+                  "
+                />
+                <span aria-hidden="true">TND</span>
+              </div>
+            </oc-field>
+          </fieldset>
+        }
+      </div>
+
+      <footer class="urgent-configuration__actions">
+        <div aria-live="polite">
+          @if (success(); as message) {
+            <span class="urgent-configuration__success">{{ message }}</span>
+          } @else if (capabilityChangesPending()) {
+            <span>Enregistrez d’abord les modes de prise en charge.</span>
+          } @else if (dirty()) {
+            <span>Modifications non enregistrées.</span>
+          } @else {
+            <span>Révision {{ revision() }} · Configuration enregistrée</span>
+          }
+        </div>
+        <oc-button
+          variant="primary"
+          size="small"
+          type="submit"
+          [loading]="saving()"
+          [disabled]="
+            !dirty() ||
+            form.invalid ||
+            loading() ||
+            saving() ||
+            conflict() ||
+            capabilityChangesPending()
+          "
+        >
+          Enregistrer la configuration urgente
+        </oc-button>
+      </footer>
+    </form>
+  }
+</section>

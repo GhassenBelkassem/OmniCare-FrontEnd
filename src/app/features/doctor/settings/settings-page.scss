@@ -1,7 +1,8 @@
 .settings-page {
   display: flex;
+  box-sizing: border-box;
   width: 100%;
-  max-width: calc(100vw - var(--oc-sidebar-width-expanded) - var(--oc-space-12));
+  max-width: 100%;
   min-width: 0;
   flex-direction: column;
   gap: var(--oc-space-lg);
@@ -11,12 +12,14 @@
 
   &__content {
     display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: var(--oc-space-md);
   }
 
   &__tab-content {
     display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: var(--oc-space-md);
   }

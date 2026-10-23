@@ -6,7 +6,23 @@
     </p>
   </header>
 
-  <app-care-capabilities-settings [activeCabinetStatus]="activeCabinetStatus()" />
+  <app-care-capabilities-settings
+    [activeCabinetStatus]="activeCabinetStatus()"
+    (capabilitiesChange)="capabilities.set($event)"
+    (revisionCommitted)="onCapabilityRevisionCommitted($event)"
+  />
+
+  <app-urgent-care-configuration-settings
+    [activeCabinetStatus]="activeCabinetStatus()"
+    [capabilities]="capabilities()"
+    [committedCapabilities]="committedCapabilities()"
+    [capabilitySelectionLoaded]="capabilitySelectionLoaded()"
+    [capabilitySelectionUnavailable]="capabilitySelectionUnavailable()"
+    (dirtyChange)="urgentConfigurationDirtyChange.emit($event)"
+    (revisionCommitted)="onUrgentRevisionCommitted($event)"
+  />
+
+  <app-urgent-care-readiness-settings />
 
   @if (equipmentLoading()) {
     <section class="services-settings__state" aria-labelledby="mobile-loading-title">

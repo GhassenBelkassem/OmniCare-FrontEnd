@@ -7,6 +7,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { OcIcon, OcIconName } from '../icon/oc-icon';
 
@@ -48,7 +49,7 @@ const DEFAULT_LABELS: SidebarLabels = {
 
 @Component({
   selector: 'oc-sidebar',
-  imports: [RouterLink, OcIcon],
+  imports: [NgOptimizedImage, RouterLink, OcIcon],
   template: `
     <aside
       class="oc-sidebar"
@@ -57,7 +58,9 @@ const DEFAULT_LABELS: SidebarLabels = {
       [attr.aria-label]="resolvedLabels().landmark"
     >
       <div class="oc-sidebar__brand">
-        <span class="oc-sidebar__brand-mark" aria-hidden="true">O<span>+</span></span>
+        <span class="oc-sidebar__brand-mark" aria-hidden="true">
+          <img ngSrc="assets/icon/app_icon.png" width="36" height="36" alt="" />
+        </span>
         @if (!collapsed()) {
           <span class="oc-sidebar__brand-name"
             >OmniCare<small>{{ resolvedLabels().workspace }}</small></span

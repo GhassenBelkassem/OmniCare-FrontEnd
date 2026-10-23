@@ -20,7 +20,10 @@ describe('ConsultationPage', () => {
     TestBed.resetTestingModule();
   });
 
-  function create(id: string, source: string | null = null): { page: ConsultationPage; mock: DoctorMockService } {
+  function create(
+    id: string,
+    source: string | null = null,
+  ): { page: ConsultationPage; mock: DoctorMockService } {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: ActivatedRoute, useValue: routeWith(id, source) }],
     });
@@ -46,12 +49,44 @@ describe('ConsultationPage', () => {
     expect(page.draft().prescriptionLines[0]?.drugName).toBe('Paracetamol');
   });
 
-  it('uses an empty record when arriving from an urgent request', () => {
-    const { page } = create('c-1', 'urgent');
+  it('fails safely without loading a record for a legacy urgent deep link', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: routeWith('new', 'urgent') },
+      ],
+    });
+    const mock = TestBed.inject(DoctorMockService);
+    const recordSpy = vi.spyOn(mock, 'recordFor');
+    const page = TestBed.createComponent(ConsultationPage).componentInstance;
 
-    expect(page.record!.patient.name).toBe('Hedi Bouazizi');
-    expect(page.record!.pastConsultations).toEqual([]);
-    expect(page.mode).toBe('active');
+    expect(page.legacyUrgentBlocked).toBe(true);
+    expect(page.record).toBeNull();
+    expect(page.consultation).toBeNull();
+    expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it('isolates a canonical consultation route from mock clinical authority', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: routeWith('11111111-1111-4111-8111-111111111111', null),
+        },
+      ],
+    });
+    const mock = TestBed.inject(DoctorMockService);
+    const recordSpy = vi.spyOn(mock, 'recordFor');
+    const consultationSpy = vi.spyOn(mock, 'consultationFor');
+
+    const page = TestBed.createComponent(ConsultationPage).componentInstance;
+
+    expect(page.canonicalRoute).toBe(true);
+    expect(page.record).toBeNull();
+    expect(page.consultation).toBeNull();
+    expect(recordSpy).not.toHaveBeenCalled();
+    expect(consultationSpy).not.toHaveBeenCalled();
   });
 
   it('persists draft edits back to the mock service', () => {
