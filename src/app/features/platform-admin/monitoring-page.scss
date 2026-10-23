@@ -1,0 +1,8 @@
+:host { display: block; max-width: 92rem; margin: 0 auto; }
+.page-stack { display: grid; gap: var(--oc-space-6); }
+.section-toggle { display: flex; justify-content: flex-start; }
+.header-actions { display: flex; align-items: center; gap: var(--oc-space-3); }
+.last-updated { color: var(--oc-color-text-muted); font-size: 12px; align-self: center; }
+.note-static { margin: 0; color: var(--oc-color-text-muted); font-size: 12px; }
+.section-hint { margin: 0; color: var(--oc-color-text-muted); }
+.request-error { padding: var(--oc-space-4); border-radius: var(--oc-radius-md); background: var(--oc-color-critical-surface); color: var(--oc-color-critical); font-weight: var(--oc-font-weight-semibold); }

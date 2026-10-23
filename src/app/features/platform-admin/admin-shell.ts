@@ -10,6 +10,7 @@ const NAVIGATION: readonly SidebarNavigationItem[] = [
   { id: 'professionals', label: 'Professionals', icon: 'team', route: '/admin/professionals' },
   { id: 'patients', label: 'Patients', icon: 'user', route: '/admin/patients' },
   { id: 'clinics', label: 'Clinics', icon: 'medicine-box', route: '/admin/clinics' },
+  { id: 'monitoring', label: 'Monitoring', icon: 'workspace', route: '/admin/monitoring' },
 ];
 
 @Component({
@@ -50,8 +51,10 @@ export class AdminShell {
    * before the professionals fallback rather than being highlighted as "Professionals".
    */
   private resolveActive(url: string): string {
+    if (url.startsWith('/admin/monitoring')) return 'monitoring';
     if (url.startsWith('/admin/professionals')) return 'professionals';
     if (url.startsWith('/admin/patients')) return 'patients';
-    return 'clinics';
+    if (url.startsWith('/admin/clinics')) return 'clinics';
+    return 'professionals';
   }
 }

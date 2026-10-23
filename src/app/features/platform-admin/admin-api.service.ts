@@ -27,6 +27,12 @@ export class AdminApiService {
   private readonly config = inject(RUNTIME_CONFIG);
   private readonly baseUrl = `${this.config.apiBaseUrl}/admin`;
 
+  listProfessionals(search = '', page = 0): Observable<ProfessionalPage> {
+    let params = new HttpParams().set('page', page).set('pageSize', DEFAULT_PAGE_SIZE);
+    if (search.trim()) params = params.set('search', search.trim());
+    return this.http.get<ProfessionalPage>(`${this.baseUrl}/professionals`, { params });
+  }
+
   /**
    * Canonical directory read. Filtering, sorting and pagination all happen in the
    * database, so the page returned is the page the server chose; there is no client-side
@@ -53,11 +59,12 @@ export class AdminApiService {
    * instead of creating a second account. Mint a new key only once an attempt has
    * actually succeeded.
    */
-  createDoctor(input: CreateDoctorInput, idempotencyKey: string): Observable<CreateProfessionalResult> {
+  createDoctor(input: CreateDoctorInput, idempotencyKey = requestKey()): Observable<CreateProfessionalResult> {
     return this.http.post<CreateProfessionalResult>(
       `${this.baseUrl}/professionals`,
       {
         ...input,
+        role: 'DOCTOR',
         // Fixed, not magic: this screen provisions independent, platform-level
         // professionals. The endpoint creates no clinic_memberships row, so
         // affiliatedClinicId/alsoIndependent describe a standalone practice. Clinic-scoped
@@ -117,7 +124,7 @@ export class AdminApiService {
    * failed submission with the same key: the backend replays the original response
    * instead of registering a second clinic.
    */
-  createClinic(input: CreateClinicInput, idempotencyKey: string): Observable<Clinic> {
+  createClinic(input: CreateClinicInput, idempotencyKey = requestKey()): Observable<Clinic> {
     return this.http.post<Clinic>(`${this.baseUrl}/clinics`, input, {
       headers: { 'Idempotency-Key': idempotencyKey },
     });

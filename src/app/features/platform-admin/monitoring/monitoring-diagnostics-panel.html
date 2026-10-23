@@ -1,0 +1,158 @@
+<div class="monitoring-stack">
+  <div class="panel-toolbar">
+    <div>
+      <h2 class="section-title">Diagnostics</h2>
+      <p class="section-hint">Explore request history and correlate incidents. Raw logs, medical data and tokens are never exposed through the UI.</p>
+    </div>
+  </div>
+
+  @if (showRequestExplorer()) {
+    <oc-card
+      title="Request history"
+      [subtitle]="'Window ' + window() + ' · slow threshold ' + slowThresholdMs() + ' ms'"
+    >
+      <dl class="summary-grid">
+        <div><dt>Source</dt><dd>{{ sourceUnavailable() ? 'Unavailable' : 'Available' }}</dd></div>
+        <div><dt>Slow threshold</dt><dd>{{ slowThresholdMs() }} ms</dd></div>
+        <div><dt>Page size</dt><dd>{{ page()?.pageSize ?? 0 }}</dd></div>
+        <div><dt>Rows in this page</dt><dd>{{ visibleItems().length }}</dd></div>
+      </dl>
+      <p class="summary-note">
+        A successful request can also be slow. The slow threshold is configured on the server and
+        independent of the Prometheus alert rules. Totals are not reported by the source, so only
+        the loaded page is counted.
+      </p>
+    </oc-card>
+
+    <oc-card title="Filters" [compact]="true">
+      <div class="filter-grid">
+        <div class="field">
+          <span class="filter-label">Window</span>
+          <oc-segmented-control label="Time window" [options]="windowOptions" [selected]="window()" (selectedChange)="setWindow($event)" />
+        </div>
+        <div class="field">
+          <span class="filter-label">Outcome</span>
+          <oc-segmented-control label="Outcome" [options]="outcomeOptions" [selected]="outcome()" (selectedChange)="setOutcome($event)" />
+        </div>
+        <oc-field controlId="req-endpoint" label="Endpoint (normalized route)">
+          <input id="req-endpoint" type="search" [formControl]="endpoint" placeholder="/api/v1/admin/…" (keyup.enter)="applyFilters()" />
+        </oc-field>
+        <oc-field controlId="req-request-id" label="Request ID">
+          <input id="req-request-id" type="search" [formControl]="requestIdFilter" (keyup.enter)="applyFilters()" />
+        </oc-field>
+        <div class="filter-toggles">
+          <button type="button" class="filter-toggle" [class.filter-toggle--on]="onlyFailed()" [attr.aria-pressed]="onlyFailed()" (click)="toggleOnlyFailed()">Failed only</button>
+          <button type="button" class="filter-toggle" [class.filter-toggle--on]="onlySlow()" [attr.aria-pressed]="onlySlow()" (click)="toggleOnlySlow()">Slow only</button>
+          <button type="button" class="filter-toggle" [class.filter-toggle--on]="showPreflight()" [attr.aria-pressed]="showPreflight()" (click)="togglePreflight()">Show preflight</button>
+        </div>
+      </div>
+      <div class="actions">
+        <oc-button variant="primary" (click)="applyFilters()">Apply filters</oc-button>
+        <oc-button variant="quiet" (click)="clearFilters()">Clear</oc-button>
+      </div>
+      @if (hiddenPreflightCount() > 0) {
+        <p class="unavailable-note" role="status">
+          {{ hiddenPreflightCount() }} CORS preflight (OPTIONS) request(s) are recorded in this page and
+          are hidden from the user-facing list. Use &ldquo;Show preflight&rdquo; for technical investigation.
+        </p>
+      }
+    </oc-card>
+
+    @if (errorMessage() && page()) {
+      <div class="request-error" role="alert">{{ errorMessage() }}</div>
+    }
+
+    <oc-data-table-shell [state]="tableState()" density="compact" [flat]="true">
+      <h3 ocTableTitle>Requests</h3>
+      <div ocTableTools class="table-tools">
+        <oc-button size="small" variant="quiet" (click)="reload()">Reload</oc-button>
+      </div>
+      <oc-empty-state
+        icon="search"
+        [title]="emptyStateTitle()"
+        [description]="emptyStateDescription()"
+      />
+      <div class="requests-table-scroll">
+        <table class="requests-table">
+          <colgroup>
+            <col class="col-time" />
+            <col class="col-method" />
+            <col class="col-route" />
+            <col class="col-status" />
+            <col class="col-duration" />
+            <col class="col-priority" />
+            <col class="col-request-id" />
+            <col class="col-actions" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col"><button type="button" class="sort-button" (click)="setSort('occurredAt')">Time @if (sort() === 'occurredAt') { <span aria-hidden="true">{{ direction() === 'desc' ? '↓' : '↑' }}</span> }</button></th>
+              <th scope="col">Method</th>
+              <th scope="col">Route</th>
+              <th scope="col"><button type="button" class="sort-button" (click)="setSort('status')">Status @if (sort() === 'status') { <span aria-hidden="true">{{ direction() === 'desc' ? '↓' : '↑' }}</span> }</button></th>
+              <th scope="col"><button type="button" class="sort-button" (click)="setSort('duration')">Duration @if (sort() === 'duration') { <span aria-hidden="true">{{ direction() === 'desc' ? '↓' : '↑' }}</span> }</button></th>
+              <th scope="col">Priority</th>
+              <th scope="col">Request ID</th>
+              <th scope="col" class="col-actions-head"><span class="oc-sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of visibleItems(); track item.requestId) {
+              <tr [class.row--failed]="item.priority === 'FAILED'" [class.row--slow]="item.priority === 'SLOW'">
+                <td class="table-time">{{ format(item.occurredAtIso) }}</td>
+                <td class="cell-method">{{ formatOptional(item.method) }}</td>
+                <td class="cell-route"><span class="route-text" [title]="item.route ?? ''">{{ formatOptional(item.route) }}</span></td>
+                <td><oc-status-badge [status]="outcomeBadge(item.outcome)" [customLabel]="formatOptional(item.statusCode)" /></td>
+                <td class="table-time">{{ formatOptional(item.durationMs, ' ms') }}</td>
+                <td>
+                  @if (item.priority === 'FAILED') { <oc-status-badge status="critical" customLabel="Failed" /> }
+                  @else if (item.priority === 'SLOW') { <oc-status-badge status="requires-attention" customLabel="Slow" /> }
+                  @else if (item.priority === 'UNKNOWN') { <oc-status-badge status="pending" customLabel="Unknown" /> }
+                  @else { <oc-status-badge status="confirmed" customLabel="Normal" /> }
+                </td>
+                <td class="cell-request-id"><span class="mono request-id-text" [title]="item.requestId">{{ item.requestId }}</span></td>
+                <td class="cell-actions">
+                  <oc-button size="small" variant="outline" (click)="openDetail(item)">Details</oc-button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div ocTableFooter class="pagination">
+        <span>{{ resultSummary() }}</span>
+        <span class="pagination-controls">
+          <oc-button size="small" variant="quiet" [disabled]="!canGoBack()" (click)="previousPage()">Previous</oc-button>
+          <span>Page {{ currentPageNumber() }}</span>
+          <oc-button size="small" variant="quiet" [disabled]="!canGoForward()" (click)="nextPage()">Next</oc-button>
+        </span>
+      </div>
+    </oc-data-table-shell>
+  }
+
+  <oc-card title="Request lookup" subtitle="Safe workflow using validated identifiers. Unrestricted queries are not allowed.">
+    <form class="diagnostics-form" (ngSubmit)="submit()" novalidate>
+      <oc-field controlId="diag-request-id" label="Request ID" hint="8–128 characters; letters, digits, hyphens, dots or underscores." [error]="requestIdError()">
+        <input
+          id="diag-request-id"
+          type="text"
+          [formControl]="requestId"
+          autocomplete="off"
+          spellcheck="false"
+          [attr.aria-invalid]="requestIdInvalid() ? true : null"
+        />
+      </oc-field>
+      <div class="actions">
+        <oc-button variant="primary" type="submit">Find request</oc-button>
+      </div>
+    </form>
+  </oc-card>
+
+  <oc-monitoring-request-detail-drawer
+    [open]="selectionOpen()"
+    [request]="selection()"
+    [loading]="selectionLoading()"
+    [errorMessage]="selectionError()"
+    (openChange)="selectionOpen.set($event)"
+  />
+</div>

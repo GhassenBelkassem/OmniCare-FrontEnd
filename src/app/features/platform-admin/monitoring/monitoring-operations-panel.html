@@ -1,0 +1,41 @@
+<div class="monitoring-stack">
+  <h2 class="section-title">Healthcare operations</h2>
+  <p class="section-hint">Aggregated operational metrics. No patient IDs, medical records or individual notification contents are shown.</p>
+  <div class="operations-grid">
+    @for (group of operations().groups; track group.id) {
+      <oc-card [title]="group.title" [compact]="true">
+        <div class="operations-head">
+          <oc-status-badge [status]="statusBadge(group.status)" [customLabel]="statusLabel(group.status)" />
+        </div>
+        <dl class="operations-list">
+          @for (row of group.rows; track $index) {
+            <div>
+              <dt>{{ row.label }}</dt>
+              <dd>
+                <span class="operations-value">{{ formatValue(row.value) }}</span>
+                <oc-status-badge [status]="statusBadge(row.status)" [customLabel]="statusLabel(row.status)" />
+              </dd>
+              @if (row.note) {
+                <p class="operations-note">{{ row.note }}</p>
+              }
+            </div>
+          }
+        </dl>
+      </oc-card>
+    }
+  </div>
+  @if (operations().knownGaps.length) {
+    <oc-card title="Known gaps and clarifications" [compact]="true">
+      <ul class="gap-list">
+        @for (gap of operations().knownGaps; track $index) {
+          <li>{{ gap }}</li>
+        }
+      </ul>
+    </oc-card>
+  }
+  @if (operations().unavailableSources.length) {
+    <p class="unavailable-note" role="status">
+      Not instrumented: {{ operations().unavailableSources.join(', ') }}. These signals are reported as Unknown, not Healthy.
+    </p>
+  }
+</div>

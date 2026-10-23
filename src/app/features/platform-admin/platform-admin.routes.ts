@@ -13,6 +13,7 @@ export const PLATFORM_ADMIN_ROUTES: Routes = [
       { path: 'patients', loadComponent: () => import('./patients-page').then((component) => component.PatientsPage), title: 'Patients | OmniCare' },
       { path: 'clinics', loadComponent: () => import('./clinics-page').then((component) => component.ClinicsPage), title: 'Clinics | OmniCare' },
       { path: 'clinics/:clinicId', loadComponent: () => import('./clinic-detail-page').then((component) => component.ClinicDetailPage), title: 'Clinic detail | OmniCare' },
+      { path: 'monitoring', loadComponent: () => import('./monitoring-page').then((component) => component.MonitoringPage), title: 'Monitoring | OmniCare' },
     ],
   },
 ];
