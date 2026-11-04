@@ -1,0 +1,109 @@
+@media (max-width: 1480px) {
+  .doctor-calendar-demo__toolbar {
+    grid-template-areas:
+      'period actions'
+      'navigation view';
+    grid-template-columns: 1fr auto;
+  }
+
+  .doctor-calendar-demo__toolbar oc-segmented-control {
+    justify-self: start;
+  }
+
+  .doctor-calendar-demo__actions {
+    align-self: center;
+  }
+
+  .doctor-calendar-demo__summary {
+    width: 100%;
+  }
+
+  .doctor-calendar-demo--panel-open .doctor-calendar-demo__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .doctor-calendar-demo__backdrop {
+    position: fixed;
+    z-index: 1090;
+    inset: 0;
+    display: block;
+    width: 100%;
+    border: 0;
+    background: var(--oc-color-surface-overlay);
+    cursor: default;
+  }
+
+  .appointment-panel {
+    position: fixed;
+    z-index: 1100;
+    top: 72px;
+    right: var(--oc-space-4);
+    bottom: var(--oc-space-4);
+    width: min(390px, calc(100vw - var(--oc-space-8)));
+    height: auto;
+    box-shadow: var(--oc-shadow-overlay);
+  }
+
+  .doctor-calendar-demo--day .appointment-panel {
+    height: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .doctor-calendar-demo__toolbar {
+    grid-template-areas:
+      'period'
+      'navigation'
+      'view'
+      'actions';
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .doctor-calendar-demo__period {
+    flex-wrap: wrap;
+  }
+
+  .doctor-calendar-demo__navigation {
+    width: 100%;
+  }
+
+  .doctor-calendar-demo__toolbar oc-segmented-control,
+  .doctor-calendar-demo__actions {
+    justify-self: stretch;
+  }
+
+  .doctor-calendar-demo__actions {
+    justify-content: stretch;
+  }
+
+  .doctor-calendar-demo__actions oc-button {
+    flex: 1;
+  }
+
+  .doctor-calendar-demo__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-calendar-demo__summary > div {
+    min-height: 54px;
+  }
+
+  .doctor-calendar-demo__summary > div + div {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--oc-color-border-subtle);
+  }
+
+  .appointment-panel {
+    inset: 0;
+    width: 100vw;
+    max-width: none;
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doctor-calendar-demo__calendar .demo-calendar-appointment {
+    transition: none;
+  }
+}

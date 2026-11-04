@@ -8,17 +8,17 @@
     <oc-metric-card
       label="Total en attente"
       [value]="'' + totalWaiting()"
-      icon="users"
+      icon="team"
     />
     <oc-metric-card
       label="Temps d'attente moyen"
       [value]="'' + avgWaitTime() + ' min'"
-      icon="clock"
+      icon="clock-circle"
     />
     <oc-metric-card
       label="Attente la plus longue"
       [value]="'' + longestWait() + ' min'"
-      icon="alert-triangle"
+      icon="warning"
     />
   </div>
 

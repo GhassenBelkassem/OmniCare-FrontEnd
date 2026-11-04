@@ -1,0 +1,6 @@
+export type ArtifactType = 'PRESCRIPTION' | 'SICK_LEAVE_CERTIFICATE' | 'MEDICAL_CERTIFICATE' | 'LAB_ORDER' | 'IMAGING_ORDER';
+export type ArtifactStatus = 'DRAFT' | 'FINALIZED';
+export type ArtifactRenderStatus = 'WAITING_FOR_COMPLETION' | 'PENDING' | 'GENERATING' | 'READY' | 'FAILED_RETRYABLE';
+export interface CertificateDefinition { readonly statement?: string; readonly startDate?: string; readonly endDate?: string; readonly durationDays?: number; }
+export interface ArtifactResponse { readonly artifactId: string; readonly consultationId: string; readonly artifactType: ArtifactType; readonly artifactVersion: number; readonly status: ArtifactStatus; readonly sourceResourceId: string | null; readonly sourceResourceVersion: number | null; readonly definition: { readonly certificate?: CertificateDefinition; readonly source?: unknown }; readonly renderStatus: ArtifactRenderStatus; readonly renderVersion: number; readonly checksumSha256: string | null; readonly sizeBytes: number | null; readonly pageCount: number | null; readonly verificationReference: string | null; readonly signedAt: string | null; readonly createdAt: string; readonly updatedAt: string; }
+export interface ArtifactListResponse { readonly artifacts: readonly ArtifactResponse[]; }

@@ -1,7 +1,13 @@
 import { registerLocaleData } from '@angular/common';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import enGb from '@angular/common/locales/en-GB';
-import { ApplicationConfig, LOCALE_ID, inject, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  ApplicationConfig,
+  LOCALE_ID,
+  inject,
+  provideAppInitializer,
+  provideBrowserGlobalErrorListeners,
+} from '@angular/core';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
@@ -12,6 +18,8 @@ import { OMNICARE_ICONS } from './app.icons';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthBootstrapService } from './core/auth/auth-bootstrap.service';
+import { APP_MODE } from './core/config/app-mode';
+import { staticDemoApiInterceptor } from './core/demo/static-demo-api.interceptor';
 
 registerLocaleData(enGb);
 
@@ -20,7 +28,10 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideAnimations(),
     provideRouter(routes),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideHttpClient(
+      withFetch(),
+      withInterceptors(APP_MODE.staticDemo ? [staticDemoApiInterceptor] : [authInterceptor]),
+    ),
     provideAppInitializer(() => inject(AuthBootstrapService).initialize()),
     provideClientHydration(withEventReplay()),
     provideNzI18n(en_GB),

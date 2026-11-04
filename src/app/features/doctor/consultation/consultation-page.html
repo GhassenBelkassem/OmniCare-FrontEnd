@@ -55,9 +55,50 @@
         }
       </div>
     </div>
-    @if (activeConsultation.active(); as active) {
-      @if (active.consultationId === consultationId) {
-        <app-doctor-medical-workspace [consultation]="active" />
+    @if (urgentIntake(); as intake) {
+      <section class="panel" aria-labelledby="urgent-intake-title">
+        <h2 id="urgent-intake-title">Contexte déclaré avant l’arrivée</h2>
+        <p>Zones : {{ intake.bodyAreaCodes?.join(', ') || 'Non renseignées' }}</p>
+        <p>Douleur déclarée : {{ intake.painScore ?? 'Non renseignée' }}/10</p>
+        @if (intake.shortDescription) {
+          <p>Description : {{ intake.shortDescription }}</p>
+        }
+        <p>Contexte opérationnel en lecture seule — non copié dans le dossier médical.</p>
+      </section>
+    }
+    @if (finish.consultation(); as current) {
+      @if (current.status === 'IN_PROGRESS') {
+        <app-clinical-authoring [consultationId]="consultationId" />
+        <app-prescription-authoring [consultationId]="consultationId" [consultationStatus]="current.status" />
+        <app-clinical-orders [consultationId]="consultationId" />
+        <app-official-artifacts [consultationId]="consultationId" />
+        <app-doctor-medical-workspace [consultation]="current" />
+        <section class="panel" aria-labelledby="finish-consultation-title">
+          <h2 id="finish-consultation-title">Terminer la consultation</h2>
+          <p>Le serveur vérifie le dossier, les ordres, la prescription et les documents finalisés.</p>
+          @if (finish.failure(); as failure) {
+            <p role="alert">
+              @if (failure === 'UNSAVED_CLINICAL_CHANGES') { Enregistrez les modifications cliniques avant de terminer. }
+              @else if (failure === 'CONSULTATION_NOT_READY_TO_FINISH') { La consultation n’est pas prête. Vérifiez les décisions et éléments en brouillon. }
+              @else { La finalisation n’a pas abouti. L’état serveur a été actualisé; vous pouvez réessayer. }
+            </p>
+          }
+          <oc-button variant="primary" [disabled]="finish.submitting()" (click)="finish.finish()">
+            {{ finish.submitting() ? 'Finalisation…' : 'Terminer la consultation' }}
+          </oc-button>
+        </section>
+      } @else if (current.status === 'FINALIZING') {
+        <section class="panel" role="status" aria-live="polite">
+          <h2>Finalisation en cours</h2>
+          <p>Les modifications cliniques sont verrouillées. OmniCare reprend automatiquement les étapes sûres.</p>
+          <oc-button variant="secondary" [disabled]="finish.submitting()" (click)="finish.finish()">Reprendre</oc-button>
+        </section>
+      } @else if (current.status === 'COMPLETED') {
+        <section class="panel" role="status">
+          <h2>Consultation terminée</h2>
+          <p>Le rendu des documents officiels peut continuer en arrière-plan.</p>
+          <oc-button variant="secondary" (click)="back()">Retour au tableau de bord</oc-button>
+        </section>
       }
     }
   } @else if (isNew) {

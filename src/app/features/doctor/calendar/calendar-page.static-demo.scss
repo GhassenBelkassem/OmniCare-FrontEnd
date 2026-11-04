@@ -1,0 +1,874 @@
+.doctor-calendar-demo {
+  --demo-calendar-accent-blue: var(--oc-color-information);
+  --demo-calendar-accent-green: var(--oc-color-brand-primary);
+  --demo-calendar-accent-purple: color-mix(
+    in srgb,
+    var(--oc-color-information) 54%,
+    var(--oc-color-critical)
+  );
+  --demo-calendar-event-green: color-mix(
+    in srgb,
+    var(--oc-color-success-surface) 76%,
+    var(--oc-color-surface-card)
+  );
+  --demo-calendar-event-blue: color-mix(
+    in srgb,
+    var(--oc-color-information-surface) 76%,
+    var(--oc-color-surface-card)
+  );
+  --demo-calendar-event-purple: color-mix(
+    in srgb,
+    var(--oc-color-information-surface) 55%,
+    var(--oc-color-critical-surface)
+  );
+  --demo-calendar-event-amber: color-mix(
+    in srgb,
+    var(--oc-color-warning-surface) 80%,
+    var(--oc-color-surface-card)
+  );
+  --demo-calendar-event-rose: color-mix(
+    in srgb,
+    var(--oc-color-critical-surface) 70%,
+    var(--oc-color-surface-card)
+  );
+  --fc-monarch-background: var(--oc-color-surface-card);
+  --fc-monarch-foreground: var(--oc-color-text-primary);
+  --fc-monarch-faint: var(--oc-color-surface-subtle);
+  --fc-monarch-muted: var(--oc-color-surface-hover);
+  --fc-monarch-strong: var(--oc-color-border-subtle);
+  --fc-monarch-stronger: var(--oc-color-border-default);
+  --fc-monarch-strongest: var(--oc-color-border-strong);
+  --fc-monarch-border: var(--oc-color-border-subtle);
+  --fc-monarch-strong-border: var(--oc-color-border-default);
+
+  display: grid;
+  gap: var(--oc-space-4);
+  min-width: 0;
+  color: var(--oc-color-text-primary);
+}
+
+@media (min-width: 1528px) {
+  .doctor-calendar-demo {
+    width: calc(100% + (100vw - 1528px));
+    margin-inline: calc((1528px - 100vw) / 2);
+  }
+}
+
+.doctor-calendar-demo__toolbar {
+  display: grid;
+  grid-template-areas: 'period navigation view actions';
+  grid-template-columns: minmax(16rem, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--oc-space-4);
+}
+
+.doctor-calendar-demo__period,
+.doctor-calendar-demo__navigation,
+.doctor-calendar-demo__actions,
+.doctor-calendar-demo__header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.doctor-calendar-demo__period {
+  grid-area: period;
+  min-width: 0;
+  gap: var(--oc-space-4);
+}
+
+.doctor-calendar-demo__period > div {
+  min-width: 0;
+}
+
+.doctor-calendar-demo__period h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.doctor-calendar-demo__period p {
+  margin: var(--oc-space-1) 0 0;
+  color: var(--oc-color-text-secondary);
+  font-size: 13px;
+}
+
+.doctor-calendar-demo__week {
+  flex: 0 0 auto;
+  padding: var(--oc-space-1) var(--oc-space-3);
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-neutral-surface);
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.doctor-calendar-demo--panel-open .doctor-calendar-demo__period {
+  gap: var(--oc-space-2);
+}
+
+.doctor-calendar-demo--panel-open .doctor-calendar-demo__period h1 {
+  font-size: 28px;
+}
+
+.doctor-calendar-demo__navigation {
+  grid-area: navigation;
+  gap: var(--oc-space-2);
+}
+
+.doctor-calendar-demo__toolbar oc-segmented-control {
+  grid-area: view;
+}
+
+.doctor-calendar-demo__actions {
+  grid-area: actions;
+  justify-self: end;
+  justify-content: flex-end;
+  gap: var(--oc-space-3);
+}
+
+.doctor-calendar-demo__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-height: 76px;
+  padding: var(--oc-space-3) var(--oc-space-5);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+}
+
+.doctor-calendar-demo__summary > div {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+  padding-inline: var(--oc-space-4);
+}
+
+.doctor-calendar-demo__summary > div + div {
+  border-inline-start: 1px solid var(--oc-color-border-subtle);
+}
+
+.doctor-calendar-demo__summary span span,
+.doctor-calendar-demo__summary strong,
+.doctor-calendar-demo__summary small {
+  display: block;
+}
+
+.doctor-calendar-demo__summary strong {
+  font-size: 14px;
+}
+
+.doctor-calendar-demo__summary small {
+  margin-block-start: 2px;
+  color: var(--oc-color-text-muted);
+  font-size: 12px;
+}
+
+.doctor-calendar-demo__summary-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-information);
+  font-size: 18px;
+}
+
+.doctor-calendar-demo__availability-dot {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-success);
+  box-shadow: 0 0 0 7px var(--oc-color-success-surface);
+}
+
+.doctor-calendar-demo__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--oc-space-4);
+  min-width: 0;
+}
+
+.doctor-calendar-demo--panel-open .doctor-calendar-demo__layout {
+  grid-template-columns: minmax(0, 1fr) 350px;
+}
+
+.doctor-calendar-demo--panel-open.doctor-calendar-demo--day .doctor-calendar-demo__layout {
+  grid-template-columns: minmax(0, 1fr) 450px;
+}
+
+.doctor-calendar-demo__calendar {
+  display: grid;
+  gap: var(--oc-space-4);
+  min-width: 0;
+}
+
+.doctor-calendar-demo oc-segmented-control button.oc-segmented__button--selected {
+  color: var(--oc-color-brand-primary-active);
+}
+
+.doctor-calendar-demo__calendar .fc {
+  font-size: 12px;
+}
+
+.doctor-calendar-demo__calendar .fc td,
+.doctor-calendar-demo__calendar .fc th {
+  border-color: var(--oc-color-border-subtle) !important;
+}
+
+.doctor-calendar-demo__calendar .fc-scrollgrid {
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+}
+
+.doctor-calendar-demo__calendar .fc-col-header-cell {
+  height: 40px;
+  vertical-align: middle;
+  background: var(--oc-color-surface-subtle);
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--oc-font-weight-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.doctor-calendar-demo__calendar .fc-col-header-cell-cushion {
+  padding: var(--oc-space-2);
+}
+
+.doctor-calendar-demo__calendar .fc-daygrid-day-top {
+  flex-direction: row;
+  padding: var(--oc-space-2) var(--oc-space-3) 0;
+}
+
+.doctor-calendar-demo__calendar .fc-daygrid-day-number {
+  color: var(--oc-color-text-primary);
+  font-size: 14px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-day-cell--other .fc-daygrid-day-number {
+  color: var(--oc-color-text-disabled);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-day-cell--selected {
+  background: color-mix(in srgb, var(--oc-color-brand-primary) 6%, var(--oc-color-surface-card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--oc-color-brand-primary) 18%, transparent);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-day-cell--selected .fc-daygrid-day-number {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  margin: -4px;
+  place-items: center;
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-inverse);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-day-cell--weekly-rest,
+.doctor-calendar-demo__calendar .demo-calendar-day-cell--day-off,
+.doctor-calendar-demo__calendar .demo-calendar-day-cell--exception,
+.doctor-calendar-demo__calendar .demo-calendar-day-cell--unavailable,
+.doctor-calendar-demo__calendar .demo-calendar-day-lane--weekly-rest,
+.doctor-calendar-demo__calendar .demo-calendar-day-lane--day-off,
+.doctor-calendar-demo__calendar .demo-calendar-day-lane--exception,
+.doctor-calendar-demo__calendar .demo-calendar-day-lane--unavailable {
+  background-color: color-mix(
+    in srgb,
+    var(--oc-color-neutral-surface) 74%,
+    var(--oc-color-surface-card)
+  );
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 5px,
+    color-mix(in srgb, var(--oc-color-border-subtle) 44%, transparent) 5px,
+    color-mix(in srgb, var(--oc-color-border-subtle) 44%, transparent) 6px
+  );
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-day-cell--exception,
+.doctor-calendar-demo__calendar .demo-calendar-day-lane--exception {
+  background-color: color-mix(
+    in srgb,
+    var(--oc-color-warning-surface) 34%,
+    var(--oc-color-surface-card)
+  );
+}
+
+.doctor-calendar-demo__calendar .fc-daygrid-day-events {
+  margin: var(--oc-space-1) var(--oc-space-2);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--dayGridMonth .fc-daygrid-day-frame {
+  min-height: 116px;
+}
+
+.doctor-calendar-demo__calendar .fc-daygrid-event-harness + .fc-daygrid-event-harness {
+  margin-block-start: 3px;
+}
+
+.doctor-calendar-demo__calendar .fc-event {
+  border: 0;
+  background: transparent;
+  color: var(--oc-color-text-primary);
+  cursor: pointer;
+}
+
+.doctor-calendar-demo__calendar .fc-event:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  border-inline-start: 3px solid var(--demo-calendar-accent-green);
+  border-radius: var(--oc-radius-sm);
+  background: var(--demo-calendar-event-green);
+  transition:
+    transform var(--oc-motion-fast) var(--oc-ease-standard),
+    filter var(--oc-motion-fast) var(--oc-ease-standard),
+    box-shadow var(--oc-motion-fast) var(--oc-ease-standard);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment:hover {
+  z-index: 3;
+  transform: translateY(-2px) scale(1.012);
+  filter: saturate(1.18) brightness(1.01);
+  box-shadow: var(--oc-shadow-overlay);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment:active {
+  transform: translateY(0) scale(0.995);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment:focus-visible {
+  z-index: 4;
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+  box-shadow: var(--oc-shadow-overlay);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment--follow-up,
+.doctor-calendar-demo__calendar .demo-calendar-appointment--control {
+  border-inline-start-color: var(--demo-calendar-accent-blue);
+  background: var(--demo-calendar-event-blue);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment--annual {
+  border-inline-start-color: var(--demo-calendar-accent-purple);
+  background: var(--demo-calendar-event-purple);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment--vaccination {
+  border-inline-start-color: var(--oc-color-warning);
+  background: var(--demo-calendar-event-amber);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment--results,
+.doctor-calendar-demo__calendar .demo-calendar-appointment--urgent {
+  border-inline-start-color: var(--oc-color-critical);
+  background: var(--demo-calendar-event-rose);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment--selected,
+.doctor-calendar-demo__calendar .demo-calendar-appointment:has(.demo-event--selected) {
+  outline: 2px solid var(--oc-color-information);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--oc-color-information) 14%, transparent);
+}
+
+.demo-event {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  align-items: center;
+  gap: var(--oc-space-2);
+  overflow: hidden;
+  padding: 4px 8px;
+  line-height: 1.15;
+}
+
+.demo-event strong,
+.demo-event small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-event strong {
+  font-size: 11px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.demo-event small {
+  margin-block-start: 2px;
+  color: var(--oc-color-text-secondary);
+  font-size: 10px;
+}
+
+.demo-event__time,
+.demo-event__week-time,
+.demo-event__day-time {
+  flex: 0 0 auto;
+  color: var(--oc-color-text-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.demo-event__month-copy,
+.demo-event__day-copy {
+  min-width: 0;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--timeGridWeek .fc-timegrid-event {
+  min-height: 44px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--timeGridWeek .demo-event {
+  display: grid;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: 0;
+  padding: 3px 7px;
+  line-height: 1;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--timeGridWeek .demo-event__week-time {
+  color: var(--oc-color-text-muted);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--timeGridWeek .demo-event strong {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 10px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--timeGridWeek .demo-event small {
+  grid-column: 1;
+  grid-row: 3;
+  margin: 0;
+  font-size: 9px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--timeGridDay .fc-timegrid-event {
+  min-height: 44px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--timeGridDay .demo-event {
+  gap: var(--oc-space-3);
+  padding-inline: var(--oc-space-3);
+}
+
+.demo-event__day-time {
+  width: 86px;
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.demo-event__patient-icon {
+  color: currentColor;
+  font-size: 15px;
+}
+
+.demo-event__day-copy {
+  flex: 1 1 auto;
+}
+
+.demo-event__day-copy strong {
+  font-size: 13px;
+}
+
+.demo-event__day-copy small {
+  font-size: 11px;
+}
+
+.demo-event__status-icon {
+  flex: 0 0 auto;
+  font-size: 16px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-state {
+  background: transparent;
+  cursor: default;
+}
+
+.demo-state {
+  display: grid;
+  height: 100%;
+  min-height: 84px;
+  place-content: center;
+  justify-items: center;
+  gap: var(--oc-space-1);
+  padding: var(--oc-space-2);
+  color: var(--oc-color-text-secondary);
+  text-align: center;
+}
+
+.demo-state nz-icon {
+  margin-block-end: var(--oc-space-1);
+  color: var(--oc-color-text-muted);
+  font-size: 20px;
+}
+
+.demo-state strong {
+  font-size: 12px;
+}
+
+.demo-state span {
+  color: var(--oc-color-text-muted);
+  font-size: 10px;
+}
+
+.doctor-calendar-demo__calendar .fc-daygrid-event .demo-state {
+  min-height: 54px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-break {
+  border: 1px dashed var(--oc-color-border-default);
+  border-radius: var(--oc-radius-sm);
+  background: color-mix(in srgb, var(--oc-color-neutral-surface) 70%, var(--oc-color-surface-card));
+  color: var(--oc-color-text-secondary);
+  cursor: default;
+}
+
+.demo-break {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  gap: var(--oc-space-3);
+  padding-inline: var(--oc-space-3);
+}
+
+.demo-break span {
+  width: 86px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.doctor-calendar-demo__calendar .fc-timegrid-slot-label-cushion {
+  color: var(--oc-color-text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-slot--minor {
+  border-block-start-color: transparent;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-day-lane--selected,
+.doctor-calendar-demo__calendar .demo-calendar-day-header--today {
+  background: color-mix(in srgb, var(--oc-color-brand-primary) 5%, var(--oc-color-surface-card));
+}
+
+.appointment-panel {
+  position: sticky;
+  top: var(--oc-space-4);
+  display: flex;
+  height: 714px;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.doctor-calendar-demo--day .appointment-panel {
+  height: 771px;
+}
+
+.appointment-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-5) var(--oc-space-5) var(--oc-space-3);
+}
+
+.appointment-panel__header h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.appointment-panel__header h2:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 3px;
+}
+
+.appointment-panel__header p {
+  margin: var(--oc-space-2) 0 0;
+  color: var(--oc-color-text-muted);
+  font-size: 11px;
+}
+
+.appointment-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-1);
+}
+
+.appointment-panel__patient {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-2) var(--oc-space-5);
+}
+
+.appointment-panel__patient > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.appointment-panel__patient strong {
+  font-size: 15px;
+}
+
+.appointment-panel__patient span {
+  color: var(--oc-color-text-muted);
+  font-size: 11px;
+}
+
+.appointment-panel__contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2) var(--oc-space-4);
+  padding: var(--oc-space-3) var(--oc-space-5);
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.appointment-panel__contact span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oc-space-2);
+  min-width: 0;
+}
+
+.appointment-panel__contact span:nth-child(2) {
+  overflow-wrap: anywhere;
+}
+
+.appointment-panel__patient-link {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--oc-space-2);
+  margin: 0 var(--oc-space-5) var(--oc-space-3);
+  border: 1px solid
+    color-mix(in srgb, var(--oc-color-brand-primary) 22%, var(--oc-color-border-default));
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-selected);
+  color: var(--oc-color-brand-primary-active);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+  text-decoration: none;
+}
+
+.appointment-panel__patient-link:hover {
+  border-color: var(--oc-color-brand-primary);
+  background: color-mix(in srgb, var(--oc-color-brand-primary) 12%, var(--oc-color-surface-card));
+}
+
+.appointment-panel oc-tabs {
+  display: block;
+  padding-inline: var(--oc-space-3);
+  border-block: 1px solid var(--oc-color-border-subtle);
+}
+
+.appointment-panel oc-tabs button.oc-tabs__item {
+  padding-inline: 10px;
+  font-size: 12px;
+}
+
+.appointment-panel__body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--oc-space-4) var(--oc-space-5);
+}
+
+.appointment-panel__details {
+  display: grid;
+  gap: var(--oc-space-4);
+  margin: 0;
+  padding: var(--oc-space-4);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+}
+
+.appointment-panel__details > div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+}
+
+.appointment-panel__details dt {
+  display: contents;
+}
+
+.appointment-panel__details dt nz-icon {
+  grid-row: 1 / span 2;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-neutral-surface);
+  color: var(--oc-color-text-secondary);
+}
+
+.appointment-panel__details dt span {
+  font-size: 11px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.appointment-panel__details dd {
+  grid-column: 2;
+  margin: 2px 0 0;
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.appointment-panel__notes {
+  display: flex;
+  gap: var(--oc-space-3);
+  margin-block-start: var(--oc-space-3);
+  padding: var(--oc-space-3);
+  border: 1px solid
+    color-mix(in srgb, var(--oc-color-information) 22%, var(--oc-color-border-default));
+  border-radius: var(--oc-radius-md);
+  background: color-mix(
+    in srgb,
+    var(--oc-color-information-surface) 58%,
+    var(--oc-color-surface-card)
+  );
+  font-size: 11px;
+}
+
+.appointment-panel__notes strong,
+.appointment-panel__notes p {
+  display: block;
+  margin: 0;
+}
+
+.appointment-panel__notes p {
+  margin-block-start: 2px;
+  color: var(--oc-color-text-secondary);
+  line-height: 1.45;
+}
+
+.appointment-panel__notes--standalone {
+  margin-block-start: 0;
+}
+
+.appointment-panel__empty {
+  display: grid;
+  min-height: 180px;
+  place-content: center;
+  justify-items: center;
+  gap: var(--oc-space-2);
+  color: var(--oc-color-text-muted);
+  text-align: center;
+}
+
+.appointment-panel__empty nz-icon {
+  font-size: 24px;
+}
+
+.appointment-panel__empty strong {
+  color: var(--oc-color-text-primary);
+}
+
+.appointment-panel__message {
+  margin: 0 var(--oc-space-5) var(--oc-space-2);
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.appointment-panel__footer {
+  display: grid;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-3) var(--oc-space-5) var(--oc-space-4);
+  border-block-start: 1px solid var(--oc-color-border-subtle);
+}
+
+.appointment-panel__footer > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--oc-space-2);
+}
+
+.appointment-panel__footer small {
+  color: var(--oc-color-text-muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.doctor-calendar-demo__backdrop {
+  display: none;
+  touch-action: manipulation;
+}
+
+.calendar-demo-dialog {
+  display: grid;
+  gap: var(--oc-space-4);
+}
+
+.calendar-demo-dialog p {
+  margin: 0;
+  color: var(--oc-color-text-secondary);
+}
+
+.calendar-demo-dialog dl {
+  display: grid;
+  gap: var(--oc-space-2);
+  margin: 0;
+}
+
+.calendar-demo-dialog dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--oc-space-4);
+  padding: var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-subtle);
+}
+
+.calendar-demo-dialog dt {
+  color: var(--oc-color-text-secondary);
+}
+
+.calendar-demo-dialog dd {
+  margin: 0;
+  font-weight: var(--oc-font-weight-semibold);
+  text-align: end;
+}
+
+.calendar-demo-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--oc-space-2);
+}

@@ -1,0 +1,131 @@
+@media (max-width: 1100px) {
+  .mapping-editor {
+    grid-template-columns: 190px minmax(390px, 1fr) 220px;
+  }
+
+  .mapping-palette header,
+  .mapping-inspector header,
+  .inspector-group {
+    padding: var(--oc-space-3);
+  }
+}
+
+@media (max-width: 900px) {
+  .mapping-editor {
+    grid-template-columns: 185px minmax(0, 1fr);
+  }
+
+  .mapping-inspector {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(180px, 1fr) minmax(260px, 1.4fr) minmax(260px, 1.4fr);
+    border-block-start: 1px solid var(--oc-color-border-default);
+    border-inline-start: 0;
+  }
+
+  .mapping-inspector header,
+  .inspector-group {
+    border-block-end: 0;
+    border-inline-end: 1px solid var(--oc-color-border-subtle);
+  }
+
+  .mapping-inspector > oc-button,
+  .reset-fields,
+  .inspector-empty {
+    align-self: center;
+  }
+}
+
+@media (max-width: 767px) {
+  .wizard-progress small {
+    display: none;
+  }
+
+  .wizard-step h3,
+  .test-step h3 {
+    font-size: 18px;
+  }
+
+  .pdf-mode-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .mapping-editor {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .mapping-palette,
+  .mapping-inspector {
+    display: none;
+  }
+
+  .mapping-stage {
+    min-height: 570px;
+  }
+
+  .mapping-canvas-shell {
+    padding: var(--oc-space-3);
+  }
+
+  .mapping-document {
+    min-width: 360px;
+  }
+
+  .mapping-mobile-note {
+    display: block;
+  }
+
+  .test-step__canvas {
+    min-height: 440px;
+    padding: var(--oc-space-3);
+  }
+
+  .wizard-footer {
+    flex-wrap: wrap;
+  }
+
+  .wizard-footer__context {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .wizard-step__heading {
+    display: grid;
+  }
+
+  .choice-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .choice-row input {
+    position: absolute;
+    opacity: 0;
+  }
+
+  .selected-pdf {
+    align-items: flex-start;
+  }
+
+  .selected-pdf__status {
+    display: none;
+  }
+
+  .mapping-toolbar > span {
+    display: none;
+  }
+
+  .mapping-toolbar {
+    justify-content: center;
+  }
+
+  .mapping-document {
+    min-width: 330px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice-row {
+    transition: none;
+  }
+}

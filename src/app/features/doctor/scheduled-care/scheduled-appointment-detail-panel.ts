@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 
 import { OcAvatar, OcButton, OcStatusBadge } from '../../../shared/ui';
+import { ActiveConsultationStore } from '../active-consultation.store';
 import type { DoctorReasonCode } from './scheduled-care.models';
 import { ScheduledCareFacade } from './scheduled-care.facade';
 import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-time';
@@ -14,8 +16,8 @@ import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-t
       [nzVisible]="open()"
       nzTitle="Détails du rendez-vous"
       [nzClosable]="true"
-      [nzMaskClosable]="!care.commandLoading()"
-      [nzKeyboard]="!care.commandLoading()"
+      [nzMaskClosable]="!care.commandLoading() && !consultations.starting()"
+      [nzKeyboard]="!care.commandLoading() && !consultations.starting()"
       [nzWidth]="500"
       (nzOnCancel)="close()"
     >
@@ -68,10 +70,32 @@ import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-t
             @if (care.commandError(); as error) {
               <p class="scheduled-detail__error" role="alert">{{ error }}</p>
             }
+            @if (consultations.startError(); as error) {
+              <p class="scheduled-detail__error" role="alert">{{ error }}</p>
+            }
+            @if (consultations.error(); as error) {
+              <p class="scheduled-detail__error" role="alert">{{ error }}</p>
+            }
           </div>
         }
       </ng-template>
       <ng-template nzModalFooter>
+        @if (consultations.active(); as active) {
+          <oc-button
+            variant="primary"
+            size="small"
+            [disabled]="care.commandLoading() || consultations.starting()"
+            (click)="continueConsultation(active.consultationId)"
+          >Continuer la consultation</oc-button>
+        } @else if (canStart()) {
+          <oc-button
+            variant="primary"
+            size="small"
+            [loading]="consultations.starting()"
+            [disabled]="care.commandLoading()"
+            (click)="startConsultation()"
+          >Démarrer la consultation</oc-button>
+        }
         @if (care.activeAppointment()?.availableActions?.includes('CANCEL_APPOINTMENT')) {
           @if (!showCancel()) {
             <oc-button variant="secondary" size="small" [disabled]="care.commandLoading()" (click)="showCancel.set(true)">Annuler le rendez-vous</oc-button>
@@ -88,6 +112,8 @@ import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-t
 })
 export class ScheduledAppointmentDetailPanel {
   readonly care = inject(ScheduledCareFacade);
+  readonly consultations = inject(ActiveConsultationStore);
+  private readonly router = inject(Router);
   readonly open = signal(false);
   readonly showCancel = signal(false);
   readonly cancelReason = signal<DoctorReasonCode | ''>('');
@@ -113,15 +139,22 @@ export class ScheduledAppointmentDetailPanel {
     if (status === 'CANCELLED') return 'cancelled';
     return 'pending';
   });
+  readonly canStart = computed(
+    () => this.care.activeAppointment()?.status === 'CONFIRMED' &&
+      this.consultations.active() === null &&
+      !this.consultations.loading() &&
+      this.consultations.error() === null,
+  );
 
   openWith(appointmentId: string): void {
     this.showCancel.set(false);
     this.cancelReason.set('');
+    this.consultations.clearStartError();
     this.open.set(true);
     this.care.openAppointment(appointmentId);
   }
   close(): void {
-    if (this.care.commandLoading()) return;
+    if (this.care.commandLoading() || this.consultations.starting()) return;
     this.open.set(false);
     this.care.closeAppointment();
   }
@@ -131,6 +164,28 @@ export class ScheduledAppointmentDetailPanel {
   submitCancel(): void {
     const reason = this.cancelReason();
     if (reason) this.care.cancelAppointment(reason);
+  }
+  async startConsultation(): Promise<void> {
+    const appointment = this.care.activeAppointment();
+    if (appointment?.status !== 'CONFIRMED') return;
+    const outcome = await this.consultations.startScheduledAppointment(
+      appointment.appointmentId,
+      appointment.version,
+    );
+    if (outcome.kind === 'STARTED' || outcome.kind === 'RECOVERED') {
+      this.open.set(false);
+      this.care.closeAppointment();
+      await this.router.navigate([
+        '/doctor',
+        'consultation',
+        outcome.consultation.consultationId,
+      ]);
+    }
+  }
+  async continueConsultation(consultationId: string): Promise<void> {
+    this.open.set(false);
+    this.care.closeAppointment();
+    await this.router.navigate(['/doctor', 'consultation', consultationId]);
   }
   reasonLabel(code: string): string {
     return this.reasons.find((reason) => reason.code === code)?.label ?? code;

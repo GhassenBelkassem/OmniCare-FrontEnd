@@ -3,6 +3,7 @@ import enGb from '@angular/common/locales/en-GB';
 import { signal, WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { Router } from '@angular/router';
 import {
   DatesSetInfo,
   DayHeaderInfo,
@@ -23,6 +24,7 @@ import type {
   AvailabilityRuleDto,
 } from '../appointment-api.models';
 import { AppointmentApiService } from '../appointment-api.service';
+import { ActiveConsultationStore } from '../active-consultation.store';
 import { ScheduledAppointmentDetailPanel } from '../scheduled-care/scheduled-appointment-detail-panel';
 import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
@@ -121,10 +123,16 @@ describe('CalendarPage', () => {
     >;
   };
   let projectionInvalidationEpoch: WritableSignal<number>;
+  let activeAppointment: WritableSignal<DoctorScheduledCareItem | null>;
+  let startScheduledAppointment: ReturnType<typeof vi.fn>;
+  let navigate: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     realtimeHealth = signal<RealtimeHealth>('live');
     projectionInvalidationEpoch = signal(0);
+    activeAppointment = signal<DoctorScheduledCareItem | null>(null);
+    startScheduledAppointment = vi.fn();
+    navigate = vi.fn();
     scheduledApi = { getDoctorScheduledCare: vi.fn(() => of(agenda([]))) };
     api = {
       listRules: vi.fn(() => of([])),
@@ -137,6 +145,7 @@ describe('CalendarPage', () => {
       imports: [CalendarPage],
       providers: [
         provideNzI18n(en_GB),
+        { provide: Router, useValue: { navigate } },
         { provide: AppointmentApiService, useValue: api },
         { provide: ScheduledCareApiService, useValue: scheduledApi },
         {
@@ -146,11 +155,23 @@ describe('CalendarPage', () => {
             commandLoading: signal(false),
             appointmentLoading: signal(false),
             appointmentError: signal(null),
-            activeAppointment: signal(null),
+            activeAppointment,
             commandError: signal(null),
             openAppointment: vi.fn(),
             closeAppointment: vi.fn(),
             cancelAppointment: vi.fn(),
+          },
+        },
+        {
+          provide: ActiveConsultationStore,
+          useValue: {
+            active: signal(null),
+            loading: signal(false),
+            error: signal(null),
+            starting: signal(false),
+            startError: signal(null),
+            clearStartError: vi.fn(),
+            startScheduledAppointment,
           },
         },
         {
@@ -472,6 +493,32 @@ describe('CalendarPage', () => {
     } as unknown as EventClickInfo);
 
     expect(openWith).toHaveBeenCalledWith('open-me');
+  });
+
+  it('starts from Calendar detail through the shared canonical command and UUID route', async () => {
+    activeAppointment.set(appointment('appointment-9', 'CONFIRMED', { version: 7 }));
+    startScheduledAppointment.mockResolvedValue({
+      kind: 'STARTED',
+      consultation: {
+        consultationId: '11111111-1111-4111-8111-111111111111',
+        sourceType: 'SCHEDULED_APPOINTMENT',
+        sourceId: 'appointment-9',
+        status: 'IN_PROGRESS',
+        medicalAccessStatus: 'NONE',
+        version: 0,
+        startedAt: '2031-04-08T08:17:00.000Z',
+      },
+    });
+
+    await detailPanel.startConsultation();
+
+    expect(startScheduledAppointment).toHaveBeenCalledWith('appointment-9', 7);
+    expect(navigate).toHaveBeenCalledWith([
+      '/doctor',
+      'consultation',
+      '11111111-1111-4111-8111-111111111111',
+    ]);
+    expect(navigate).not.toHaveBeenCalledWith(['/doctor', 'consultation', 'new']);
   });
 
   it('fails safely for non-appointment and missing event IDs', () => {

@@ -1,0 +1,485 @@
+<oc-sheet
+  [open]="open()"
+  [title]="sheetTitle()"
+  [description]="sheetDescription()"
+  [width]="sheetWidth()"
+  [hasFooter]="true"
+  [submitting]="saving()"
+  (dismissed)="dismissed.emit()"
+>
+  <div class="wizard-shell">
+    <ol class="wizard-progress" aria-label="Progression de la configuration">
+      @for (label of stepLabels; track label; let index = $index) {
+        <li
+          [class.wizard-progress__item--active]="step() === index + 1"
+          [class.wizard-progress__item--complete]="step() > index + 1"
+          [attr.data-state]="
+            step() === index + 1 ? 'active' : step() > index + 1 ? 'complete' : 'pending'
+          "
+          [attr.aria-current]="step() === index + 1 ? 'step' : null"
+        >
+          <span>{{ step() > index + 1 ? '✓' : index + 1 }}</span>
+          <small>{{ label }}</small>
+        </li>
+      }
+    </ol>
+
+    @switch (step()) {
+      @case (1) {
+        <section class="wizard-step" aria-labelledby="wizard-type-title">
+          <header class="wizard-step__heading">
+            <span class="wizard-step__number">1</span>
+            <div>
+              <h3 id="wizard-type-title">Quel document souhaitez-vous configurer ?</h3>
+              <p>Choisissez le type qui correspond à votre document habituel.</p>
+            </div>
+          </header>
+          <fieldset class="choice-list">
+            <legend class="oc-sr-only">Type de document</legend>
+            @for (option of typeOptions; track option.value) {
+              <label
+                class="choice-row"
+                [class.choice-row--selected]="documentType() === option.value"
+              >
+                <input
+                  type="radio"
+                  name="document-type"
+                  [value]="option.value"
+                  [checked]="documentType() === option.value"
+                  (change)="chooseType(option.value)"
+                />
+                <span class="choice-row__icon"><oc-icon name="requests" /></span>
+                <span
+                  ><strong>{{ option.label }}</strong
+                  ><small>{{ option.detail }}</small></span
+                >
+                <span class="choice-row__check" aria-hidden="true">✓</span>
+              </label>
+            }
+          </fieldset>
+        </section>
+      }
+
+      @case (2) {
+        <section class="wizard-step" aria-labelledby="wizard-pdf-title">
+          <header class="wizard-step__heading">
+            <span class="wizard-step__number">2</span>
+            <div>
+              <h3 id="wizard-pdf-title">Choisissez votre document</h3>
+              <p>
+                Le PDF original reste intact ; OmniCare ajoute uniquement les données dynamiques.
+              </p>
+            </div>
+          </header>
+
+          <div class="pdf-mode-tabs" role="group" aria-label="Source du document PDF">
+            <button
+              type="button"
+              [class.pdf-mode-tabs__button--active]="pdfMode() === 'upload'"
+              [attr.aria-pressed]="pdfMode() === 'upload'"
+              (click)="choosePdfMode('upload')"
+            >
+              <oc-icon name="upload" /> Téléverser un nouveau PDF
+            </button>
+            <button
+              type="button"
+              [class.pdf-mode-tabs__button--active]="pdfMode() === 'existing'"
+              [attr.aria-pressed]="pdfMode() === 'existing'"
+              (click)="choosePdfMode('existing')"
+            >
+              <oc-icon name="requests" /> Utiliser un PDF existant
+            </button>
+          </div>
+
+          @if (pdfMode() === 'upload') {
+            <label class="upload-zone" [class.upload-zone--error]="uploadError() !== null">
+              <input
+                type="file"
+                name="template-pdf-upload"
+                accept="application/pdf,.pdf"
+                (change)="handleFile($event)"
+              />
+              <span class="upload-zone__icon"><oc-icon name="upload" /></span>
+              @if (uploadedPdf(); as pdf) {
+                <strong>{{ pdf.name }}</strong>
+                <span>{{ pdf.sizeLabel }} · Téléversement terminé</span>
+                <progress max="100" [value]="uploadProgress()">{{ uploadProgress() }} %</progress>
+              } @else {
+                <strong>Déposez ou choisissez votre PDF</strong>
+                <span>PDF uniquement · 10 Mo maximum</span>
+              }
+            </label>
+            @if (uploadError(); as error) {
+              <p class="field-error" role="alert"><oc-icon name="warning" />{{ error }}</p>
+            }
+          } @else {
+            <label class="form-field">
+              <span>Document PDF existant</span>
+              <select
+                name="existing-template-pdf"
+                [value]="selectedPdfId()"
+                (change)="selectPdf($event)"
+              >
+                @for (pdf of existingPdfs(); track pdf.id) {
+                  <option [value]="pdf.id">{{ pdf.name }} · {{ pdf.sizeLabel }}</option>
+                }
+              </select>
+            </label>
+            @if (chosenPdf(); as pdf) {
+              <div class="selected-pdf">
+                <span class="pdf-file-icon" aria-hidden="true">PDF</span>
+                <span
+                  ><strong>{{ pdf.name }}</strong
+                  ><small>{{ pdf.sizeLabel }} · Importé le {{ pdf.uploadedAt }}</small></span
+                >
+                <span class="selected-pdf__status">Prêt</span>
+              </div>
+            }
+          }
+        </section>
+      }
+
+      @case (3) {
+        <section class="wizard-step" aria-labelledby="wizard-name-title">
+          <header class="wizard-step__heading">
+            <span class="wizard-step__number">3</span>
+            <div>
+              <h3 id="wizard-name-title">Nommez votre modèle</h3>
+              <p>Un nom précis aide à choisir le bon document pendant la consultation.</p>
+            </div>
+          </header>
+          <label class="form-field">
+            <span>Nom du modèle</span>
+            <input
+              type="text"
+              name="template-name"
+              maxlength="80"
+              autocomplete="off"
+              [value]="templateName()"
+              (input)="updateName($event)"
+            />
+            <small>Exemple : Ordonnance — Cabinet Lac 2</small>
+          </label>
+          <label class="checkbox-row">
+            <input
+              type="checkbox"
+              name="default-template"
+              [checked]="makeDefault()"
+              (change)="makeDefault.set(!makeDefault())"
+            />
+            <span>
+              <strong>Définir comme modèle par défaut</strong>
+              <small>Il sera proposé en premier lors de la création d’une ordonnance.</small>
+            </span>
+          </label>
+          <div class="version-note">
+            <oc-icon name="info" intent="information" />
+            <span
+              ><strong>Version initiale v1</strong>Les futures modifications créeront une nouvelle
+              version sans altérer les documents déjà générés.</span
+            >
+          </div>
+        </section>
+      }
+
+      @case (4) {
+        <section class="mapping-editor" aria-labelledby="mapping-title">
+          <h3 id="mapping-title" class="oc-sr-only">Positionner les champs dynamiques</h3>
+          <aside class="mapping-palette" aria-label="Champs disponibles">
+            <header>
+              <h4>Champs disponibles</h4>
+              <p>Ajoutez uniquement les zones que vous souhaitez remplir.</p>
+            </header>
+            <div class="mapping-field-list">
+              @for (field of availableFields; track field.key) {
+                <button type="button" (click)="addField(field.key)">
+                  <span class="field-kind field-kind--{{ field.kind }}" aria-hidden="true"></span>
+                  <span
+                    ><strong>{{ field.label }}</strong
+                    ><small>{{ field.sample }}</small></span
+                  >
+                  <oc-icon name="chevron-right" />
+                </button>
+              }
+            </div>
+            <div class="mapping-help">
+              <oc-icon name="info" />
+              <p>Les zones sont déplaçables à la souris et au clavier avec les touches fléchées.</p>
+            </div>
+          </aside>
+
+          <div class="mapping-stage">
+            <div class="mapping-toolbar">
+              <span
+                ><strong>{{ chosenPdf()?.name }}</strong
+                ><small>Page 1 sur 1</small></span
+              >
+              <div role="group" aria-label="Zoom du document">
+                <button type="button" aria-label="Réduire le zoom" (click)="changeZoom(-10)">
+                  −
+                </button>
+                <output>{{ zoom() }} %</output>
+                <button type="button" aria-label="Augmenter le zoom" (click)="changeZoom(10)">
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div class="mapping-canvas-shell">
+              <div
+                #editorCanvas
+                class="mapping-document"
+                [style.width.%]="zoom()"
+                aria-label="Page PDF avec champs positionnés"
+              >
+                <div class="mapping-document__letterhead">
+                  <span><strong>Dr Ben Salah</strong><small>Médecin généraliste</small></span>
+                  <span
+                    ><strong>Cabinet Médical Lac 2</strong
+                    ><small>Les Berges du Lac 2 · Tunis</small></span
+                  >
+                </div>
+                <h5>ORDONNANCE</h5>
+                <div class="mapping-document__rx">Rx</div>
+                <div class="mapping-document__signature">Signature et cachet après impression</div>
+                <div class="mapping-document__footer">Document généré par OmniCare · Page 1/1</div>
+
+                @for (field of fields(); track field.id) {
+                  <button
+                    type="button"
+                    class="editor-field editor-field--{{ field.kind }}"
+                    [class.editor-field--selected]="selectedFieldId() === field.id"
+                    [style.left.%]="field.x"
+                    [style.top.%]="field.y"
+                    [style.width.%]="field.width"
+                    [style.height.%]="field.height"
+                    [style.font-size.px]="field.fontSize"
+                    [style.text-align]="field.alignment"
+                    [attr.aria-label]="field.label + ', champ positionné'"
+                    [attr.aria-pressed]="selectedFieldId() === field.id"
+                    (click)="selectField(field.id)"
+                    (keydown)="onFieldKeydown($event, field)"
+                    (pointerdown)="startPointerOperation($event, field, 'move')"
+                  >
+                    <span>{{ field.label }}</span>
+                    <strong>{{ field.sample }}</strong>
+                    <span
+                      class="editor-field__resize"
+                      aria-hidden="true"
+                      (pointerdown)="startPointerOperation($event, field, 'resize')"
+                    ></span>
+                  </button>
+                }
+              </div>
+            </div>
+            <p class="mapping-mobile-note">
+              La configuration des champs est optimisée pour tablette et ordinateur.
+            </p>
+          </div>
+
+          <aside class="mapping-inspector" aria-label="Propriétés du champ sélectionné">
+            @if (selectedField(); as field) {
+              <header>
+                <span class="field-kind field-kind--{{ field.kind }}" aria-hidden="true"></span>
+                <span
+                  ><h4>{{ field.label }}</h4>
+                  <p>{{ field.sample }}</p></span
+                >
+              </header>
+
+              <div class="inspector-group">
+                <strong>Position</strong>
+                <div class="inspector-grid">
+                  <label
+                    ><span>X</span
+                    ><input
+                      type="number"
+                      [attr.name]="'field-x-' + field.id"
+                      inputmode="decimal"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      [value]="field.x"
+                      (input)="updateNumber('x', $event)"
+                  /></label>
+                  <label
+                    ><span>Y</span
+                    ><input
+                      type="number"
+                      [attr.name]="'field-y-' + field.id"
+                      inputmode="decimal"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      [value]="field.y"
+                      (input)="updateNumber('y', $event)"
+                  /></label>
+                  <label
+                    ><span>Largeur</span
+                    ><input
+                      type="number"
+                      [attr.name]="'field-width-' + field.id"
+                      inputmode="decimal"
+                      min="8"
+                      max="100"
+                      step="1"
+                      [value]="field.width"
+                      (input)="updateNumber('width', $event)"
+                  /></label>
+                  <label
+                    ><span>Hauteur</span
+                    ><input
+                      type="number"
+                      [attr.name]="'field-height-' + field.id"
+                      inputmode="decimal"
+                      min="3"
+                      max="100"
+                      step="1"
+                      [value]="field.height"
+                      (input)="updateNumber('height', $event)"
+                  /></label>
+                </div>
+                <div class="nudge-controls" role="group" aria-label="Déplacer le champ">
+                  <button
+                    type="button"
+                    aria-label="Déplacer vers la gauche"
+                    (click)="nudgeSelected(-1, 0)"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Déplacer vers le haut"
+                    (click)="nudgeSelected(0, -1)"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Déplacer vers le bas"
+                    (click)="nudgeSelected(0, 1)"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Déplacer vers la droite"
+                    (click)="nudgeSelected(1, 0)"
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+
+              <div class="inspector-group">
+                <strong>Texte</strong>
+                <label class="inspector-font"
+                  ><span>Taille</span
+                  ><input
+                    type="range"
+                    [attr.name]="'field-font-size-' + field.id"
+                    min="8"
+                    max="18"
+                    [value]="field.fontSize"
+                    (input)="updateNumber('fontSize', $event)"
+                  /><output>{{ field.fontSize }} px</output></label
+                >
+                <div class="alignment-controls" role="group" aria-label="Alignement du texte">
+                  <button
+                    type="button"
+                    [class.alignment-controls__button--active]="field.alignment === 'left'"
+                    [attr.aria-pressed]="field.alignment === 'left'"
+                    (click)="setAlignment('left')"
+                  >
+                    Gauche
+                  </button>
+                  <button
+                    type="button"
+                    [class.alignment-controls__button--active]="field.alignment === 'center'"
+                    [attr.aria-pressed]="field.alignment === 'center'"
+                    (click)="setAlignment('center')"
+                  >
+                    Centre
+                  </button>
+                  <button
+                    type="button"
+                    [class.alignment-controls__button--active]="field.alignment === 'right'"
+                    [attr.aria-pressed]="field.alignment === 'right'"
+                    (click)="setAlignment('right')"
+                  >
+                    Droite
+                  </button>
+                </div>
+              </div>
+
+              <oc-button
+                variant="destructive"
+                size="small"
+                leadingIcon="delete"
+                [fullWidth]="true"
+                (click)="removeSelectedField()"
+                >Supprimer ce champ</oc-button
+              >
+            } @else {
+              <div class="inspector-empty">
+                <oc-icon name="requests" />
+                <h4>Aucun champ sélectionné</h4>
+                <p>Choisissez un champ sur le document ou ajoutez-en un.</p>
+              </div>
+            }
+            <button type="button" class="reset-fields" (click)="resetFields()">
+              <oc-icon name="refresh" />Réinitialiser les positions
+            </button>
+          </aside>
+        </section>
+      }
+
+      @case (5) {
+        <section class="test-step" aria-labelledby="test-title">
+          <div class="test-step__heading">
+            <span class="demo-data-badge"><oc-icon name="info" />Données de démonstration</span>
+            <h3 id="test-title">Vérifiez le rendu avant d’enregistrer</h3>
+            <p>Contrôlez que les données tiennent dans les zones prévues sur votre document.</p>
+          </div>
+          <div class="test-step__canvas">
+            <app-document-preview [fields]="fields()" [sampleData]="true" />
+          </div>
+          <div class="physical-workflow-note">
+            <oc-icon name="info" intent="information" />
+            <p>
+              <strong>Après génération</strong>OmniCare remplit votre document. Vous l’imprimez,
+              puis vous le signez et apposez votre cachet.
+            </p>
+          </div>
+          @if (saveError(); as error) {
+            <p class="save-error" role="alert"><oc-icon name="warning" />{{ error }}</p>
+          }
+        </section>
+      }
+    }
+  </div>
+
+  <div ocSheetFooter class="wizard-footer">
+    <span class="wizard-footer__context"
+      >{{ stepLabels[step() - 1] }} · étape {{ step() }} sur 5</span
+    >
+    @if (step() > 1) {
+      <oc-button variant="secondary" (click)="goBack()">
+        {{ step() === 5 ? 'Retour aux champs' : 'Retour' }}
+      </oc-button>
+    }
+    @if (step() < 5) {
+      <oc-button
+        variant="primary"
+        [disabled]="!canContinue()"
+        trailingIcon="right"
+        (click)="continue()"
+        >Continuer</oc-button
+      >
+    } @else {
+      <oc-button variant="primary" leadingIcon="save" [loading]="saving()" (click)="saveTemplate()"
+        >Enregistrer le modèle</oc-button
+      >
+    }
+  </div>
+</oc-sheet>

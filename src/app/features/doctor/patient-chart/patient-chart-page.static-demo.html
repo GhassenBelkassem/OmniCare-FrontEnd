@@ -1,0 +1,304 @@
+<section class="patient-detail" aria-describedby="patient-detail-demo-note">
+  <p id="patient-detail-demo-note" class="oc-sr-only">{{ demoNotice }}</p>
+
+  @if (patient(); as selectedPatient) {
+    <nav class="patient-breadcrumb" aria-label="Fil d’Ariane">
+      <a routerLink="/doctor/patients">
+        <oc-icon name="chevron-left" />
+        Mes patients
+      </a>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page">{{ fullName(selectedPatient) }}</span>
+    </nav>
+
+    <header class="patient-heading">
+      <span class="demo-patient-avatar demo-patient-avatar--large" aria-hidden="true">
+        {{ initials(selectedPatient) }}
+      </span>
+      <div class="patient-heading__copy">
+        <h1>{{ fullName(selectedPatient) }}</h1>
+      </div>
+      <div class="patient-heading__actions">
+        <a
+          class="primary-link"
+          routerLink="/doctor/calendar"
+          [queryParams]="{ patientId: selectedPatient.id }"
+        >
+          <oc-icon name="calendar" />
+          Planifier un rendez-vous
+        </a>
+        <oc-button variant="secondary" leadingIcon="file-text" (click)="setTab('documents')">
+          Documents protégés
+        </oc-button>
+      </div>
+      <div class="patient-meta" aria-label="Informations administratives principales">
+        <span
+          ><oc-icon name="calendar" />{{ age(selectedPatient) }} ans (né le
+          {{ formatShortDate(selectedPatient.dateOfBirth) }})</span
+        >
+        <span><oc-icon name="staff" />{{ sexLabel(selectedPatient) }}</span>
+        <span><oc-icon name="requests" />ID : {{ selectedPatient.insuranceNumber }}</span>
+        <span><oc-icon name="building" />Source : {{ sourceLabel(selectedPatient.source) }}</span>
+        <span
+          class="patient-meta__linkage patient-meta__linkage--{{
+            selectedPatient.linkage.toLocaleLowerCase()
+          }}"
+        >
+          <oc-icon name="coverage" />{{ linkageLabel(selectedPatient.linkage) }}
+        </span>
+      </div>
+    </header>
+
+    <oc-tabs
+      class="patient-tabs"
+      label="Sections du dossier patient"
+      [tabs]="tabs"
+      [selected]="activeTab()"
+      (selectedChange)="setTab($event)"
+    />
+
+    <div class="patient-detail__layout">
+      <aside class="patient-detail__sidebar" aria-label="Résumé administratif du patient">
+        <section class="detail-card" aria-labelledby="patient-information-title">
+          <header class="detail-card__header">
+            <span><oc-icon name="staff" /></span>
+            <h2 id="patient-information-title">Informations patient</h2>
+          </header>
+          <dl class="patient-information">
+            <div>
+              <dt><oc-icon name="calendar" />Date de naissance</dt>
+              <dd>
+                {{ formatShortDate(selectedPatient.dateOfBirth) }} ({{ age(selectedPatient) }} ans)
+              </dd>
+            </div>
+            <div>
+              <dt><oc-icon name="staff" />Genre</dt>
+              <dd>{{ sexLabel(selectedPatient) }}</dd>
+            </div>
+            <div>
+              <dt><oc-icon name="phone" />Téléphone</dt>
+              <dd>
+                <a [href]="'tel:' + selectedPatient.phone">{{ selectedPatient.phone }}</a>
+              </dd>
+            </div>
+            <div>
+              <dt><oc-icon name="mail" />Email</dt>
+              <dd>
+                @if (selectedPatient.email) {
+                  <a [href]="'mailto:' + selectedPatient.email">{{ selectedPatient.email }}</a>
+                } @else {
+                  Non renseigné
+                }
+              </dd>
+            </div>
+            <div>
+              <dt><oc-icon name="location" />Adresse</dt>
+              <dd>{{ selectedPatient.address ?? 'Non renseignée' }}</dd>
+            </div>
+            <div>
+              <dt><oc-icon name="coverage" />Liaison OmniCare</dt>
+              <dd>{{ linkageLabel(selectedPatient.linkage) }}</dd>
+            </div>
+            <div>
+              <dt><oc-icon name="requests" />N° assurance</dt>
+              <dd>{{ selectedPatient.insuranceNumber }}</dd>
+            </div>
+            <div>
+              <dt><oc-icon name="building" />Source</dt>
+              <dd>{{ sourceLabel(selectedPatient.source) }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="detail-card" aria-labelledby="recent-appointments-title">
+          <header class="detail-card__header">
+            <span><oc-icon name="calendar" /></span>
+            <h2 id="recent-appointments-title">Derniers rendez-vous</h2>
+            <button type="button" class="detail-card__link" (click)="setTab('consultations')">
+              Voir tous <oc-icon name="chevron-right" />
+            </button>
+          </header>
+          <ol class="recent-appointments">
+            @for (appointment of appointments().slice(0, 3); track appointment.id) {
+              <li>
+                <time class="appointment-date" [attr.datetime]="appointment.date">
+                  <strong>{{ formatDay(appointment.date) }}</strong>
+                  <span>{{ formatMonth(appointment.date) }}</span>
+                </time>
+                <span class="recent-appointments__copy">
+                  <strong>Consultation au cabinet</strong>
+                  <small>Dr Ben Salah · Médecine générale</small>
+                </span>
+                <span
+                  class="appointment-status appointment-status--{{
+                    appointment.status === 'Terminé' ? 'completed' : 'scheduled'
+                  }}"
+                >
+                  {{ appointment.status }}
+                </span>
+              </li>
+            } @empty {
+              <li class="recent-appointments__empty">Aucun rendez-vous enregistré.</li>
+            }
+          </ol>
+        </section>
+      </aside>
+
+      <main class="patient-detail__main" role="tabpanel" [attr.aria-label]="activeTab()">
+        @switch (activeTab()) {
+          @case ('overview') {
+            <section class="protected-record" aria-labelledby="protected-record-title">
+              <div class="protected-illustration" aria-hidden="true">
+                <span class="protected-orbit protected-orbit--one"></span>
+                <span class="protected-orbit protected-orbit--two"></span>
+                <span class="protected-document"><oc-icon name="requests" /></span>
+                <span class="protected-shield"><oc-icon name="coverage" /></span>
+                <span class="protected-lock"><i></i></span>
+              </div>
+              <div class="protected-record__heading">
+                <h2 id="protected-record-title">Dossier médical protégé</h2>
+                <p>
+                  Le médecin ne peut pas consulter directement les données médicales de ce patient
+                  sans accès autorisé.
+                </p>
+              </div>
+
+              <div class="access-rules">
+                <article>
+                  <span><oc-icon name="staff" /></span>
+                  <div>
+                    <h3>Accès via autorisation patient</h3>
+                    <p>Le patient peut vous accorder un accès temporaire à son dossier.</p>
+                  </div>
+                </article>
+                <article>
+                  <span><oc-icon name="coverage" /></span>
+                  <div>
+                    <h3>Accès pendant une consultation autorisée</h3>
+                    <p>Les données sont accessibles uniquement dans le cadre d’une consultation.</p>
+                  </div>
+                </article>
+                <article>
+                  <span><oc-icon name="handover" /></span>
+                  <div>
+                    <h3>Accès via QR / partage sécurisé</h3>
+                    <p>Le patient peut partager un accès via un QR code sécurisé.</p>
+                  </div>
+                </article>
+              </div>
+
+              <footer class="protected-record__footer">
+                <oc-icon name="info" />
+                <span
+                  >Accès sécurisé via OmniCare · Conformément aux règles du MRS et à la protection
+                  des données de santé.</span
+                >
+              </footer>
+            </section>
+          }
+
+          @case ('consultations') {
+            <section class="tab-panel" aria-labelledby="consultation-history-title">
+              <header class="tab-panel__header">
+                <span><oc-icon name="calendar" /></span>
+                <div>
+                  <h2 id="consultation-history-title">Historique des rendez-vous</h2>
+                  <p>
+                    Seules les dates administratives sont affichées. Aucun contenu clinique n’est
+                    chargé.
+                  </p>
+                </div>
+              </header>
+              <ol class="appointment-history">
+                @for (appointment of appointments(); track appointment.id) {
+                  <li>
+                    <span class="appointment-history__date">
+                      <strong>{{ formatDate(appointment.date) }}</strong>
+                      <small>{{ formatTime(appointment.date) }}</small>
+                    </span>
+                    <span class="appointment-history__copy">
+                      <strong>Consultation au cabinet</strong>
+                      <small>Contenu clinique protégé</small>
+                    </span>
+                    <span
+                      class="appointment-status appointment-status--{{
+                        appointment.status === 'Terminé' ? 'completed' : 'scheduled'
+                      }}"
+                    >
+                      {{ appointment.status }}
+                    </span>
+                  </li>
+                } @empty {
+                  <li class="appointment-history__empty">Aucun rendez-vous enregistré.</li>
+                }
+              </ol>
+            </section>
+          }
+
+          @case ('documents') {
+            <section
+              class="protected-record protected-record--compact"
+              aria-labelledby="protected-documents-title"
+            >
+              <div
+                class="protected-illustration protected-illustration--compact"
+                aria-hidden="true"
+              >
+                <span class="protected-document"><oc-icon name="requests" /></span>
+                <span class="protected-lock"><i></i></span>
+              </div>
+              <div class="protected-record__heading">
+                <p class="protected-eyebrow">Documents non chargés</p>
+                <h2 id="protected-documents-title">Documents cliniques protégés</h2>
+                <p>
+                  Aucun titre, aperçu ou fichier médical n’est exposé tant qu’une autorisation
+                  conforme n’a pas été établie.
+                </p>
+              </div>
+              <footer class="protected-record__footer">
+                <oc-icon name="coverage" />
+                <span
+                  >La liaison administrative OmniCare ne constitue pas une autorisation d’accès
+                  clinique.</span
+                >
+              </footer>
+            </section>
+          }
+
+          @case ('timeline') {
+            <section class="tab-panel" aria-labelledby="administrative-timeline-title">
+              <header class="tab-panel__header">
+                <span><oc-icon name="handover" /></span>
+                <div>
+                  <h2 id="administrative-timeline-title">Timeline administrative</h2>
+                  <p>Événements de gestion uniquement. Les événements médicaux restent protégés.</p>
+                </div>
+              </header>
+              <ol class="administrative-timeline">
+                @for (event of timeline(); track event.id) {
+                  <li>
+                    <span class="administrative-timeline__icon"
+                      ><oc-icon [name]="event.icon"
+                    /></span>
+                    <div>
+                      <time [attr.datetime]="event.date">{{ formatDate(event.date) }}</time>
+                      <h3>{{ event.title }}</h3>
+                      <p>{{ event.description }}</p>
+                    </div>
+                  </li>
+                }
+              </ol>
+            </section>
+          }
+        }
+      </main>
+    </div>
+  } @else {
+    <section class="patient-not-found">
+      <span><oc-icon name="staff" /></span>
+      <h1>Patient introuvable</h1>
+      <p>Aucune fiche de démonstration ne correspond à l’identifiant demandé.</p>
+      <a routerLink="/doctor/patients">Retour à la liste des patients</a>
+    </section>
+  }
+</section>

@@ -6,6 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "build:ci": "ng build --configuration production",
+    "build:static-demo": "ng build --configuration static-demo",
+    "start:static-demo": "ng serve --configuration static-demo",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:ci": "ng test --watch=false",

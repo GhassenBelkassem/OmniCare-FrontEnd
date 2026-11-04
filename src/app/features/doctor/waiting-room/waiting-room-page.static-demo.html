@@ -1,0 +1,491 @@
+<section
+  class="waiting-room-demo"
+  [class.waiting-room-demo--panel-open]="selectedPatient() !== null"
+  aria-describedby="waiting-room-demo-notice"
+>
+  <p id="waiting-room-demo-notice" class="oc-sr-only">
+    Données administratives fictives. Cette file est locale à la démonstration statique et ne
+    présente aucun dossier médical.
+  </p>
+
+  <div class="waiting-room-demo__workspace">
+    <div class="waiting-room-demo__main">
+      <header class="waiting-room-heading">
+        <div>
+          <h1>Salle d'attente</h1>
+          <p>{{ demoDate }} <span aria-hidden="true">·</span> Cabinet principal</p>
+        </div>
+        <div class="waiting-room-heading__refresh" role="status">
+          <span><i aria-hidden="true"></i> Démo locale</span>
+          <small>Horloge simulée · {{ store.clockTime() }} · sauvegardée localement</small>
+        </div>
+      </header>
+
+      <section class="queue-command-bar" aria-label="Gestion de la file d’attente">
+        <div class="queue-command-bar__suggestion">
+          <span class="queue-command-bar__icon" aria-hidden="true"><nz-icon nzType="notification" /></span>
+          <div>
+            <small>À appeler ensuite</small>
+            @if (store.suggestedPatient(); as suggested) {
+              <strong>{{ suggested.name }}</strong>
+              <span>
+                {{ suggested.appointmentTime ?? 'Sans rendez-vous' }} · arrivée
+                {{ suggested.checkedInAt }} · file #1
+              </span>
+            } @else {
+              <strong>Aucun patient éligible</strong>
+              <span>Seuls les patients enregistrés comme présents sont proposés.</span>
+            }
+          </div>
+        </div>
+        <div class="queue-command-bar__actions">
+          <oc-button variant="secondary" size="small" leadingIcon="user-add" (click)="openWalkIn()">
+            Patient sans rendez-vous
+          </oc-button>
+          <oc-button variant="quiet" size="small" leadingIcon="reload" (click)="openConfirmation('reset')">
+            Réinitialiser
+          </oc-button>
+          <button
+            type="button"
+            class="queue-command-bar__primary"
+            [disabled]="store.suggestedPatient() === null"
+            (click)="callNext()"
+          >
+            <nz-icon nzType="notification" aria-hidden="true" /> Appeler le suivant
+          </button>
+        </div>
+      </section>
+
+      @if (feedback(); as message) {
+        <div
+          class="waiting-room-feedback"
+          [class.waiting-room-feedback--error]="message.tone === 'error'"
+          [attr.role]="message.tone === 'error' ? 'alert' : 'status'"
+        >
+          <nz-icon [nzType]="message.tone === 'error' ? 'exclamation-circle' : 'check-circle'" aria-hidden="true" />
+          <span>{{ message.text }}</span>
+          <button type="button" aria-label="Masquer le message" (click)="feedback.set(null)">
+            <nz-icon nzType="close" aria-hidden="true" />
+          </button>
+        </div>
+      }
+
+      <section class="waiting-room-metrics" aria-label="Résumé de la salle d’attente">
+        <article>
+          <span class="waiting-room-metrics__icon" aria-hidden="true"><nz-icon nzType="team" /></span>
+          <p>En attente</p><strong>{{ waitingCount() }}</strong>
+        </article>
+        <article>
+          <span class="waiting-room-metrics__icon" aria-hidden="true"><nz-icon nzType="clock-circle" /></span>
+          <p>Attente moyenne</p><strong>{{ averageWait() }} min</strong>
+        </article>
+        <article>
+          <span class="waiting-room-metrics__icon waiting-room-metrics__icon--information" aria-hidden="true">
+            <nz-icon nzType="medicine-box" />
+          </span>
+          <p>En consultation</p><strong>{{ consultationCount() }}</strong>
+        </article>
+        <article>
+          <span class="waiting-room-metrics__icon waiting-room-metrics__icon--neutral" aria-hidden="true">
+            <nz-icon nzType="calendar" />
+          </span>
+          <p>Non présenté</p><strong>{{ noShowCount() }}</strong>
+        </article>
+      </section>
+
+      <nav class="waiting-room-tabs" aria-label="Statuts de la file">
+        @for (tab of queueTabs(); track tab.id) {
+          <button
+            type="button"
+            [class.waiting-room-tabs__item--active]="activeTab() === tab.id"
+            [attr.aria-pressed]="activeTab() === tab.id"
+            (click)="selectTab(tab.id)"
+          >
+            {{ tab.label }} ({{ tab.count }})
+          </button>
+        }
+      </nav>
+
+      <section class="waiting-room-filters" aria-label="Filtres de la salle d’attente">
+        <label class="waiting-room-search">
+          <span class="oc-sr-only">Rechercher un patient dans la salle d’attente</span>
+          <nz-icon nzType="search" aria-hidden="true" />
+          <input
+            type="search"
+            name="waiting-room-search"
+            autocomplete="off"
+            placeholder="Rechercher un patient…"
+            [value]="searchTerm()"
+            (input)="onSearch($event)"
+          />
+        </label>
+        <label class="waiting-room-select">
+          <span class="oc-sr-only">Filtrer par cabinet</span>
+          <select name="waiting-room-cabinet" [value]="cabinetFilter()" (change)="onCabinetChange($event)">
+            <option value="all">Cabinet : Tous</option>
+            <option value="Cabinet principal">Cabinet principal</option>
+            <option value="Cabinet annexe">Cabinet annexe</option>
+          </select>
+        </label>
+        <label class="waiting-room-select">
+          <span class="oc-sr-only">Filtrer par type</span>
+          <select name="waiting-room-type" [value]="typeFilter()" (change)="onTypeChange($event)">
+            <option value="all">Type : Tous</option>
+            <option value="Suivi">Suivi</option>
+            <option value="Consultation">Consultation</option>
+            <option value="Cabinet">Cabinet</option>
+            <option value="Urgence">Urgence</option>
+            <option value="Sans rendez-vous">Sans rendez-vous</option>
+          </select>
+        </label>
+        <label class="waiting-room-select">
+          <span class="oc-sr-only">Filtrer par statut</span>
+          <select name="waiting-room-status" [value]="statusFilter()" (change)="onStatusChange($event)">
+            <option value="all">Statut : Tous</option>
+            <option value="EXPECTED">Prévu</option>
+            <option value="WAITING">En attente</option>
+            <option value="CALLED">Appelé</option>
+            <option value="MISSED_CALL">Absent à l’appel</option>
+            <option value="IN_CONSULTATION">En consultation</option>
+            <option value="COMPLETED">Terminé</option>
+            <option value="LEFT">Parti</option>
+            <option value="NO_SHOW">Non présenté</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="waiting-table-card" aria-label="Patients de la salle d’attente">
+        @if (sortedPatients().length === 0) {
+          <oc-empty-state
+            icon="staff"
+            title="Aucun patient trouvé"
+            description="Modifiez la recherche ou réinitialisez les filtres pour afficher la file fictive."
+          >
+            <oc-button variant="secondary" (click)="resetFilters()">Réinitialiser les filtres</oc-button>
+          </oc-empty-state>
+        } @else {
+          <div class="waiting-table-card__scroll" tabindex="0" aria-label="Tableau défilant">
+            <table class="waiting-table">
+              <caption class="oc-sr-only">
+                File administrative fictive. Aucun dossier médical n’est affiché.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" [attr.aria-sort]="ariaSort('patient')">
+                    <button type="button" (click)="toggleSort('patient')">Patient <nz-icon nzType="swap" aria-hidden="true" /></button>
+                  </th>
+                  <th scope="col" [attr.aria-sort]="ariaSort('appointmentTime')">
+                    <button type="button" (click)="toggleSort('appointmentTime')">Rendez-vous <nz-icon nzType="swap" aria-hidden="true" /></button>
+                  </th>
+                  <th scope="col" [attr.aria-sort]="ariaSort('checkedInAt')">
+                    <button type="button" (click)="toggleSort('checkedInAt')">Arrivée <nz-icon nzType="swap" aria-hidden="true" /></button>
+                  </th>
+                  <th scope="col" [attr.aria-sort]="ariaSort('wait')">
+                    <button type="button" (click)="toggleSort('wait')">Attente <nz-icon nzType="swap" aria-hidden="true" /></button>
+                  </th>
+                  <th scope="col" [attr.aria-sort]="ariaSort('appointmentType')">
+                    <button type="button" (click)="toggleSort('appointmentType')">Type <nz-icon nzType="swap" aria-hidden="true" /></button>
+                  </th>
+                  <th scope="col" [attr.aria-sort]="ariaSort('status')">
+                    <button type="button" (click)="toggleSort('status')">Statut <nz-icon nzType="swap" aria-hidden="true" /></button>
+                  </th>
+                  <th class="waiting-table__actions" scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (patient of visiblePatients(); track patient.id) {
+                  <tr
+                    tabindex="0"
+                    [class.waiting-table__row--selected]="selectedPatientId() === patient.id"
+                    [attr.aria-selected]="selectedPatientId() === patient.id"
+                    (click)="openPatient(patient, $event)"
+                    (keydown.enter)="openPatient(patient, $event)"
+                    (keydown.space)="$event.preventDefault(); openPatient(patient, $event)"
+                  >
+                    <td>
+                      <div class="waiting-table__patient">
+                        <span class="waiting-room-avatar" aria-hidden="true">{{ initials(patient.name) }}</span>
+                        <span>
+                          <strong>{{ patient.name }}</strong>
+                          <small>
+                            {{ patient.age ? patient.age + ' ans · ' : '' }}{{ patient.gender }}
+                            @if (patient.walkIn) { <em>Sans RDV</em> }
+                          </small>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="waiting-table__numeric">{{ patient.appointmentTime ?? 'Sans RDV' }}</td>
+                    <td class="waiting-table__numeric">{{ patient.checkedInAt ?? '—' }}</td>
+                    <td class="waiting-table__numeric">
+                      @if (waitMinutes(patient) !== null) {
+                        <span class="waiting-table__wait" [class]="waitClass(patient)">{{ waitMinutes(patient) }} min</span>
+                        @if (queuePosition(patient); as position) {
+                          <small class="waiting-table__position">File #{{ position }}</small>
+                        }
+                      } @else { — }
+                    </td>
+                    <td>{{ patient.appointmentType }}</td>
+                    <td><oc-status-badge [status]="statusTone(patient)" [customLabel]="statusLabel(patient)" /></td>
+                    <td class="waiting-table__actions">
+                      <oc-button
+                        variant="quiet"
+                        size="small"
+                        leadingIcon="more"
+                        [iconOnly]="true"
+                        [ariaLabel]="'Ouvrir le détail de ' + patient.name"
+                        (click)="openPatientFromAction($event, patient)"
+                      />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <footer class="waiting-table-card__footer">
+            <span>Afficher {{ resultStart() }}–{{ resultEnd() }} sur {{ sortedPatients().length }} patient(s)</span>
+            <nav aria-label="Pagination de la salle d’attente">
+              <button type="button" aria-label="Page précédente" [disabled]="page() === 1" (click)="setPage(page() - 1)">
+                <oc-icon name="chevron-left" />
+              </button>
+              @for (pageNumber of pageNumbers(); track pageNumber) {
+                <button
+                  type="button"
+                  [class.waiting-table-card__page--active]="pageNumber === page()"
+                  [attr.aria-current]="pageNumber === page() ? 'page' : null"
+                  [attr.aria-label]="'Page ' + pageNumber"
+                  (click)="setPage(pageNumber)"
+                >{{ pageNumber }}</button>
+              }
+              <button type="button" aria-label="Page suivante" [disabled]="page() === pageCount()" (click)="setPage(page() + 1)">
+                <oc-icon name="chevron-right" />
+              </button>
+            </nav>
+          </footer>
+        }
+      </section>
+    </div>
+
+    @if (selectedPatient(); as patient) {
+      <button type="button" class="waiting-room-demo__backdrop" aria-label="Fermer le détail du patient" (click)="closePatient()"></button>
+      <aside
+        class="waiting-patient-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="waiting-patient-title"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+      >
+        <header class="waiting-patient-panel__identity">
+          <span class="waiting-room-avatar waiting-room-avatar--large" aria-hidden="true">{{ initials(patient.name) }}</span>
+          <div>
+            <h2 id="waiting-patient-title" tabindex="-1" cdkFocusInitial>{{ patient.name }}</h2>
+            <p>{{ patient.age ? patient.age + ' ans · ' : '' }}{{ patient.birthDate }} · {{ patient.gender }}</p>
+            <span>N° assurance : {{ patient.insuranceNumber }}</span>
+          </div>
+          <oc-button variant="quiet" size="small" leadingIcon="close" [iconOnly]="true" ariaLabel="Fermer le détail du patient" (click)="closePatient()" />
+          <div class="waiting-patient-panel__state">
+            <oc-status-badge [status]="statusTone(patient)" [customLabel]="statusLabel(patient)" />
+            <span>
+              <nz-icon nzType="clock-circle" aria-hidden="true" />
+              {{ patient.checkedInAt ? 'Arrivée à ' + patient.checkedInAt : 'Pas encore arrivé' }}
+            </span>
+          </div>
+        </header>
+
+        <oc-tabs label="Sections du patient en salle d’attente" [tabs]="drawerTabs" [selected]="drawerTab()" (selectedChange)="setDrawerTab($event)" />
+
+        <div class="waiting-patient-panel__body" tabindex="0" aria-label="Détails administratifs du patient">
+          @switch (drawerTab()) {
+            @case ('details') {
+              @if (queuePosition(patient); as position) {
+                <div class="waiting-patient-position">
+                  <span>Position actuelle</span><strong>#{{ position }} dans la file</strong>
+                  <small>Rendez-vous classés par heure prévue, puis arrivée. Sans RDV ensuite.</small>
+                </div>
+              }
+              <section class="waiting-patient-card" aria-labelledby="appointment-today-title">
+                <h3 id="appointment-today-title"><nz-icon nzType="calendar" aria-hidden="true" /> Rendez-vous d'aujourd'hui</h3>
+                <dl>
+                  <div><dt>Heure</dt><dd>{{ patient.appointmentTime ?? 'Sans rendez-vous' }}</dd></div>
+                  <div><dt>Type</dt><dd>{{ patient.appointmentType }}</dd></div>
+                  <div><dt>Cabinet</dt><dd>{{ patient.cabinet }}</dd></div>
+                  <div><dt>Statut</dt><dd><oc-status-badge [status]="statusTone(patient)" [customLabel]="statusLabel(patient)" /></dd></div>
+                </dl>
+              </section>
+              <section class="waiting-patient-card" aria-labelledby="waiting-time-title">
+                <h3 id="waiting-time-title"><nz-icon nzType="clock-circle" aria-hidden="true" /> Temps d'attente</h3>
+                <dl>
+                  <div><dt>Arrivée</dt><dd>{{ patient.checkedInAt ?? '—' }}</dd></div>
+                  <div>
+                    <dt>Attente mesurée</dt>
+                    <dd [class.waiting-patient-card__emphasis]="waitMinutes(patient) !== null">
+                      {{ waitMinutes(patient) === null ? '—' : waitMinutes(patient) + ' min' }}
+                    </dd>
+                  </div>
+                  <div><dt>Attente moyenne aujourd'hui</dt><dd>{{ averageWait() }} min</dd></div>
+                </dl>
+              </section>
+              <section class="waiting-patient-card" aria-labelledby="administrative-title">
+                <h3 id="administrative-title"><nz-icon nzType="user" aria-hidden="true" /> Informations administratives</h3>
+                <dl>
+                  <div><dt>Téléphone</dt><dd>{{ patient.phone }}</dd></div>
+                  <div><dt>Email</dt><dd class="waiting-patient-card__break">{{ patient.email }}</dd></div>
+                  <div><dt>Adresse</dt><dd>{{ patient.address }}</dd></div>
+                </dl>
+              </section>
+            }
+            @case ('history') {
+              <section class="waiting-patient-card waiting-patient-history">
+                <h3><nz-icon nzType="history" aria-hidden="true" /> Historique administratif</h3>
+                @if (patient.events.length) {
+                  <ol>
+                    @for (event of historyEvents(patient); track event.id) {
+                      <li><time>{{ event.at }}</time><span>{{ event.label }}</span></li>
+                    }
+                  </ol>
+                } @else {
+                  <p>Aucun changement enregistré dans cette session de démonstration.</p>
+                }
+              </section>
+            }
+            @case ('documents') {
+              <section class="waiting-patient-card waiting-patient-card--empty">
+                <nz-icon nzType="file-text" aria-hidden="true" />
+                <h3>Aucun document administratif</h3>
+                <p>Les dossiers médicaux protégés ne sont jamais affichés dans la salle d’attente.</p>
+              </section>
+            }
+          }
+        </div>
+
+        <footer class="waiting-patient-panel__footer">
+          @if (feedback(); as message) {
+            <div
+              class="waiting-patient-panel__message"
+              [class.waiting-patient-panel__message--error]="message.tone === 'error'"
+              [attr.role]="message.tone === 'error' ? 'alert' : 'status'"
+            >{{ message.text }}</div>
+          }
+
+          @if (patient.appointmentStatus === 'NO_SHOW') {
+            <p class="waiting-patient-panel__closed-state">Non-présentation confirmée manuellement · aucune action automatique</p>
+          } @else {
+            @switch (patient.queueStatus) {
+              @case ('EXPECTED') {
+                <button type="button" class="waiting-patient-panel__primary" (click)="markArrived(patient)">
+                  <nz-icon nzType="check-circle" aria-hidden="true" /> Marquer arrivé
+                </button>
+                <oc-button variant="secondary" [fullWidth]="true" (click)="openConfirmation('no_show', patient)">Signaler non présenté</oc-button>
+              }
+              @case ('WAITING') {
+                <button type="button" class="waiting-patient-panel__primary" (click)="callPatient(patient)">
+                  <nz-icon nzType="notification" aria-hidden="true" /> Appeler ce patient
+                </button>
+                <oc-button variant="secondary" [fullWidth]="true" (click)="openConfirmation('left', patient)">Patient parti</oc-button>
+              }
+              @case ('CALLED') {
+                <button
+                  type="button"
+                  class="waiting-patient-panel__primary"
+                  [disabled]="hasConsultationConflict(patient)"
+                  (click)="startConsultation(patient)"
+                >
+                  <nz-icon nzType="medicine-box" aria-hidden="true" /> Démarrer la consultation
+                </button>
+                @if (hasConsultationConflict(patient) && store.activeConsultation(); as active) {
+                  <small class="waiting-patient-panel__constraint">Consultation déjà active avec {{ active.name }}.</small>
+                }
+                <div class="waiting-patient-panel__secondary-actions">
+                  <oc-button variant="secondary" [fullWidth]="true" (click)="markMissedCall(patient)">Absent à l'appel</oc-button>
+                  <oc-button variant="secondary" [fullWidth]="true" (click)="requeue(patient)">Remettre en attente</oc-button>
+                </div>
+              }
+              @case ('MISSED_CALL') {
+                <button type="button" class="waiting-patient-panel__primary" (click)="callPatient(patient)">
+                  <nz-icon nzType="notification" aria-hidden="true" /> Appeler à nouveau
+                </button>
+                <div class="waiting-patient-panel__secondary-actions">
+                  <oc-button variant="secondary" [fullWidth]="true" (click)="requeue(patient)">Remettre en attente</oc-button>
+                  <oc-button variant="secondary" [fullWidth]="true" (click)="openConfirmation('left', patient)">Patient parti</oc-button>
+                </div>
+              }
+              @case ('IN_CONSULTATION') {
+                <button type="button" class="waiting-patient-panel__primary" (click)="continueConsultation(patient)">
+                  <nz-icon nzType="medicine-box" aria-hidden="true" /> Continuer la consultation
+                </button>
+                <oc-button variant="secondary" [fullWidth]="true" (click)="openConfirmation('complete', patient)">Terminer</oc-button>
+              }
+              @case ('COMPLETED') {
+                <p class="waiting-patient-panel__closed-state">Consultation fictive terminée à {{ patient.completedAt }}</p>
+              }
+              @case ('LEFT') {
+                <p class="waiting-patient-panel__closed-state">Départ enregistré à {{ patient.leftAt }}</p>
+              }
+            }
+          }
+          <small>Données fictives · aucune action serveur ou clinique</small>
+        </footer>
+      </aside>
+    }
+  </div>
+</section>
+
+@if (confirmation(); as request) {
+  <oc-dialog
+    [open]="true"
+    [title]="request.title"
+    [description]="request.description"
+    [hasFooter]="true"
+    initialFocus="[data-confirm-action]"
+    (dismissed)="closeConfirmation()"
+  >
+    <p class="waiting-room-dialog-note">Cette action modifie uniquement les données fictives enregistrées dans ce navigateur.</p>
+    <oc-button ocDialogFooter variant="secondary" (click)="closeConfirmation()">Annuler</oc-button>
+    <oc-button ocDialogFooter variant="primary" data-confirm-action (click)="confirmAction()">{{ request.confirmLabel }}</oc-button>
+  </oc-dialog>
+}
+
+<oc-dialog
+  [open]="walkInOpen()"
+  title="Ajouter un patient sans rendez-vous"
+  description="Enregistrez une arrivée fictive sans créer de rendez-vous confirmé."
+  [hasFooter]="true"
+  size="wide"
+  (dismissed)="closeWalkIn()"
+>
+  <form id="walk-in-form" class="walk-in-form" [formGroup]="walkInForm" (ngSubmit)="addWalkIn()">
+    <fieldset>
+      <legend>Source du patient</legend>
+      <label>
+        <input type="radio" name="walk-in-mode" formControlName="mode" value="existing" (change)="setWalkInMode('existing')" />
+        Patient fictif existant
+      </label>
+      <label>
+        <input type="radio" name="walk-in-mode" formControlName="mode" value="temporary" (change)="setWalkInMode('temporary')" />
+        Entrée temporaire de démonstration
+      </label>
+    </fieldset>
+    @if (walkInForm.controls.mode.value === 'existing') {
+      <label class="walk-in-form__field">
+        <span>Patient</span>
+        <select name="walk-in-patient" formControlName="practicePatientId">
+          @for (patient of practicePatients; track patient.id) {
+            <option [value]="patient.id">{{ patient.name }} · {{ patient.phone }}</option>
+          }
+        </select>
+      </label>
+    } @else {
+      <label class="walk-in-form__field">
+        <span>Nom complet</span>
+        <input type="text" name="walk-in-name" formControlName="name" autocomplete="off" maxlength="80" placeholder="Ex. Leïla Trabelsi" />
+      </label>
+      <label class="walk-in-form__field">
+        <span>Téléphone</span>
+        <input type="tel" name="walk-in-phone" formControlName="phone" autocomplete="off" maxlength="30" placeholder="Ex. +216 20 000 000" />
+      </label>
+    }
+    <p>Les patients sans rendez-vous passent après les patients présents ayant un rendez-vous, puis par ordre d’arrivée.</p>
+  </form>
+  <oc-button ocDialogFooter variant="secondary" (click)="closeWalkIn()">Annuler</oc-button>
+  <oc-button ocDialogFooter variant="primary" type="submit" form="walk-in-form">Ajouter à la file</oc-button>
+</oc-dialog>

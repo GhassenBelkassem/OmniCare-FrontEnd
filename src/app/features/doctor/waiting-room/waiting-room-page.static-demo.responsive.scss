@@ -1,0 +1,173 @@
+.waiting-room-dialog-note,
+.walk-in-form > p {
+  margin: 0;
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+}
+
+.walk-in-form {
+  display: grid;
+  gap: var(--oc-space-4);
+}
+
+.walk-in-form fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.walk-in-form legend {
+  width: 100%;
+  margin-block-end: var(--oc-space-2);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.walk-in-form fieldset label {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: var(--oc-space-2);
+  padding: 0 var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.walk-in-form__field {
+  display: grid;
+  gap: var(--oc-space-2);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-medium);
+}
+
+.walk-in-form__field input,
+.walk-in-form__field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+  font: inherit;
+  font-weight: var(--oc-font-weight-regular);
+}
+
+.walk-in-form__field input:focus-visible,
+.walk-in-form__field select:focus-visible,
+.walk-in-form input[type='radio']:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1240px) {
+  .waiting-room-demo--panel-open .waiting-room-demo__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .waiting-room-demo__backdrop {
+    position: fixed;
+    z-index: var(--oc-z-drawer);
+    inset: 0;
+    display: block;
+    border: 0;
+    background: var(--oc-color-surface-overlay);
+  }
+
+  .waiting-patient-panel {
+    position: fixed;
+    z-index: calc(var(--oc-z-drawer) + 1);
+    top: var(--oc-topbar-height);
+    right: 0;
+    bottom: 0;
+    width: min(400px, 100vw);
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    margin-block: 0;
+    border-block: 0;
+    border-inline-end: 0;
+    border-radius: var(--oc-radius-lg) 0 0 var(--oc-radius-lg);
+    box-shadow: var(--oc-shadow-overlay);
+  }
+}
+
+@media (max-width: 900px) {
+  .queue-command-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .queue-command-bar__actions {
+    justify-content: flex-start;
+  }
+
+  .waiting-room-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .waiting-room-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .waiting-room-search {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .waiting-room-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .waiting-room-heading__refresh {
+    justify-content: flex-start;
+    text-align: start;
+  }
+
+  .waiting-room-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .waiting-room-metrics article {
+    min-height: 112px;
+  }
+
+  .queue-command-bar__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .queue-command-bar__primary {
+    width: 100%;
+  }
+
+  .waiting-room-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .waiting-room-search {
+    grid-column: auto;
+  }
+
+  .waiting-table-card__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .waiting-patient-panel {
+    top: 0;
+    width: 100vw;
+    border-radius: 0;
+  }
+
+  .waiting-patient-panel__secondary-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

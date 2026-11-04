@@ -47,4 +47,45 @@ describe('ActiveConsultationApiService', () => {
       statusText: 'No Content',
     });
   });
+
+  it('starts the exact scheduled Appointment with its authoritative version and key', () => {
+    api.startScheduled('appointment-9', 7, 'stable-start-key').subscribe();
+
+    const request = http.expectOne('/api/v1/doctor/consultations/start');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.headers.get('Idempotency-Key')).toBe('stable-start-key');
+    expect(request.request.body).toEqual({
+      sourceType: 'SCHEDULED_APPOINTMENT',
+      sourceId: 'appointment-9',
+      expectedSourceVersion: 7,
+    });
+    request.flush({
+      consultationId: '11111111-1111-4111-8111-111111111111',
+      sourceType: 'SCHEDULED_APPOINTMENT',
+      sourceId: 'appointment-9',
+      status: 'IN_PROGRESS',
+      medicalAccessStatus: 'NONE',
+      version: 0,
+      startedAt: '2026-10-27T10:00:00Z',
+    });
+  });
+
+  it('uses the completed operational history endpoints', () => {
+    api.listCompleted().subscribe((value) => expect(value).toEqual([]));
+    const list = http.expectOne('/api/v1/doctor/consultations/completed');
+    expect(list.request.method).toBe('GET');
+    list.flush([]);
+
+    api.getCompleted('consultation/unsafe').subscribe();
+    const detail = http.expectOne(
+      '/api/v1/doctor/consultations/completed/consultation%2Funsafe',
+    );
+    expect(detail.request.method).toBe('GET');
+    detail.flush({
+      consultation: null,
+      historicalMedicalAccessStatus: 'NOT_AUTHORIZED',
+      artifactStatusAvailable: true,
+      artifacts: [],
+    });
+  });
 });

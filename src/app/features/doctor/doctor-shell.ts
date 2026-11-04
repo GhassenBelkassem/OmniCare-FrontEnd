@@ -13,6 +13,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { filter } from 'rxjs/operators';
 
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import { APP_MODE } from '../../core/config/app-mode';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AuthService } from '../../core/auth/auth.service';
 import {
@@ -158,6 +159,16 @@ export class DoctorShell {
             icon: 'prescription',
             route: '/doctor/prescriptions',
           },
+          ...(APP_MODE.staticDemo
+            ? [
+                {
+                  id: 'documents',
+                  label: 'Documents',
+                  icon: 'requests',
+                  route: '/doctor/documents',
+                },
+              ]
+            : []),
           {
             id: 'results',
             label: 'Résultats et suivi',
@@ -165,6 +176,19 @@ export class DoctorShell {
             route: '/doctor/results',
           },
           { id: 'requests', label: 'Demandes', icon: 'requests', route: '/doctor/requests' },
+          {
+            id: 'urgent-requests',
+            label: 'Demandes urgentes',
+            icon: 'emergency',
+            route: '/doctor/urgent-requests',
+            badge: APP_MODE.staticDemo ? 3 : undefined,
+          },
+          {
+            id: 'history',
+            label: 'Consultations terminées',
+            icon: 'history',
+            route: '/doctor/history',
+          },
         ],
       },
       {
@@ -230,13 +254,10 @@ export class DoctorShell {
     const path = url.split(/[?#]/, 1)[0];
     const segment = path.split('/').filter(Boolean)[1] ?? 'command';
     const id = segment === 'patient' ? 'patients' : segment;
-    if (
-      this.navigation().some(
-        (item) => item.id === id || item.children?.some((child) => child.id === id),
-      )
-    ) {
-      this.activeNav.set(id);
-    }
+    const matchesNavigation = this.navigation().some(
+      (item) => item.id === id || item.children?.some((child) => child.id === id),
+    );
+    this.activeNav.set(matchesNavigation ? id : '');
   }
 
   onVisibilityChange(): void {

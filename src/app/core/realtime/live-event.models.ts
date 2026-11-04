@@ -33,7 +33,7 @@ export function isNotificationInvalidation(value: unknown): value is Notificatio
 export interface ScheduledCareEvent {
   readonly eventId: string;
   readonly eventType: string;
-  readonly resourceType: 'BOOKING_REQUEST' | 'APPOINTMENT' | 'CONSULTATION';
+  readonly resourceType: 'BOOKING_REQUEST' | 'APPOINTMENT' | 'CONSULTATION' | 'CLINICAL_ORDER' | 'PRESCRIPTION' | 'ARTIFACT';
   readonly resourceId: string;
   readonly version: number;
   readonly occurredAt: string;
@@ -47,7 +47,10 @@ export function isScheduledCareEvent(value: unknown): value is ScheduledCareEven
     typeof event.eventType === 'string' &&
     (event.resourceType === 'BOOKING_REQUEST' ||
       event.resourceType === 'APPOINTMENT' ||
-      event.resourceType === 'CONSULTATION') &&
+      event.resourceType === 'CONSULTATION' ||
+      event.resourceType === 'CLINICAL_ORDER' ||
+      event.resourceType === 'PRESCRIPTION' ||
+      event.resourceType === 'ARTIFACT') &&
     typeof event.resourceId === 'string' &&
     typeof event.version === 'number' &&
     typeof event.occurredAt === 'string'

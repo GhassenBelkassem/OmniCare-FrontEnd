@@ -1,8 +1,34 @@
+import { Component, input, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 
+import { ActiveConsultationStore } from '../active-consultation.store';
+import { ConsultationFinishStore } from '../consultation-finish.store';
 import { DoctorMockService, blankDraft } from '../doctor-mock.service';
+import { ClinicalAuthoring } from './clinical-authoring';
+import { ClinicalOrders } from './clinical-orders';
 import { ConsultationPage } from './consultation-page';
+import { DoctorMedicalWorkspace } from './doctor-medical-workspace';
+import { OfficialArtifacts } from './official-artifacts';
+import { PrescriptionAuthoring } from './prescription-authoring';
+
+@Component({ selector: 'app-clinical-authoring', template: '' })
+class ClinicalAuthoringProbe { readonly consultationId = input.required<string>(); }
+
+@Component({ selector: 'app-prescription-authoring', template: '<section data-testid="prescription">Prescription</section>' })
+class PrescriptionAuthoringProbe {
+  readonly consultationId = input.required<string>();
+  readonly consultationStatus = input.required<string>();
+}
+
+@Component({ selector: 'app-clinical-orders', template: '<section data-testid="orders">Ordres cliniques</section>' })
+class ClinicalOrdersProbe { readonly consultationId = input.required<string>(); }
+
+@Component({ selector: 'app-official-artifacts', template: '<section data-testid="artifacts">Documents officiels</section>' })
+class OfficialArtifactsProbe { readonly consultationId = input.required<string>(); }
+
+@Component({ selector: 'app-doctor-medical-workspace', template: '' })
+class DoctorMedicalWorkspaceProbe { readonly consultation = input.required<unknown>(); }
 
 interface FakeParamMap {
   get(key: string): string | null;
@@ -87,6 +113,56 @@ describe('ConsultationPage', () => {
     expect(page.consultation).toBeNull();
     expect(recordSpy).not.toHaveBeenCalled();
     expect(consultationSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps prescription, order and artifact sections mounted in the canonical IN_PROGRESS workflow', async () => {
+    const consultation = {
+      consultationId: '11111111-1111-4111-8111-111111111111',
+      sourceType: 'SCHEDULED_APPOINTMENT',
+      sourceId: 'source-1',
+      status: 'IN_PROGRESS',
+      medicalAccessStatus: 'ACTIVE',
+      version: 1,
+      startedAt: '2026-10-27T10:00:00Z',
+    } as const;
+    const finish = {
+      consultation: signal(consultation),
+      submitting: signal(false),
+      failure: signal<string | null>(null),
+      attach: vi.fn(),
+      finish: vi.fn(),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: routeWith(consultation.consultationId, null) },
+        { provide: ActiveConsultationStore, useValue: { active: signal(consultation), loading: signal(false) } },
+      ],
+    });
+    TestBed.overrideComponent(ConsultationPage, {
+      remove: {
+        imports: [ClinicalAuthoring, PrescriptionAuthoring, ClinicalOrders, OfficialArtifacts, DoctorMedicalWorkspace],
+        providers: [ConsultationFinishStore],
+      },
+      add: {
+        imports: [ClinicalAuthoringProbe, PrescriptionAuthoringProbe, ClinicalOrdersProbe, OfficialArtifactsProbe, DoctorMedicalWorkspaceProbe],
+        providers: [{ provide: ConsultationFinishStore, useValue: finish }],
+      },
+    });
+    const fixture = TestBed.createComponent(ConsultationPage);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const workspace = fixture.nativeElement as HTMLElement;
+    const prescription = workspace.querySelector('[data-testid="prescription"]');
+    const orders = workspace.querySelector('[data-testid="orders"]');
+    const artifacts = workspace.querySelector('[data-testid="artifacts"]');
+    expect(prescription).not.toBeNull();
+    expect(orders).not.toBeNull();
+    expect(artifacts).not.toBeNull();
+    expect(prescription!.compareDocumentPosition(orders!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(orders!.compareDocumentPosition(artifacts!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('persists draft edits back to the mock service', () => {

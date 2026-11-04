@@ -6,7 +6,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import {
@@ -28,6 +28,8 @@ import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
 import type { DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.models';
 import { formatScheduledInstant } from '../scheduled-care/scheduled-care-time';
 import { ActiveConsultationStore } from '../active-consultation.store';
+import { UrgentCabinetClinicalStore } from '../urgent-cabinet-clinical.store';
+import type { UrgentCabinetClinicalCommitment } from '../urgent-cabinet-clinical.models';
 
 @Component({
   selector: 'app-command-center-page',
@@ -43,6 +45,7 @@ import { ActiveConsultationStore } from '../active-consultation.store';
     PatientSummaryPanel,
     BookingRequestDetailPanel,
     ScheduledAppointmentDetailPanel,
+    RouterLink,
   ],
   templateUrl: './command-center-page.html',
   styleUrl: './command-center-page.scss',
@@ -52,7 +55,8 @@ export class CommandCenterPage {
   private readonly router = inject(Router);
   private readonly api = inject(AppointmentApiService);
   readonly scheduledCare = inject(ScheduledCareFacade);
-  private readonly activeConsultation = inject(ActiveConsultationStore);
+  readonly activeConsultation = inject(ActiveConsultationStore);
+  readonly urgentCabinet = inject(UrgentCabinetClinicalStore);
 
   readonly aptPanel = viewChild.required<AppointmentDetailPanel>('aptPanel');
   readonly patientPanel = viewChild.required<PatientSummaryPanel>('patientPanel');
@@ -80,13 +84,14 @@ export class CommandCenterPage {
   readonly stats = computed(() => {
     const s = this.todayStats();
     return [
-      { value: s?.consultations ?? 0, label: "Consultations aujourd'hui", icon: 'medicine-box' },
-      { value: s?.upcoming ?? 0, label: 'A venir', icon: 'clock-circle' },
-      { value: s?.finished ?? 0, label: 'Terminees', icon: 'check-circle' },
+      { value: s?.consultations ?? 0, label: "Consultations aujourd'hui", icon: 'medicine-box', route: null },
+      { value: s?.upcoming ?? 0, label: 'A venir', icon: 'clock-circle', route: null },
+      { value: s?.finished ?? 0, label: 'Terminees', icon: 'check-circle', route: '/doctor/history' },
       {
         value: this.scheduledCare.home()?.pendingRequestCount ?? 0,
         label: 'Demandes planifiées',
         icon: 'inbox',
+        route: null,
       },
     ];
   });
@@ -98,6 +103,8 @@ export class CommandCenterPage {
   constructor() {
     this.loadData();
     this.scheduledCare.loadHome();
+    void this.activeConsultation.refresh();
+    void this.urgentCabinet.refresh();
   }
 
   openAptDetail(appointment: AppointmentDto): void {
@@ -113,12 +120,40 @@ export class CommandCenterPage {
     this.patientPanel().openWith(patientId);
   }
 
-  startConsultation(_appointmentId: string): void {
-    void this.activeConsultation.refresh().then((active) => {
-      if (active !== null) {
-        void this.router.navigate(['/doctor', 'consultation', active.consultationId]);
-      }
-    });
+  async startScheduledConsultation(appointment: DoctorScheduledCareItem): Promise<void> {
+    if (appointment.appointmentId === null || appointment.status !== 'CONFIRMED') return;
+    const outcome = await this.activeConsultation.startScheduledAppointment(
+      appointment.appointmentId,
+      appointment.version,
+    );
+    if (outcome.kind === 'STARTED' || outcome.kind === 'RECOVERED') {
+      await this.router.navigate([
+        '/doctor',
+        'consultation',
+        outcome.consultation.consultationId,
+      ]);
+    }
+  }
+
+  async startUrgentCabinetConsultation(
+    commitment: UrgentCabinetClinicalCommitment,
+  ): Promise<void> {
+    if (!commitment.clinicalStartReady ||
+        !commitment.allowedActions.includes('START_CONSULTATION')) return;
+    const outcome = await this.activeConsultation.startUrgentCabinet(
+      commitment.commitmentId,
+      commitment.revision,
+    );
+    await this.urgentCabinet.refresh();
+    if (outcome.kind === 'STARTED' || outcome.kind === 'RECOVERED') {
+      await this.router.navigate([
+        '/doctor', 'consultation', outcome.consultation.consultationId,
+      ]);
+    }
+  }
+
+  continueConsultation(consultationId: string): void {
+    void this.router.navigate(['/doctor', 'consultation', consultationId]);
   }
 
   appointmentStatusLabel(status: AppointmentDto['status']): string {

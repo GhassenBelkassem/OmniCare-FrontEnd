@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { OcButton, OcAvatar, OcPageHeader } from '../../../shared/ui';
@@ -16,6 +16,12 @@ import { CloseSummary } from './close-summary';
 import { MedicalRecordView } from './medical-record-view';
 import { ActiveConsultationStore } from '../active-consultation.store';
 import { DoctorMedicalWorkspace } from './doctor-medical-workspace';
+import { ClinicalAuthoring } from './clinical-authoring';
+import { ClinicalOrders } from './clinical-orders';
+import { PrescriptionAuthoring } from './prescription-authoring';
+import { OfficialArtifacts } from './official-artifacts';
+import { ConsultationFinishStore } from '../consultation-finish.store';
+import { UrgentCabinetClinicalStore } from '../urgent-cabinet-clinical.store';
 
 const EMPTY_DRAFT: ConsultationDraft = {
   diagnosis: '',
@@ -37,16 +43,30 @@ const EMPTY_DRAFT: ConsultationDraft = {
     CloseSummary,
     MedicalRecordView,
     DoctorMedicalWorkspace,
+    ClinicalAuthoring,
+    ClinicalOrders,
+    PrescriptionAuthoring,
+    OfficialArtifacts,
   ],
   templateUrl: './consultation-page.html',
   styleUrl: './consultation-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [ConsultationFinishStore],
 })
 export class ConsultationPage implements UnsavedChangesAware {
   private readonly mock = inject(DoctorMockService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   readonly activeConsultation = inject(ActiveConsultationStore);
+  readonly finish = inject(ConsultationFinishStore);
+  readonly urgentCabinet = inject(UrgentCabinetClinicalStore);
+  readonly urgentIntake = computed(() => {
+    const active = this.activeConsultation.active();
+    const context = this.urgentCabinet.protectedIntake();
+    return active?.consultationId === this.consultationId &&
+      active.sourceType === 'URGENT_CABINET' &&
+      context?.commitmentId === active.sourceId ? context : null;
+  });
 
   readonly consultationId: string;
   readonly isNew: boolean;
@@ -69,6 +89,8 @@ export class ConsultationPage implements UnsavedChangesAware {
     this.canonicalRoute = UUID_PATTERN.test(this.consultationId);
     const source = this.route.snapshot.queryParamMap.get('source');
     this.legacyUrgentBlocked = source === 'urgent';
+
+    if (this.canonicalRoute) void this.finish.attach(this.consultationId);
 
     if (!this.legacyUrgentBlocked && !this.isNew && !this.canonicalRoute) {
       this.loadConsultation(this.consultationId);

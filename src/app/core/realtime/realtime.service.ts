@@ -14,6 +14,7 @@ import { Subject } from 'rxjs';
 import { Client, type IMessage, type StompConfig } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { AuthTokenStore } from '../auth/auth-token.store';
+import { APP_MODE } from '../config/app-mode';
 import { RUNTIME_CONFIG } from '../config/runtime-config';
 import {
   APPOINTMENTS_QUEUE,
@@ -91,7 +92,6 @@ export class RealtimeService {
   private readonly clientFactory = inject(REALTIME_CLIENT_FACTORY);
 
   private client: Client | null = null;
-  /** @deprecated Legacy Patient compatibility only; Doctor sessions never subscribe. */
   private readonly urgentSubject = new Subject<UrgentLiveEvent>();
   private readonly appointmentSubject = new Subject<AppointmentLiveEvent>();
   private readonly scheduledCareSubject = new Subject<ScheduledCareEvent>();
@@ -106,7 +106,6 @@ export class RealtimeService {
   /** Increments on every successful connection, including reconnects. */
   readonly connectionEpoch = signal(0);
   readonly lastEventAt = signal<number | null>(null);
-  /** @deprecated Kept only for the out-of-scope legacy Patient surfaces. */
   readonly urgentEvents$ = this.urgentSubject.asObservable();
   readonly appointmentEvents$ = this.appointmentSubject.asObservable();
   readonly scheduledCareEvents$ = this.scheduledCareSubject.asObservable();
@@ -114,6 +113,12 @@ export class RealtimeService {
 
   constructor() {
     if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    if (APP_MODE.staticDemo) {
+      this.connectedAt.set(Date.now());
+      this.status.set('connected');
+      this.connectionEpoch.set(1);
       return;
     }
 
@@ -152,6 +157,7 @@ export class RealtimeService {
    */
   health(expectedActivity: Signal<boolean>): Signal<RealtimeHealth> {
     return computed(() => {
+      if (APP_MODE.staticDemo) return 'live';
       this.healthTick();
       if (this.status() !== 'connected') {
         return 'down';
@@ -182,7 +188,7 @@ export class RealtimeService {
         this.connectedAt.set(Date.now());
         this.status.set('connected');
         this.connectionEpoch.update((value) => value + 1);
-        if (this.tokens.user()?.role === 'PATIENT') {
+        if (this.tokens.user()?.role === 'PATIENT' || this.tokens.user()?.role === 'DOCTOR') {
           client.subscribe(URGENT_REQUESTS_QUEUE, (message) =>
             this.onMessage(message, this.urgentSubject, URGENT_EVENT_NAMES),
           );

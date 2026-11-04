@@ -116,7 +116,7 @@ describe('RealtimeService', () => {
     vi.useRealTimers();
   });
 
-  it('connects with the Bearer header and excludes the legacy urgent queue', () => {
+  it('connects with the Bearer header and subscribes doctors to urgent request updates', () => {
     const { service } = create({ token: 'token-a' });
 
     expect(stomp.MockClient.instances).toHaveLength(1);
@@ -127,13 +127,11 @@ describe('RealtimeService', () => {
     client.config.onConnect?.();
     expect(service.status()).toBe('connected');
     expect(client.subscriptions.map((sub) => sub.destination)).toEqual([
+      '/user/queue/urgent-requests',
       '/user/queue/appointments',
       '/user/queue/scheduled-care',
       '/user/queue/notifications',
     ]);
-    expect(client.subscriptions.map((sub) => sub.destination)).not.toContain(
-      '/user/queue/urgent-requests',
-    );
     expect(service.connectionEpoch()).toBe(1);
   });
 
@@ -158,15 +156,37 @@ describe('RealtimeService', () => {
     const appointments: string[] = [];
     service.appointmentEvents$.subscribe((event) => appointments.push(event.name));
 
-    client.subscriptions[0].handler({
-      body: JSON.stringify({
-        event: 'APPOINTMENT_STARTED',
-        data: { appointmentId: 'a-1' },
-        timestamp: '2026-08-21T10:00:00Z',
-      }),
-    });
+    client.subscriptions
+      .find((subscription) => subscription.destination === '/user/queue/appointments')!
+      .handler({
+        body: JSON.stringify({
+          event: 'APPOINTMENT_STARTED',
+          data: { appointmentId: 'a-1' },
+          timestamp: '2026-08-21T10:00:00Z',
+        }),
+      });
 
     expect(appointments).toEqual(['APPOINTMENT_STARTED']);
+  });
+
+  it('routes urgent request invalidations to doctors', () => {
+    const { service } = create({ token: 'token-a' });
+    const client = lastClient()!;
+    client.config.onConnect?.();
+    const received: string[] = [];
+    service.urgentEvents$.subscribe((event) => received.push(event.name));
+
+    client.subscriptions
+      .find((subscription) => subscription.destination === '/user/queue/urgent-requests')!
+      .handler({
+        body: JSON.stringify({
+          event: 'NEW_OFFER',
+          data: { requestId: 'request-1', patientName: 'Patient autorisé' },
+          timestamp: '2026-10-31T14:24:00Z',
+        }),
+      });
+
+    expect(received).toEqual(['NEW_OFFER']);
   });
 
   it('emits a scheduled-care invalidation once for duplicate event IDs', () => {
@@ -186,8 +206,11 @@ describe('RealtimeService', () => {
       }),
     };
 
-    client.subscriptions[1].handler(frame);
-    client.subscriptions[1].handler(frame);
+    const subscription = client.subscriptions.find(
+      (candidate) => candidate.destination === '/user/queue/scheduled-care',
+    )!;
+    subscription.handler(frame);
+    subscription.handler(frame);
 
     expect(received).toEqual(['event-1']);
   });
@@ -199,14 +222,17 @@ describe('RealtimeService', () => {
     const received: string[] = [];
     service.notificationEvents$.subscribe((event) => received.push(event.notificationId));
 
-    client.subscriptions[2].handler({
+    const subscription = client.subscriptions.find(
+      (candidate) => candidate.destination === '/user/queue/notifications',
+    )!;
+    subscription.handler({
       body: JSON.stringify({
         eventType: 'NOTIFICATION_CREATED',
         notificationId: 'notification-1',
         occurredAt: '2026-10-09T10:00:00Z',
       }),
     });
-    client.subscriptions[2].handler({ body: JSON.stringify({ eventType: 'UNKNOWN' }) });
+    subscription.handler({ body: JSON.stringify({ eventType: 'UNKNOWN' }) });
 
     expect(received).toEqual(['notification-1']);
   });
@@ -255,13 +281,15 @@ describe('RealtimeService', () => {
     vi.advanceTimersByTime(120_000);
     expect(health()).toBe('stale');
 
-    client.subscriptions[0].handler({
-      body: JSON.stringify({
-        event: 'APPOINTMENT_STARTED',
-        data: { appointmentId: 'appointment-9' },
-        timestamp: '2026-08-21T10:02:00Z',
-      }),
-    });
+    client.subscriptions
+      .find((subscription) => subscription.destination === '/user/queue/appointments')!
+      .handler({
+        body: JSON.stringify({
+          event: 'APPOINTMENT_STARTED',
+          data: { appointmentId: 'appointment-9' },
+          timestamp: '2026-08-21T10:02:00Z',
+        }),
+      });
     expect(health()).toBe('live');
   });
 

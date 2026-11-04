@@ -1,0 +1,42 @@
+.clinical-authoring {
+  display: grid;
+  gap: var(--oc-space-5);
+}
+
+.clinical-authoring__header,
+.clinical-authoring__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-4);
+  flex-wrap: wrap;
+}
+
+.clinical-authoring__header h2 { margin: 0; }
+.clinical-authoring__header p,
+.clinical-authoring__boundary { margin: var(--oc-space-1) 0 0; color: var(--oc-color-text-muted); }
+.clinical-authoring__state { font-weight: 600; }
+
+.clinical-authoring__notice {
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  padding: var(--oc-space-3);
+  background: var(--oc-color-surface-subtle);
+}
+
+.clinical-authoring__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--oc-space-4);
+}
+
+.field { display: grid; gap: var(--oc-space-2); }
+.field > span { font-weight: 600; }
+.field > .field__error { color: var(--oc-color-critical); font-size: 12px; }
+.field--wide { grid-column: 1 / -1; }
+.clinical-authoring__check { display: flex; align-items: center; gap: var(--oc-space-2); }
+
+@media (max-width: 767px) {
+  .clinical-authoring__grid { grid-template-columns: 1fr; }
+  .field--wide { grid-column: auto; }
+}

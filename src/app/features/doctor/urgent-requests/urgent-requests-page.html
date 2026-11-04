@@ -1,0 +1,432 @@
+<section class="urgent-page" [class.urgent-page--detail-open]="selectedRequest() !== null">
+  @if (demo) {
+    <p class="oc-sr-only" id="urgent-demo-note">
+      Données médicales entièrement fictives, présentées uniquement dans la démonstration statique
+      OmniCare.
+    </p>
+  }
+
+  <header class="urgent-page__heading">
+    <h1>Demandes urgentes</h1>
+    <p>Consultez et prenez en charge les demandes urgentes disponibles.</p>
+  </header>
+
+  <section class="summary-strip" aria-label="Résumé des demandes urgentes">
+    <article>
+      <span class="summary-strip__icon summary-strip__icon--critical" aria-hidden="true">
+        <oc-icon name="emergency" />
+      </span>
+      <p>
+        <strong>{{ newCount() }}</strong
+        ><span>nouvelles</span>
+      </p>
+    </article>
+    <article>
+      <span class="summary-strip__icon summary-strip__icon--information" aria-hidden="true">
+        <oc-icon name="waiting" />
+      </span>
+      <p>
+        <strong>{{ activeCount() }}</strong
+        ><span>en cours</span>
+      </p>
+    </article>
+    <article>
+      <span class="summary-strip__icon" aria-hidden="true"><oc-icon name="calendar" /></span>
+      <p>
+        <strong>{{ todayCount() }}</strong
+        ><span>aujourd’hui</span>
+      </p>
+    </article>
+  </section>
+
+  @if (realtimeUnavailable()) {
+    <div class="urgent-page__connection-warning" role="status">
+      <oc-icon name="warning" />
+      <span>Mise à jour en temps réel indisponible. Réessayez.</span>
+      <button type="button" (click)="retry()">Actualiser</button>
+    </div>
+  }
+
+  @if (feedback(); as message) {
+    <div
+      class="urgent-feedback urgent-feedback--{{ message.tone }}"
+      [attr.role]="message.tone === 'error' ? 'alert' : 'status'"
+    >
+      <oc-icon [name]="message.tone === 'error' ? 'warning' : 'info'" />
+      <span>{{ message.text }}</span>
+      <button type="button" aria-label="Masquer le message" (click)="feedback.set(null)">
+        <oc-icon name="close" />
+      </button>
+    </div>
+  }
+
+  <oc-tabs
+    label="État des demandes urgentes"
+    [tabs]="tabs"
+    [selected]="activeTab()"
+    (selectedChange)="setTab($event)"
+  />
+
+  <section class="filter-row" aria-label="Filtrer les demandes urgentes">
+    <div class="filter-row__modes" aria-label="Lieu de prise en charge">
+      <button
+        type="button"
+        [class.filter-row__mode--active]="locationFilter() === 'all'"
+        [attr.aria-pressed]="locationFilter() === 'all'"
+        (click)="setLocationFilter('all')"
+      >
+        Toutes
+      </button>
+      <button
+        type="button"
+        [class.filter-row__mode--active]="locationFilter() === 'home'"
+        [attr.aria-pressed]="locationFilter() === 'home'"
+        (click)="setLocationFilter('home')"
+      >
+        <oc-icon name="home" /> À domicile
+      </button>
+      <button
+        type="button"
+        [class.filter-row__mode--active]="locationFilter() === 'cabinet'"
+        [attr.aria-pressed]="locationFilter() === 'cabinet'"
+        (click)="setLocationFilter('cabinet')"
+      >
+        <oc-icon name="building" /> Cabinet
+      </button>
+    </div>
+    <div class="filter-row__utilities">
+      <label class="urgent-search">
+        <span class="oc-sr-only">Rechercher une demande urgente</span>
+        <oc-icon name="requests" />
+        <input
+          type="search"
+          name="urgent-request-search"
+          autocomplete="off"
+          placeholder="Rechercher une demande…"
+          [value]="searchTerm()"
+          (input)="onSearch($event)"
+        />
+      </label>
+      <label class="urgent-sort">
+        <span class="oc-sr-only">Trier les demandes</span>
+        <select name="urgent-request-sort" [value]="sortOrder()" (change)="onSort($event)">
+          <option value="recent">Plus récent</option>
+          <option value="oldest">Plus ancien</option>
+        </select>
+        <oc-icon name="chevron-down" />
+      </label>
+    </div>
+  </section>
+
+  <section
+    class="urgent-queue"
+    role="tabpanel"
+    [attr.aria-label]="
+      activeTab() === 'pending' ? 'À traiter' : activeTab() === 'active' ? 'En cours' : 'Historique'
+    "
+    [attr.aria-busy]="loading()"
+  >
+    @if (loading()) {
+      <div class="urgent-skeleton" role="status" aria-label="Chargement des demandes urgentes">
+        @for (row of [1, 2, 3]; track row) {
+          <div class="urgent-skeleton__row">
+            <span></span><span></span><span></span><span></span>
+          </div>
+        }
+      </div>
+    } @else if (loadError(); as message) {
+      <div class="urgent-load-error" role="alert">
+        <span class="urgent-load-error__icon" aria-hidden="true"><oc-icon name="warning" /></span>
+        <div>
+          <h2>Impossible de charger les demandes</h2>
+          <p>{{ message }} Vérifiez votre connexion puis réessayez.</p>
+        </div>
+        <oc-button variant="secondary" size="small" (click)="retry()">Réessayer</oc-button>
+      </div>
+    } @else {
+      <div class="urgent-list">
+        @for (request of visibleRequests(); track request.offerId) {
+          <article
+            class="urgent-request"
+            [class.urgent-request--selected]="selectedOfferId() === request.offerId"
+            [class.urgent-request--active]="request.status === 'ACCEPTED'"
+          >
+            <div class="urgent-request__urgency">
+              <span class="urgency-badge"><i aria-hidden="true"></i> URGENT</span>
+              <time [attr.datetime]="request.sentAt">{{ relativeTime(request) }}</time>
+              <span
+                class="care-mode care-mode--{{
+                  request.visitPreference === 'CABINET_VISIT' ? 'cabinet' : 'home'
+                }}"
+              >
+                <oc-icon
+                  [name]="request.visitPreference === 'CABINET_VISIT' ? 'building' : 'home'"
+                />
+                {{ visitLabel(request) }}
+              </span>
+            </div>
+
+            <div class="urgent-request__clinical">
+              <h2>{{ request.title }}</h2>
+              <strong>{{ request.patientMeta ?? request.patientLabel }}</strong>
+              <p>{{ request.summary }}</p>
+              @if (request.flags.length > 0) {
+                <div class="warning-flags" aria-label="Signes d’alerte">
+                  @for (flag of request.flags.slice(0, 2); track flag) {
+                    <span><i aria-hidden="true"></i>{{ flag }}</span>
+                  }
+                </div>
+              }
+              @if (request.status === 'ACCEPTED') {
+                <span class="active-status">{{ activeStatusLabel(request) }}</span>
+              }
+            </div>
+
+            <div class="urgent-request__location">
+              <span><oc-icon name="location" />{{ request.locationLabel }}</span>
+              @if (request.distanceKm !== null && request.visitPreference !== 'CABINET_VISIT') {
+                <span><oc-icon name="coverage" />{{ formatDistance(request.distanceKm) }} km</span>
+              } @else if (request.visitPreference === 'CABINET_VISIT') {
+                <span><oc-icon name="building" />Patient en déplacement</span>
+              }
+            </div>
+
+            <div class="urgent-request__actions">
+              <button
+                type="button"
+                class="request-action request-action--secondary"
+                (click)="openDetail(request, $event)"
+              >
+                Voir la demande
+              </button>
+              @if (request.status === 'PENDING') {
+                <button
+                  type="button"
+                  class="request-action request-action--primary"
+                  [disabled]="actionOfferId() !== null"
+                  (click)="accept(request)"
+                >
+                  {{ actionOfferId() === request.offerId ? 'Acceptation…' : 'Accepter' }}
+                </button>
+              } @else if (
+                request.status === 'ACCEPTED' && request.visitPreference !== 'CABINET_VISIT'
+              ) {
+                <button
+                  type="button"
+                  class="request-action request-action--primary"
+                  (click)="openDirections(request)"
+                >
+                  Itinéraire
+                </button>
+              }
+            </div>
+          </article>
+        } @empty {
+          <oc-empty-state
+            icon="emergency"
+            [title]="emptyTitle()"
+            [description]="emptyDescription()"
+          />
+        }
+      </div>
+    }
+  </section>
+
+  @if (selectedRequest(); as request) {
+    <button
+      type="button"
+      class="urgent-detail-backdrop"
+      aria-label="Fermer les détails de la demande"
+      (click)="closeDetail()"
+    ></button>
+    <aside
+      class="urgent-detail"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="urgent-detail-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <header class="urgent-detail__header">
+        <h2 id="urgent-detail-title" #drawerHeading tabindex="-1" cdkFocusInitial>
+          Détails de la demande
+        </h2>
+        <button type="button" aria-label="Fermer les détails" (click)="closeDetail()">
+          <oc-icon name="close" />
+        </button>
+      </header>
+
+      <div class="urgent-detail__body">
+        <div class="urgent-detail__badges">
+          <span class="urgency-badge"><i aria-hidden="true"></i> URGENT</span>
+          <span
+            class="care-mode care-mode--{{
+              request.visitPreference === 'CABINET_VISIT' ? 'cabinet' : 'home'
+            }}"
+          >
+            <oc-icon [name]="request.visitPreference === 'CABINET_VISIT' ? 'building' : 'home'" />
+            {{ visitLabel(request) }}
+          </span>
+        </div>
+        <time class="urgent-detail__requested" [attr.datetime]="request.sentAt">
+          Demandée {{ relativeTime(request).toLocaleLowerCase('fr-FR') }}
+        </time>
+
+        <section class="detail-section" aria-labelledby="detail-patient-title">
+          <span class="detail-section__icon" aria-hidden="true"><oc-icon name="staff" /></span>
+          <div>
+            <h3 id="detail-patient-title">Patient</h3>
+            <strong>{{ request.patientMeta ?? request.patientLabel }}</strong>
+            @if (request.birthDate) {
+              <span class="detail-section__meta"
+                ><oc-icon name="calendar" />{{ request.birthDate }}</span
+              >
+            }
+          </div>
+        </section>
+
+        <section class="detail-section" aria-labelledby="detail-reason-title">
+          <span class="detail-section__icon" aria-hidden="true"><oc-icon name="requests" /></span>
+          <div>
+            <h3 id="detail-reason-title">Motif de la demande</h3>
+            <strong>{{ request.title }}</strong>
+            <p>{{ request.detail }}</p>
+          </div>
+        </section>
+
+        @if (request.flags.length > 0) {
+          <section
+            class="detail-section detail-section--warning"
+            aria-labelledby="detail-alert-title"
+          >
+            <span class="detail-section__icon" aria-hidden="true"><oc-icon name="warning" /></span>
+            <div>
+              <h3 id="detail-alert-title">Signes d'alerte</h3>
+              <div class="warning-flags">
+                @for (flag of request.flags; track flag) {
+                  <span><i aria-hidden="true"></i>{{ flag }}</span>
+                }
+              </div>
+            </div>
+          </section>
+        }
+
+        @if (request.history.length > 0) {
+          <section class="detail-section" aria-labelledby="detail-history-title">
+            <span class="detail-section__icon" aria-hidden="true"><oc-icon name="results" /></span>
+            <div>
+              <h3 id="detail-history-title">Antécédents connus</h3>
+              <ul>
+                @for (item of request.history; track item) {
+                  <li>{{ item }}</li>
+                }
+              </ul>
+            </div>
+          </section>
+        }
+
+        <section class="detail-section" aria-labelledby="detail-location-title">
+          <span class="detail-section__icon" aria-hidden="true"><oc-icon name="location" /></span>
+          <div>
+            <h3 id="detail-location-title">Localisation</h3>
+            <strong>{{ request.locationLabel }}</strong>
+            @if (request.distanceKm !== null) {
+              <span class="detail-section__meta">
+                {{ formatDistance(request.distanceKm) }} km
+                @if (request.etaMinutes !== null) {
+                  (environ {{ request.etaMinutes }} min)
+                }
+              </span>
+            }
+            @if (request.visitPreference !== 'CABINET_VISIT') {
+              <button type="button" class="map-link" (click)="openDirections(request)">
+                <oc-icon name="location" /> Voir sur la carte
+              </button>
+            }
+          </div>
+        </section>
+
+        @if (request.contact || request.accessNotes) {
+          <section class="detail-section" aria-labelledby="detail-more-title">
+            <span class="detail-section__icon" aria-hidden="true"><oc-icon name="info" /></span>
+            <div>
+              <h3 id="detail-more-title">Informations complémentaires</h3>
+              @if (request.contact) {
+                <span>Contact : {{ request.contact }}</span>
+              }
+              @if (request.accessNotes) {
+                <span>{{ request.accessNotes }}</span>
+              }
+              <span>Demande transmise le {{ formattedSentAt(request) }}</span>
+            </div>
+          </section>
+        }
+      </div>
+
+      @if (request.status === 'PENDING') {
+        <footer class="urgent-detail__footer">
+          <button
+            type="button"
+            class="request-action request-action--destructive"
+            [disabled]="actionOfferId() !== null"
+            (click)="openRefusalDialog(request)"
+          >
+            Refuser
+          </button>
+          <button
+            type="button"
+            class="request-action request-action--primary"
+            [disabled]="actionOfferId() !== null"
+            (click)="accept(request)"
+          >
+            {{ actionOfferId() === request.offerId ? 'Acceptation…' : 'Accepter la demande' }}
+          </button>
+        </footer>
+      }
+    </aside>
+  }
+
+  <oc-dialog
+    [open]="refusalDialogOpen()"
+    title="Refuser la demande"
+    description="Choisissez un motif concis avant de confirmer."
+    [submitting]="actionOfferId() !== null"
+    [hasFooter]="true"
+    (dismissed)="cancelRefusal()"
+  >
+    <fieldset class="refusal-reasons">
+      <legend>Motif du refus</legend>
+      @for (reason of refusalReasons; track reason) {
+        <label>
+          <input
+            type="radio"
+            name="refusal-reason"
+            [value]="reason"
+            [checked]="refusalReason() === reason"
+            (change)="chooseRefusalReason($event)"
+          />
+          <span>{{ reason }}</span>
+        </label>
+      }
+    </fieldset>
+    <p class="refusal-note">
+      Le contrat actuel transmet le refus, mais n’enregistre pas encore le motif sélectionné.
+    </p>
+    <oc-button
+      ocDialogFooter
+      variant="secondary"
+      [disabled]="actionOfferId() !== null"
+      (click)="cancelRefusal()"
+    >
+      Annuler
+    </oc-button>
+    <oc-button
+      ocDialogFooter
+      variant="destructive"
+      [loading]="actionOfferId() !== null"
+      (click)="confirmRefusal()"
+    >
+      Confirmer le refus
+    </oc-button>
+  </oc-dialog>
+</section>
