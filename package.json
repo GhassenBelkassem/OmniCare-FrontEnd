@@ -4,8 +4,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
-    "build:ci": "ng build --configuration production",
+    "build": "ng build && node tools/prepare-deployment.mjs",
+    "build:ci": "ng build --configuration production && node tools/prepare-deployment.mjs",
     "build:static-demo": "ng build --configuration static-demo",
     "start:static-demo": "ng serve --configuration static-demo",
     "watch": "ng build --watch --configuration development",

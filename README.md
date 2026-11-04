@@ -11,10 +11,28 @@ npm run build:ci
 npm run check
 ```
 
-Public runtime configuration is loaded from `public/config/runtime-config.js`.
-Set `apiBaseUrl` there for each deployment; never put tokens, credentials, or
-other secrets in that file. Authentication tokens for the first dashboard MVP
-are kept in memory only.
+Public runtime configuration is loaded from `public/config/runtime-config.js`
+during local development. Deployment builds generate the final artifact from
+`OMNICARE_API_BASE_URL`; for example:
+
+```bash
+OMNICARE_API_BASE_URL=https://api.example.com/api/v1 npm run build
+```
+
+The generated browser artifact is written to
+`dist/omniCareDash/browser/config/runtime-config.js`. This variable is public
+configuration: never put tokens, credentials, or other secrets in it.
+Authentication tokens for the first dashboard MVP are kept in memory only.
+
+For the hosted development service on Railway, set:
+
+```text
+OMNICARE_API_BASE_URL=https://omnicare-backend-dev.up.railway.app/api/v1
+RAILPACK_SPA_OUTPUT_DIR=dist/omniCareDash/browser
+```
+
+The normal `npm run build` command also creates `index.html` from Angular's
+`index.csr.html`, so Railway does not need a custom copy command.
 
 The dashboard is built as a browser application for the MVP. SSR is deferred
 because the v1 in-memory bearer session intentionally does not survive a page

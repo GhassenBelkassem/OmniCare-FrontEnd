@@ -1,5 +1,5 @@
-// This file is a deploy-time artifact. Replace its values without rebuilding
-// Angular. It must contain public configuration only, never credentials.
+// Local development default. Deployment builds replace this value in the
+// generated browser artifact. Never put credentials in this public file.
 globalThis.__OMNICARE_CONFIG__ = Object.freeze({
   apiBaseUrl: 'http://localhost:8080/api/v1',
 });
