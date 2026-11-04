@@ -13,4 +13,16 @@ export interface ActiveConsultation {
   readonly medicalAccessStatus: MedicalAccessStatus;
   readonly version: number;
   readonly startedAt: string;
+  readonly completedAt?: string | null;
 }
+
+export interface StartConsultationRequest {
+  readonly sourceType: ConsultationSourceType;
+  readonly sourceId: string;
+  readonly expectedSourceVersion: number;
+}
+
+export type StartConsultationOutcome =
+  | { readonly kind: 'STARTED' | 'RECOVERED'; readonly consultation: ActiveConsultation }
+  | { readonly kind: 'ACTIVE_CONFLICT'; readonly consultation: ActiveConsultation }
+  | { readonly kind: 'FAILED'; readonly consultation: null };

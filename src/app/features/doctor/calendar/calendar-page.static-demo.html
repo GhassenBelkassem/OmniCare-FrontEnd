@@ -1,0 +1,383 @@
+<section
+  class="doctor-calendar-demo"
+  [class.doctor-calendar-demo--panel-open]="selectedAppointment() !== null"
+  [class.doctor-calendar-demo--day]="viewMode() === 'day'"
+>
+  <header class="doctor-calendar-demo__toolbar">
+    <div class="doctor-calendar-demo__period">
+      <div>
+        <h1 aria-live="polite">{{ visibleTitle() }}</h1>
+        @if (visibleSubtitle()) {
+          <p>{{ visibleSubtitle() }}</p>
+        }
+      </div>
+      @if (weekNumber()) {
+        <span class="doctor-calendar-demo__week">{{ weekNumber() }}</span>
+      }
+    </div>
+
+    <div class="doctor-calendar-demo__navigation" aria-label="Navigation du calendrier">
+      <oc-button
+        variant="secondary"
+        size="small"
+        leadingIcon="left"
+        [iconOnly]="true"
+        ariaLabel="Période précédente"
+        (click)="previous()"
+      />
+      <oc-button variant="secondary" size="small" (click)="goToday()">Aujourd'hui</oc-button>
+      <oc-button
+        variant="secondary"
+        size="small"
+        leadingIcon="right"
+        [iconOnly]="true"
+        ariaLabel="Période suivante"
+        (click)="next()"
+      />
+    </div>
+
+    <oc-segmented-control
+      label="Mode d'affichage du calendrier"
+      [options]="viewOptions"
+      [selected]="viewMode()"
+      (selectedChange)="setViewMode($event)"
+    />
+
+    <div class="doctor-calendar-demo__actions" aria-label="Actions du calendrier">
+      <oc-button
+        variant="secondary"
+        size="small"
+        leadingIcon="clock-circle"
+        (click)="scheduleDialogOpen.set(true)"
+      >
+        Modifier les horaires
+      </oc-button>
+      <oc-button
+        variant="primary"
+        size="small"
+        leadingIcon="plus"
+        (click)="exceptionDialogOpen.set(true)"
+      >
+        Exception
+      </oc-button>
+    </div>
+  </header>
+
+  <div class="doctor-calendar-demo__layout">
+    <main class="doctor-calendar-demo__calendar" aria-label="Calendrier des rendez-vous">
+      @if (viewMode() === 'day') {
+        <div class="doctor-calendar-demo__summary" aria-label="Résumé de la journée">
+          <div>
+            <span class="doctor-calendar-demo__summary-icon"
+              ><nz-icon nzType="calendar" aria-hidden="true"
+            /></span>
+            <span
+              ><strong>{{ dayAppointmentCount() }} rendez-vous</strong
+              ><small>aujourd'hui</small></span
+            >
+          </div>
+          <div>
+            <span class="doctor-calendar-demo__availability-dot" aria-hidden="true"></span>
+            <span><strong>Disponible</strong><small>Journée active</small></span>
+          </div>
+          <div>
+            <span class="doctor-calendar-demo__summary-icon"
+              ><nz-icon nzType="clock-circle" aria-hidden="true"
+            /></span>
+            <span><strong>08:00 – 17:00</strong><small>Plage de travail</small></span>
+          </div>
+        </div>
+      }
+      <div #calendarHost class="doctor-calendar-demo__calendar-host">
+        <full-calendar #calendar [options]="calendarOptions()" [events]="calendarEvents()">
+          <ng-template #eventContent let-info>
+            @if (isAppointmentEvent(info)) {
+              @if (appointmentForEvent(info); as appointment) {
+                <div
+                  class="demo-event"
+                  [class.demo-event--selected]="selectedAppointmentId() === appointment.id"
+                  [attr.aria-label]="
+                    eventTimeRange(appointment) +
+                    ', ' +
+                    appointment.patientName +
+                    ', ' +
+                    appointment.reason
+                  "
+                >
+                  @if (info.view.type === 'dayGridMonth') {
+                    <span class="demo-event__time">{{ eventStartTime(appointment) }}</span>
+                    <span class="demo-event__month-copy">
+                      <strong>{{ eventCategoryLabel(appointment) }}</strong>
+                      <small>{{ appointment.patientName }}</small>
+                    </span>
+                  } @else if (info.view.type === 'timeGridWeek') {
+                    <span class="demo-event__week-time">{{ eventTimeRange(appointment) }}</span>
+                    <strong>{{ appointment.patientName }}</strong>
+                    <small>{{ appointment.categoryLabel }}</small>
+                  } @else {
+                    <span class="demo-event__day-time">{{ eventTimeRange(appointment) }}</span>
+                    <span class="demo-event__patient-icon" aria-hidden="true"
+                      ><nz-icon nzType="user"
+                    /></span>
+                    <span class="demo-event__day-copy">
+                      <strong>{{ appointment.patientName }}</strong>
+                      <small>{{ appointment.reason }}</small>
+                    </span>
+                    <nz-icon
+                      class="demo-event__status-icon"
+                      [nzType]="appointment.status === 'pending' ? 'clock-circle' : 'check-circle'"
+                      aria-hidden="true"
+                    />
+                  }
+                </div>
+              }
+            } @else if (isDayStateEvent(info)) {
+              @if (dayStateForEvent(info); as state) {
+                <div class="demo-state" [attr.aria-label]="state.title + ', ' + state.description">
+                  <nz-icon
+                    [nzType]="state.kind === 'day-off' ? 'calendar' : 'clock-circle'"
+                    aria-hidden="true"
+                  />
+                  <strong>{{ state.title }}</strong>
+                  <span>{{ state.description }}</span>
+                </div>
+              }
+            } @else if (isBreakEvent(info)) {
+              <div class="demo-break">
+                <span>12:00 – 13:00</span>
+                <nz-icon nzType="clock-circle" aria-hidden="true" />
+                <strong>Pause déjeuner</strong>
+              </div>
+            }
+          </ng-template>
+        </full-calendar>
+      </div>
+    </main>
+
+    @if (selectedAppointment(); as appointment) {
+      <button
+        type="button"
+        class="doctor-calendar-demo__backdrop"
+        aria-label="Fermer le détail du rendez-vous"
+        (click)="closeAppointment()"
+      ></button>
+      <aside class="appointment-panel" aria-labelledby="appointment-panel-title">
+        <header class="appointment-panel__header">
+          <div>
+            <h2 #panelHeading id="appointment-panel-title" tabindex="-1">Consultation</h2>
+            <p>{{ formattedAppointmentDate(appointment) }} · {{ eventTimeRange(appointment) }}</p>
+          </div>
+          <div class="appointment-panel__header-actions">
+            <oc-status-badge
+              [status]="appointment.status === 'pending' ? 'pending' : 'confirmed'"
+              [customLabel]="appointment.statusLabel"
+            />
+            <oc-button
+              variant="quiet"
+              size="small"
+              leadingIcon="close"
+              [iconOnly]="true"
+              ariaLabel="Fermer le détail"
+              (click)="closeAppointment()"
+            />
+          </div>
+        </header>
+
+        <section class="appointment-panel__patient" aria-label="Patient">
+          <oc-avatar [name]="appointment.patientName" size="large" />
+          <div>
+            <strong>{{ appointment.patientName }}</strong>
+            <span>{{ appointment.age }} ans · {{ appointment.birthDate }} · #P-45872</span>
+          </div>
+        </section>
+
+        <div class="appointment-panel__contact">
+          <span><nz-icon nzType="user" aria-hidden="true" />{{ appointment.phone }}</span>
+          <span><nz-icon nzType="mail" aria-hidden="true" />{{ appointment.email }}</span>
+          <span><nz-icon nzType="solution" aria-hidden="true" />Assurée</span>
+        </div>
+
+        @if (appointment.patientId.startsWith('demo-practice-patient')) {
+          <a
+            class="appointment-panel__patient-link"
+            [routerLink]="['/doctor/patient', appointment.patientId]"
+          >
+            Voir le dossier patient <nz-icon nzType="right" aria-hidden="true" />
+          </a>
+        }
+
+        <oc-tabs
+          label="Sections du rendez-vous"
+          [tabs]="panelTabs"
+          [selected]="activePanelTab()"
+          (selectedChange)="setPanelTab($event)"
+        />
+
+        <div class="appointment-panel__body" tabindex="0" aria-label="Contenu du rendez-vous">
+          @switch (activePanelTab()) {
+            @case ('details') {
+              <dl class="appointment-panel__details">
+                <div>
+                  <dt>
+                    <nz-icon nzType="file-text" aria-hidden="true" /><span
+                      >Motif de la consultation</span
+                    >
+                  </dt>
+                  <dd>{{ appointment.reason }}</dd>
+                </div>
+                <div>
+                  <dt>
+                    <nz-icon nzType="calendar" aria-hidden="true" /><span>Type de rendez-vous</span>
+                  </dt>
+                  <dd>Consultation classique</dd>
+                </div>
+                <div>
+                  <dt><nz-icon nzType="clock-circle" aria-hidden="true" /><span>Durée</span></dt>
+                  <dd>30 minutes</dd>
+                </div>
+                <div>
+                  <dt><nz-icon nzType="user" aria-hidden="true" /><span>Médecin</span></dt>
+                  <dd>Dr Ben Salah</dd>
+                </div>
+              </dl>
+              <div class="appointment-panel__notes">
+                <nz-icon nzType="file-text" aria-hidden="true" />
+                <div>
+                  <strong>Notes du patient</strong>
+                  <p>{{ appointment.notes }}</p>
+                </div>
+              </div>
+            }
+            @case ('history') {
+              <div class="appointment-panel__empty">
+                <nz-icon nzType="history" aria-hidden="true" /><strong>Historique démo</strong
+                ><span>Aucun événement antérieur pour ce rendez-vous fictif.</span>
+              </div>
+            }
+            @case ('documents') {
+              <div class="appointment-panel__empty">
+                <nz-icon nzType="file-text" aria-hidden="true" /><strong
+                  >Aucun document partagé</strong
+                ><span>Le dossier médical reste protégé.</span>
+              </div>
+            }
+            @case ('notes') {
+              <div class="appointment-panel__notes appointment-panel__notes--standalone">
+                <nz-icon nzType="file-text" aria-hidden="true" />
+                <div>
+                  <strong>Note de démonstration</strong>
+                  <p>{{ appointment.notes }}</p>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        @if (actionMessage()) {
+          <p class="appointment-panel__message" role="status">{{ actionMessage() }}</p>
+        }
+
+        <footer class="appointment-panel__footer">
+          <oc-button
+            variant="primary"
+            leadingIcon="right"
+            [fullWidth]="true"
+            (click)="
+              showDemoAction('Consultation simulée — aucun parcours clinique réel n’a été démarré.')
+            "
+          >
+            Démarrer la consultation
+          </oc-button>
+          <div>
+            <oc-button
+              variant="secondary"
+              size="small"
+              leadingIcon="edit"
+              (click)="showDemoAction('Modification simulée dans la démo.')"
+              >Modifier</oc-button
+            >
+            <oc-button
+              variant="secondary"
+              size="small"
+              leadingIcon="close"
+              (click)="showDemoAction('Annulation simulée — le rendez-vous est conservé.')"
+              >Annuler</oc-button
+            >
+            <oc-button
+              variant="quiet"
+              size="small"
+              leadingIcon="more"
+              [iconOnly]="true"
+              ariaLabel="Autres actions"
+              (click)="showDemoAction('Aucune autre action disponible dans la démo.')"
+            />
+          </div>
+          <small>Données fictives · aucune action serveur</small>
+        </footer>
+      </aside>
+    }
+  </div>
+</section>
+
+<nz-modal
+  [nzVisible]="scheduleDialogOpen()"
+  nzTitle="Horaires de démonstration"
+  [nzWidth]="440"
+  [nzFooter]="null"
+  (nzOnCancel)="scheduleDialogOpen.set(false)"
+>
+  <ng-template nzModalContent>
+    <div class="calendar-demo-dialog">
+      <p>La vue se concentre sur la plage utile du médecin.</p>
+      <dl>
+        <div>
+          <dt>Lundi – vendredi</dt>
+          <dd>08:00 – 17:00</dd>
+        </div>
+        <div>
+          <dt>Samedi</dt>
+          <dd>Jour off</dd>
+        </div>
+        <div>
+          <dt>Dimanche</dt>
+          <dd>Selon exception</dd>
+        </div>
+      </dl>
+      <oc-button variant="primary" [fullWidth]="true" (click)="scheduleDialogOpen.set(false)"
+        >Fermer</oc-button
+      >
+    </div>
+  </ng-template>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="exceptionDialogOpen()"
+  nzTitle="Nouvelle exception"
+  [nzWidth]="440"
+  [nzFooter]="null"
+  (nzOnCancel)="exceptionDialogOpen.set(false)"
+>
+  <ng-template nzModalContent>
+    <div class="calendar-demo-dialog">
+      <p>Prévisualisation locale uniquement. Aucune disponibilité réelle ne sera modifiée.</p>
+      <dl>
+        <div>
+          <dt>Date</dt>
+          <dd>Dimanche 1 novembre 2026</dd>
+        </div>
+        <div>
+          <dt>État</dt>
+          <dd>Indisponible</dd>
+        </div>
+        <div>
+          <dt>Motif</dt>
+          <dd>Exception configurée</dd>
+        </div>
+      </dl>
+      <div class="calendar-demo-dialog__actions">
+        <oc-button variant="secondary" (click)="exceptionDialogOpen.set(false)">Annuler</oc-button
+        ><oc-button variant="primary" (click)="addDemoException()">Ajouter à la démo</oc-button>
+      </div>
+    </div>
+  </ng-template>
+</nz-modal>

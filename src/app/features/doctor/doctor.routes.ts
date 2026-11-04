@@ -4,6 +4,8 @@ import { Route, Routes } from '@angular/router';
 import { authenticatedGuard, roleGuard } from '../../core/auth/auth.guards';
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
 import { unsavedChangesGuard } from './unsaved-changes.guard';
+import { URGENT_REQUESTS_DATA_SOURCE } from './urgent-requests/urgent-request-queue.models';
+import { UrgentRequestsApiDataSource } from './urgent-requests/urgent-requests-api.data-source';
 
 function doctorWorkspaceLanding(): string {
   return inject(AuthTokenStore).user()?.role === 'SECRETARY' ? 'secretary-agenda' : 'command';
@@ -94,6 +96,15 @@ export const DOCTOR_ROUTES: Routes = [
         title: 'Demandes | OmniCare',
       }),
       doctorOnly({
+        path: 'urgent-requests',
+        providers: [
+          { provide: URGENT_REQUESTS_DATA_SOURCE, useClass: UrgentRequestsApiDataSource },
+        ],
+        loadComponent: () =>
+          import('./urgent-requests/urgent-requests-page').then((c) => c.UrgentRequestsPage),
+        title: 'Demandes urgentes | OmniCare',
+      }),
+      doctorOnly({
         path: 'urgent-readiness',
         loadComponent: () =>
           import('./urgent-readiness/urgent-readiness-page').then((c) => c.UrgentReadinessPage),
@@ -104,6 +115,12 @@ export const DOCTOR_ROUTES: Routes = [
         loadComponent: () =>
           import('./communication/communication-page').then((c) => c.CommunicationPage),
         title: 'Communication | OmniCare',
+      }),
+      doctorOnly({
+        path: 'history/:consultationId',
+        loadComponent: () =>
+          import('./history/completed-consultation-page').then((c) => c.CompletedConsultationPage),
+        title: 'Consultation terminée | OmniCare',
       }),
       doctorOnly({
         path: 'history',

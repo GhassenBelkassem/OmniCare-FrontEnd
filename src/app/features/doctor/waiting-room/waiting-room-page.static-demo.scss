@@ -1,0 +1,968 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.waiting-room-demo {
+  min-width: 0;
+  color: var(--oc-color-text-primary);
+}
+
+@media (min-width: 1280px) {
+  .waiting-room-demo {
+    width: calc(100% + var(--oc-space-8));
+    margin-inline: calc(var(--oc-space-4) * -1);
+  }
+}
+
+.waiting-room-demo__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--oc-space-4);
+  min-width: 0;
+}
+
+.waiting-room-demo--panel-open .waiting-room-demo__workspace {
+  grid-template-columns: minmax(0, 1fr) 400px;
+}
+
+.waiting-room-demo__main {
+  display: grid;
+  min-width: 0;
+  gap: var(--oc-space-3);
+}
+
+.waiting-room-heading,
+.waiting-room-heading__refresh,
+.waiting-room-tabs,
+.waiting-room-filters,
+.waiting-table__patient,
+.waiting-table-card__footer,
+.waiting-table-card__footer nav,
+.waiting-patient-panel__state,
+.waiting-patient-card h3 {
+  display: flex;
+  align-items: center;
+}
+
+.waiting-room-heading {
+  min-height: 64px;
+  justify-content: space-between;
+  gap: var(--oc-space-5);
+}
+
+.waiting-room-heading h1 {
+  margin: 0;
+  font-size: clamp(26px, 2.2vw, 32px);
+  font-weight: var(--oc-font-weight-strong);
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.waiting-room-heading p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+  margin: var(--oc-space-1) 0 0;
+  color: var(--oc-color-text-secondary);
+  font-size: 14px;
+}
+
+.waiting-room-heading__refresh {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--oc-space-2);
+  color: var(--oc-color-text-muted);
+  text-align: end;
+}
+
+.waiting-room-heading__refresh > span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: var(--oc-space-1);
+  padding: 0 var(--oc-space-2);
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-success);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.waiting-room-heading__refresh i {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--oc-radius-pill);
+  background: currentColor;
+}
+
+.waiting-room-heading__refresh small {
+  font-size: 11px;
+}
+
+.queue-command-bar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-4);
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.queue-command-bar__suggestion,
+.queue-command-bar__actions {
+  display: flex;
+  align-items: center;
+}
+
+.queue-command-bar__suggestion {
+  min-width: 0;
+  gap: var(--oc-space-3);
+}
+
+.queue-command-bar__suggestion > div {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.queue-command-bar__suggestion small,
+.queue-command-bar__suggestion span {
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.queue-command-bar__suggestion strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-command-bar__icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-brand-primary-active);
+  font-size: 18px;
+}
+
+.queue-command-bar__actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--oc-space-2);
+}
+
+.queue-command-bar__primary {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--oc-space-2);
+  padding: 0 var(--oc-space-4);
+  border: 1px solid var(--oc-color-brand-primary-hover);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-brand-primary-hover);
+  color: var(--oc-color-text-inverse);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+  touch-action: manipulation;
+  transition:
+    background-color var(--oc-motion-fast) var(--oc-ease-standard),
+    border-color var(--oc-motion-fast) var(--oc-ease-standard);
+}
+
+.queue-command-bar__primary:hover:not(:disabled) {
+  border-color: var(--oc-color-brand-primary-active);
+  background: var(--oc-color-brand-primary-active);
+}
+
+.queue-command-bar__primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.queue-command-bar__primary:focus-visible,
+.waiting-room-feedback button:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+}
+
+.waiting-room-feedback {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-brand-primary-active);
+  font-size: 12px;
+}
+
+.waiting-room-feedback--error {
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-text-primary);
+}
+
+.waiting-room-feedback span {
+  min-width: 0;
+  flex: 1;
+}
+
+.waiting-room-feedback button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--oc-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.waiting-room-feedback button:hover {
+  background: var(--oc-color-surface-hover);
+}
+
+.waiting-room-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--oc-space-3);
+}
+
+.waiting-room-metrics article {
+  display: grid;
+  min-height: 124px;
+  align-content: start;
+  padding: var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.waiting-room-metrics__icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-brand-primary-active);
+  font-size: 18px;
+}
+
+.waiting-room-metrics__icon--information {
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-information);
+}
+
+.waiting-room-metrics__icon--neutral {
+  background: var(--oc-color-neutral-surface);
+  color: var(--oc-color-neutral);
+}
+
+.waiting-room-metrics p {
+  margin: var(--oc-space-2) 0 0;
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+}
+
+.waiting-room-metrics strong {
+  margin-block-start: var(--oc-space-1);
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.waiting-room-tabs {
+  min-width: 0;
+  gap: var(--oc-space-2);
+  overflow-x: auto;
+  border-block-end: 1px solid var(--oc-color-border-subtle);
+  scrollbar-width: none;
+}
+
+.waiting-room-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.waiting-room-tabs button {
+  min-height: 40px;
+  flex: 0 0 auto;
+  padding: 0 var(--oc-space-4);
+  border: 0;
+  border-radius: var(--oc-radius-pill);
+  background: transparent;
+  color: var(--oc-color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-medium);
+  touch-action: manipulation;
+  transition:
+    background-color var(--oc-motion-fast) var(--oc-ease-standard),
+    color var(--oc-motion-fast) var(--oc-ease-standard);
+}
+
+.waiting-room-tabs button:hover {
+  background: var(--oc-color-surface-hover);
+  color: var(--oc-color-text-primary);
+}
+
+.waiting-room-tabs button:focus-visible,
+.waiting-table th button:focus-visible,
+.waiting-table-card__footer button:focus-visible,
+.waiting-table tbody tr:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: -3px;
+}
+
+.waiting-room-tabs button.waiting-room-tabs__item--active {
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-brand-primary-active);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.waiting-room-filters {
+  display: grid;
+  grid-template-columns: minmax(15rem, 1fr) repeat(3, minmax(0, auto));
+  gap: var(--oc-space-2);
+}
+
+.waiting-room-search {
+  position: relative;
+  min-width: 0;
+}
+
+.waiting-room-search nz-icon {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: var(--oc-space-3);
+  color: var(--oc-color-text-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.waiting-room-search input,
+.waiting-room-select select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+  font: inherit;
+  font-size: 12px;
+}
+
+.waiting-room-search input {
+  padding: 0 var(--oc-space-3) 0 var(--oc-space-10);
+}
+
+.waiting-room-search input::placeholder {
+  color: var(--oc-color-text-muted);
+}
+
+.waiting-room-select select {
+  min-width: 128px;
+  padding: 0 var(--oc-space-3);
+  cursor: pointer;
+}
+
+.waiting-room-search input:hover,
+.waiting-room-select select:hover {
+  border-color: var(--oc-color-border-strong);
+}
+
+.waiting-room-search input:focus-visible,
+.waiting-room-select select:focus-visible {
+  border-color: var(--oc-color-brand-primary);
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 1px;
+}
+
+.waiting-table-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.waiting-table-card__scroll {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.waiting-table-card__scroll:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: -3px;
+}
+
+.waiting-table {
+  width: 100%;
+  min-width: 730px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+.waiting-table th,
+.waiting-table td {
+  height: 52px;
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border-block-end: 1px solid var(--oc-color-border-subtle);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.waiting-table th {
+  height: 36px;
+  background: var(--oc-color-surface-subtle);
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.waiting-table th:first-child {
+  width: 172px;
+}
+
+.waiting-table th:nth-child(2) {
+  width: 94px;
+}
+
+.waiting-table th:nth-child(3),
+.waiting-table th:nth-child(4) {
+  width: 84px;
+}
+
+.waiting-table th:nth-child(5) {
+  width: 104px;
+}
+
+.waiting-table th:nth-child(6) {
+  width: 136px;
+}
+
+.waiting-table__actions {
+  width: 60px;
+  text-align: center !important;
+}
+
+.waiting-table th button {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: var(--oc-space-1);
+  padding: 0 var(--oc-space-1);
+  border: 0;
+  border-radius: var(--oc-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  touch-action: manipulation;
+}
+
+.waiting-table th button:hover {
+  background: var(--oc-color-surface-hover);
+  color: var(--oc-color-text-primary);
+}
+
+.waiting-table th nz-icon {
+  font-size: 10px;
+}
+
+.waiting-table tbody tr {
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color var(--oc-motion-fast) var(--oc-ease-standard),
+    box-shadow var(--oc-motion-fast) var(--oc-ease-standard);
+}
+
+.waiting-table tbody tr:hover {
+  background: var(--oc-color-surface-hover);
+}
+
+.waiting-table tbody tr.waiting-table__row--selected {
+  background: var(--oc-color-success-surface);
+  box-shadow: inset 2px 0 0 var(--oc-color-brand-primary);
+}
+
+.waiting-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.waiting-table__patient {
+  min-width: 0;
+  gap: var(--oc-space-3);
+}
+
+.waiting-room-avatar {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-brand-primary-active);
+  color: var(--oc-color-text-inverse);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-strong);
+  line-height: 1;
+}
+
+.waiting-room-avatar--large {
+  width: 56px;
+  height: 56px;
+  flex-basis: 56px;
+  font-size: 17px;
+}
+
+.waiting-table__patient > span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.waiting-table__patient strong,
+.waiting-table__patient small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waiting-table__patient em {
+  margin-inline-start: var(--oc-space-1);
+  color: var(--oc-color-brand-primary-active);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.waiting-table__patient strong {
+  font-size: 12px;
+}
+
+.waiting-table__patient small {
+  color: var(--oc-color-text-muted);
+  font-size: 10px;
+}
+
+.waiting-table__row--selected .waiting-table__patient small {
+  color: var(--oc-color-text-primary);
+}
+
+.waiting-table__numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.waiting-table__wait {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 var(--oc-space-2);
+  border-radius: var(--oc-radius-pill);
+  font-variant-numeric: tabular-nums;
+}
+
+.waiting-table__wait--long {
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-text-primary);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.waiting-table__position {
+  display: block;
+  margin-block-start: 2px;
+  color: var(--oc-color-text-muted);
+  font-size: 9px;
+}
+
+.waiting-table__row--selected .waiting-table__position {
+  color: var(--oc-color-text-primary);
+}
+
+.waiting-table-card__footer {
+  min-height: 56px;
+  justify-content: space-between;
+  gap: var(--oc-space-4);
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border-block-start: 1px solid var(--oc-color-border-subtle);
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+}
+
+.waiting-table-card__footer nav {
+  gap: var(--oc-space-2);
+}
+
+.waiting-table-card__footer button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-secondary);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.waiting-table-card__footer button:hover:not(:disabled) {
+  border-color: var(--oc-color-brand-primary);
+  color: var(--oc-color-brand-primary-active);
+}
+
+.waiting-table-card__footer button.waiting-table-card__page--active {
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-brand-primary-active);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.waiting-table-card__footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.waiting-table-card__footer oc-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.waiting-room-demo__backdrop {
+  display: none;
+}
+
+.waiting-patient-panel {
+  position: sticky;
+  top: 0;
+  display: grid;
+  height: calc(100dvh - var(--oc-topbar-height));
+  margin-block: calc(var(--oc-space-6) * -1);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.waiting-patient-panel__identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-5) var(--oc-space-4) var(--oc-space-3);
+}
+
+.waiting-patient-panel__identity > div {
+  min-width: 0;
+}
+
+.waiting-patient-panel__identity h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.waiting-patient-panel__identity h2:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+}
+
+.waiting-patient-panel__identity p,
+.waiting-patient-panel__identity > div > span {
+  display: block;
+  margin: var(--oc-space-1) 0 0;
+  overflow-wrap: anywhere;
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.waiting-patient-panel__state {
+  grid-column: 2 / -1;
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+}
+
+.waiting-patient-panel__state > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oc-space-1);
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.waiting-patient-panel__body {
+  display: grid;
+  align-content: start;
+  gap: var(--oc-space-3);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--oc-space-4);
+  overscroll-behavior: contain;
+}
+
+.waiting-patient-card {
+  padding: var(--oc-space-4);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+}
+
+.waiting-patient-card h3 {
+  gap: var(--oc-space-2);
+  margin: 0 0 var(--oc-space-4);
+  font-size: 13px;
+}
+
+.waiting-patient-card h3 nz-icon {
+  color: var(--oc-color-brand-primary-active);
+  font-size: 17px;
+}
+
+.waiting-patient-card dl {
+  display: grid;
+  gap: var(--oc-space-2);
+  margin: 0;
+}
+
+.waiting-patient-card dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: var(--oc-space-3);
+}
+
+.waiting-patient-card dt,
+.waiting-patient-card dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.waiting-patient-card dt {
+  color: var(--oc-color-text-secondary);
+}
+
+.waiting-patient-card dd {
+  color: var(--oc-color-text-primary);
+  font-weight: var(--oc-font-weight-medium);
+}
+
+.waiting-patient-card__emphasis {
+  color: var(--oc-color-brand-primary-active) !important;
+  font-weight: var(--oc-font-weight-semibold) !important;
+}
+
+.waiting-patient-position {
+  display: grid;
+  gap: 2px;
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-success-surface);
+}
+
+.waiting-patient-position span,
+.waiting-patient-position small {
+  color: var(--oc-color-text-secondary);
+  font-size: 10px;
+}
+
+.waiting-patient-position strong {
+  color: var(--oc-color-brand-primary-active);
+  font-size: 13px;
+}
+
+.waiting-patient-history ol {
+  display: grid;
+  gap: var(--oc-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waiting-patient-history li {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: var(--oc-space-2);
+  font-size: 12px;
+}
+
+.waiting-patient-history time {
+  color: var(--oc-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.waiting-patient-card__break {
+  overflow-wrap: anywhere;
+}
+
+.waiting-patient-card--empty {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  align-content: center;
+  gap: var(--oc-space-2);
+  color: var(--oc-color-text-secondary);
+  text-align: center;
+}
+
+.waiting-patient-card--empty > nz-icon {
+  color: var(--oc-color-brand-primary-active);
+  font-size: 26px;
+}
+
+.waiting-patient-card--empty h3,
+.waiting-patient-card--empty p {
+  margin: 0;
+}
+
+.waiting-patient-card--empty p {
+  max-width: 30ch;
+  font-size: 12px;
+  text-wrap: pretty;
+}
+
+.waiting-patient-panel__footer {
+  display: grid;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-3) var(--oc-space-4) var(--oc-space-4);
+  border-block-start: 1px solid var(--oc-color-border-subtle);
+  background: var(--oc-color-surface-card);
+}
+
+.waiting-patient-panel__message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-2);
+  margin: 0;
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border-radius: var(--oc-radius-sm);
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.waiting-patient-panel__message--error {
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-text-primary);
+}
+
+.waiting-patient-panel__message button {
+  min-height: 28px;
+  padding: 0 var(--oc-space-2);
+  border: 0;
+  border-radius: var(--oc-radius-sm);
+  background: transparent;
+  color: var(--oc-color-text-link);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--oc-font-weight-semibold);
+  touch-action: manipulation;
+}
+
+.waiting-patient-panel__message button:hover {
+  background: var(--oc-color-surface-hover);
+}
+
+.waiting-patient-panel__message button:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 1px;
+}
+
+.waiting-patient-panel__primary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--oc-space-2);
+  border: 1px solid var(--oc-color-brand-primary-hover);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-brand-primary-hover);
+  color: var(--oc-color-text-inverse);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--oc-font-weight-semibold);
+  touch-action: manipulation;
+  transition:
+    background-color var(--oc-motion-fast) var(--oc-ease-standard),
+    border-color var(--oc-motion-fast) var(--oc-ease-standard);
+}
+
+.waiting-patient-panel__primary:hover {
+  border-color: var(--oc-color-brand-primary-active);
+  background: var(--oc-color-brand-primary-active);
+}
+
+.waiting-patient-panel__primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.waiting-patient-panel__primary:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+}
+
+.waiting-patient-panel__footer small {
+  color: var(--oc-color-text-muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.waiting-patient-panel__constraint {
+  padding: 0 var(--oc-space-2);
+  color: var(--oc-color-text-secondary) !important;
+  text-align: start !important;
+}
+
+.waiting-patient-panel__secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--oc-space-2);
+}
+
+.waiting-patient-panel__closed-state {
+  margin: 0;
+  padding: var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-neutral-surface);
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waiting-room-tabs button,
+  .waiting-table tbody tr,
+  .waiting-patient-panel__primary,
+  .queue-command-bar__primary {
+    transition: none;
+  }
+}

@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
 import type { AuthenticatedUser } from '../../core/auth/auth.models';
@@ -25,6 +26,8 @@ describe('ActiveConsultationStore', () => {
   const connectionEpoch = signal(0);
   let events: Subject<ScheduledCareEvent>;
   let getActive: ReturnType<typeof vi.fn>;
+  let startScheduled: ReturnType<typeof vi.fn>;
+  let startCanonical: ReturnType<typeof vi.fn>;
   let store: ActiveConsultationStore;
 
   beforeEach(() => {
@@ -32,9 +35,14 @@ describe('ActiveConsultationStore', () => {
     connectionEpoch.set(0);
     events = new Subject<ScheduledCareEvent>();
     getActive = vi.fn().mockReturnValue(of(C123));
+    startScheduled = vi.fn().mockReturnValue(of(C123));
+    startCanonical = vi.fn().mockReturnValue(of(C123));
     TestBed.configureTestingModule({
       providers: [
-        { provide: ActiveConsultationApiService, useValue: { getActive } },
+        {
+          provide: ActiveConsultationApiService,
+          useValue: { getActive, startScheduled, startCanonical },
+        },
         {
           provide: RealtimeService,
           useValue: { scheduledCareEvents$: events, connectionEpoch },
@@ -129,5 +137,98 @@ describe('ActiveConsultationStore', () => {
     connectionEpoch.update((value) => value + 1);
     TestBed.flushEffects();
     await vi.waitFor(() => expect(getActive).toHaveBeenCalledTimes(2));
+  });
+
+  it('starts once for repeated taps and uses the exact Appointment version', async () => {
+    const response = new Subject<ActiveConsultation>();
+    getActive.mockReturnValue(of(null));
+    startScheduled.mockReturnValue(response);
+    user.set({ id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false });
+    TestBed.flushEffects();
+    await vi.waitFor(() => expect(getActive).toHaveBeenCalledOnce());
+
+    const first = store.startScheduledAppointment('appointment-9', 7);
+    const second = store.startScheduledAppointment('appointment-9', 7);
+    expect(first).toBe(second);
+    expect(startScheduled).toHaveBeenCalledOnce();
+    expect(startScheduled.mock.calls[0]?.slice(0, 2)).toEqual(['appointment-9', 7]);
+
+    response.next(C123);
+    response.complete();
+    await expect(first).resolves.toEqual({ kind: 'STARTED', consultation: C123 });
+  });
+
+  it('retains the semantic key after an ambiguous empty recovery', async () => {
+    getActive.mockReturnValue(of(null));
+    startScheduled.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 0, statusText: 'Network error' })),
+    );
+    user.set({ id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false });
+    TestBed.flushEffects();
+    await vi.waitFor(() => expect(getActive).toHaveBeenCalledOnce());
+
+    await store.startScheduledAppointment('appointment-9', 7);
+    await store.startScheduledAppointment('appointment-9', 7);
+
+    expect(startScheduled).toHaveBeenCalledTimes(2);
+    expect(startScheduled.mock.calls[0]?.[2]).toBe(startScheduled.mock.calls[1]?.[2]);
+  });
+
+  it('recovers only a matching active scheduled source', async () => {
+    const matching = { ...C123, consultationId: 'matching-consultation' };
+    getActive.mockReturnValueOnce(of(null)).mockReturnValue(of(matching));
+    startScheduled.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 0, statusText: 'Network error' })),
+    );
+    user.set({ id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false });
+    TestBed.flushEffects();
+    await vi.waitFor(() => expect(getActive).toHaveBeenCalledOnce());
+
+    await expect(store.startScheduledAppointment('appointment-9', 7)).resolves.toEqual({
+      kind: 'RECOVERED',
+      consultation: matching,
+    });
+  });
+
+  it('does not treat another active Consultation as Start success', async () => {
+    const other = { ...C123, consultationId: 'other-consultation', sourceId: 'appointment-other' };
+    getActive.mockReturnValueOnce(of(null)).mockReturnValue(of(other));
+    startScheduled.mockReturnValue(
+      throwError(() => new HttpErrorResponse({
+        status: 409,
+        error: { errorCode: 'CONSULTATION_ALREADY_EXISTS' },
+      })),
+    );
+    user.set({ id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false });
+    TestBed.flushEffects();
+    await vi.waitFor(() => expect(getActive).toHaveBeenCalledOnce());
+
+    await expect(store.startScheduledAppointment('appointment-9', 7)).resolves.toEqual({
+      kind: 'ACTIVE_CONFLICT',
+      consultation: other,
+    });
+    expect(store.startError()).toBe('Une consultation est déjà en cours.');
+  });
+
+  it('starts and recovers only the exact Urgent CABINET commitment', async () => {
+    const urgent = {
+      ...C123,
+      consultationId: 'urgent-consultation',
+      sourceType: 'URGENT_CABINET' as const,
+      sourceId: 'commitment-7',
+    };
+    getActive.mockReturnValue(of(null));
+    startCanonical.mockReturnValue(of(urgent));
+    user.set({ id: 'doctor-1', role: 'DOCTOR', mustChangePassword: false });
+    TestBed.flushEffects();
+    await vi.waitFor(() => expect(getActive).toHaveBeenCalledOnce());
+
+    await expect(store.startUrgentCabinet('commitment-7', 9)).resolves.toEqual({
+      kind: 'STARTED',
+      consultation: urgent,
+    });
+    expect(startCanonical).toHaveBeenCalledWith(
+      'URGENT_CABINET', 'commitment-7', 9, expect.any(String),
+    );
   });
 });

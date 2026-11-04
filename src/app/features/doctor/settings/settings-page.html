@@ -1,484 +1,208 @@
-<div class="settings-page">
-  <oc-page-header
-    title="Paramètres"
-    description="Gérez votre profil, emploi du temps et préférences"
-  />
-
-  <div class="settings-page__content">
-    <oc-tabs
-      label="Paramètres"
-      [tabs]="tabs()"
-      [selected]="activeTab()"
-      (selectedChange)="onTabChange($event)"
+<main class="settings-page">
+  <div class="settings-page__frame">
+    <oc-page-header
+      title="Paramètres"
+      description="Gérez votre profil, vos lieux d'exercice et vos préférences."
     />
 
-    @if (activeTab() === 'overview') {
-      <div class="settings-page__tab-content">
-        <app-professional-readiness-overview (navigateTo)="onOverviewNavigate($event)" />
-      </div>
-    }
+    <div class="settings-page__navigation">
+      <oc-tabs
+        label="Sections des paramètres"
+        [tabs]="tabs()"
+        [selected]="activeTab()"
+        (selectedChange)="onTabChange($event)"
+      />
+    </div>
 
-    @if (activeTab() === 'profile') {
-      <div class="settings-page__tab-content">
+    <section class="settings-page__content" [attr.aria-label]="'Paramètres — ' + activeTab()">
+      @if (activeTab() === 'profile') {
         <app-professional-profile-section />
-      </div>
-    }
+      }
 
-    @if (activeTab() === 'cabinets') {
-      <div class="settings-page__tab-content">
+      @if (activeTab() === 'cabinets') {
         <app-cabinet-settings-section />
-      </div>
-    }
+      }
 
-    @if (activeTab() === 'schedule') {
-      <div class="settings-page__tab-content">
-        <div class="settings-page__schedule-context">
-          <strong>Planning du médecin — tous les cabinets</strong>
-          <p role="note">Ces horaires s’appliquent actuellement à tous vos cabinets.</p>
-        </div>
+      @if (activeTab() === 'schedule') {
+        <div class="settings-page__schedule">
+          <header class="settings-page__section-heading">
+            <h2>Horaires et disponibilités</h2>
+            <p>Définissez les horaires habituels proposés pour vos rendez-vous.</p>
+          </header>
 
-        @if (scheduleConflictWarning(); as warning) {
-          <div class="settings-page__schedule-warning" role="alert">
-            <strong>Rendez-vous existants conservés</strong>
-            <span>{{ warning }}</span>
-          </div>
-        }
-
-        <oc-card
-          title="Emploi du temps"
-          [subtitle]="
-            availabilityRules().length === 0
-              ? 'Définissez vos jours et horaires habituels.'
-              : 'Vos horaires habituels'
-          "
-        >
-          <div
-            class="settings-page__schedule-header"
-            [class.settings-page__schedule-header--setup]="availabilityRules().length === 0"
-          >
-            @if (availabilityRules().length === 0) {
-              <oc-button
-                variant="primary"
-                size="small"
-                [disabled]="scheduleMutationBlocked()"
-                (click)="openInitialSetup()"
-              >
-                Configurer mes horaires
-              </oc-button>
-            } @else {
-              <span class="settings-page__selection-count">
-                {{ selectedScheduleDays().size }} jour(s) sélectionné(s)
-              </span>
-              <oc-button
-                variant="primary"
-                size="small"
-                [disabled]="selectedScheduleDays().size === 0 || scheduleMutationBlocked()"
-                (click)="openBulkEdit()"
-              >
-                Modifier plusieurs jours
-              </oc-button>
-            }
+          <div class="settings-page__context-note" role="note">
+            <strong>Planning commun à tous vos cabinets</strong>
+            <span>
+              Ces horaires définissent votre disponibilité habituelle et s'appliquent actuellement
+              à tous vos cabinets.
+            </span>
           </div>
 
-          @if (scheduleLoading()) {
-            <div class="settings-page__loading">
-              <span class="settings-page__spinner" aria-label="Chargement..."></span>
-            </div>
-          } @else if (scheduleLoadError()) {
-            <oc-empty-state
-              icon="warning"
-              title="Erreur de chargement"
-              [description]="scheduleLoadError()!"
-            />
-          } @else {
-            @if (scheduleError()) {
-              <p class="settings-page__inline-error" role="alert">{{ scheduleError() }}</p>
-            }
-            @if (scheduleSuccess(); as message) {
-              <p class="settings-page__success-message" role="status">{{ message }}</p>
-            }
-            <fieldset class="settings-page__schedule-list">
-              <legend class="oc-sr-only">Sélection des jours du planning hebdomadaire</legend>
-              @for (day of dayKeys; track day) {
-                <article
-                  class="settings-page__schedule-day"
-                  [class.settings-page__schedule-day--selected]="selectedScheduleDays().has(day)"
-                  [class.settings-page__schedule-day--closed]="!getDayRule(day)?.active"
-                >
-                  <label class="settings-page__day-select" [for]="'schedule-day-' + day">
-                    <input
-                      [id]="'schedule-day-' + day"
-                      type="checkbox"
-                      [checked]="selectedScheduleDays().has(day)"
-                      [disabled]="scheduleMutationBlocked()"
-                      (change)="toggleScheduleDay(day, $any($event.target).checked)"
-                    />
-                    <span class="settings-page__day-name">{{ getDayLabel(day) }}</span>
-                  </label>
-
-                  @if (getDayRule(day); as rule) {
-                    @if (rule.active) {
-                      <div class="settings-page__rule-summary">
-                        <span class="settings-page__open-label">Ouvert</span>
-                        <strong class="settings-page__rule-time">
-                          {{ formatTime(rule.startTime) }}–{{ formatTime(rule.endTime) }}
-                        </strong>
-                        @if (rule.pauseStart && rule.pauseEnd) {
-                          <span class="settings-page__rule-pause">
-                            Pause {{ formatTime(rule.pauseStart) }}–{{ formatTime(rule.pauseEnd) }}
-                          </span>
-                        }
-                        <span class="settings-page__rule-duration">
-                          {{ rule.slotDurationMinutes }} min
-                        </span>
-                      </div>
-                      <div class="settings-page__rule-actions">
-                        <oc-button
-                          variant="quiet"
-                          size="small"
-                          [disabled]="scheduleMutationBlocked()"
-                          (click)="openEditDay(day)"
-                        >
-                          Modifier
-                        </oc-button>
-                        <oc-button
-                          variant="quiet"
-                          size="small"
-                          [disabled]="scheduleMutationBlocked()"
-                          (click)="openCopyRule(rule)"
-                        >
-                          Copier vers…
-                        </oc-button>
-                        <oc-button
-                          variant="quiet"
-                          size="small"
-                          [disabled]="scheduleMutationBlocked()"
-                          (click)="markDayClosed(rule)"
-                        >
-                          Marquer comme fermé
-                        </oc-button>
-                      </div>
-                    } @else {
-                      <span class="settings-page__closed-label">Fermé</span>
-                      <div class="settings-page__rule-actions">
-                        <oc-button
-                          variant="quiet"
-                          size="small"
-                          [disabled]="scheduleMutationBlocked()"
-                          (click)="openEditDay(day)"
-                        >
-                          Modifier
-                        </oc-button>
-                      </div>
-                    }
-                  } @else {
-                    <span class="settings-page__closed-label">Fermé</span>
-                    <div class="settings-page__rule-actions">
-                      <oc-button
-                        variant="quiet"
-                        size="small"
-                        [disabled]="scheduleMutationBlocked()"
-                        (click)="openEditDay(day)"
-                      >
-                        Modifier
-                      </oc-button>
-                    </div>
-                  }
-                </article>
-              }
-            </fieldset>
-            <p class="settings-page__appointment-warning" role="note">
-              <strong>Les rendez-vous existants restent inchangés.</strong>
-              Les modifications s’appliquent aux disponibilités futures.
-            </p>
-          }
-        </oc-card>
-
-        @if (scheduleContextIsPrototype()) {
           <oc-card
-            title="Exceptions du Cabinet — prototype P2"
-            subtitle="Les exceptions Cabinet resteront locales jusqu'au gel du contrat backend"
+            title="Semaine habituelle"
+            [subtitle]="
+              availabilityRules().length === 0
+                ? 'Configurez vos jours, horaires et durée de créneau.'
+                : 'Sélectionnez un ou plusieurs jours pour les modifier.'
+            "
           >
-            <oc-empty-state
-              icon="calendar"
-              title="Aucune exception Cabinet dans ce prototype"
-              description="Les rendez-vous existants restent visibles même lorsqu'une future exception les place hors disponibilité."
-            />
-          </oc-card>
-        } @else {
-          <oc-card
-            title="Exceptions actuelles"
-            subtitle="Blocages et ouvertures supplémentaires de l'API réelle, encore non rattachés à un Cabinet"
-          >
-            <div class="settings-page__schedule-header">
-              <oc-button
-                variant="primary"
-                size="small"
-                [disabled]="exceptionSaving() || exceptionLoadState() !== 'loaded'"
-                (click)="openExceptionDialog()"
-                >Gérer les exceptions</oc-button
-              >
-            </div>
-
-            @if (exceptionMutationError()) {
-              <p class="settings-page__inline-error" role="alert">{{ exceptionMutationError() }}</p>
-            }
-
-            @if (exceptionLoadState() === 'notLoaded') {
-              <p class="settings-page__empty-text">Les exceptions n'ont pas encore été chargées.</p>
-            } @else if (exceptionLoadState() === 'loading') {
-              <div
-                class="settings-page__loading"
-                role="status"
-                aria-label="Chargement des exceptions"
-              >
-                <span class="settings-page__spinner" aria-hidden="true"></span>
-              </div>
-            } @else if (exceptionLoadState() === 'error') {
-              <oc-empty-state
-                icon="warning"
-                title="Exceptions indisponibles"
-                [description]="exceptionLoadError()!"
-              >
-                <oc-button variant="secondary" size="small" (click)="loadExceptions()"
-                  >Réessayer</oc-button
-                >
-              </oc-empty-state>
-            } @else if (exceptions().length > 0) {
-              <div class="settings-page__exceptions-list">
-                @for (exception of exceptions(); track trackByExceptionId($index, exception)) {
-                  <div class="settings-page__exception-row">
-                    <time
-                      class="settings-page__exception-date"
-                      [attr.datetime]="exception.exceptionDate"
-                    >
-                      {{ formatExceptionDate(exception.exceptionDate) }}
-                    </time>
-                    <span
-                      class="settings-page__exception-type"
-                      [class]="'settings-page__exception-type--' + exception.type.toLowerCase()"
-                    >
-                      {{ exception.type === 'BLOCK' ? 'Blocage' : 'Ouverture' }}
-                    </span>
-                    <span class="settings-page__exception-window">
-                      {{ formatExceptionWindow(exception) }}
-                    </span>
-                    <span class="settings-page__exception-reason" [title]="exception.reason ?? ''">
-                      {{ exception.reason || '—' }}
-                    </span>
-                    <button
-                      type="button"
-                      class="settings-page__exception-delete"
-                      [disabled]="exceptionSaving()"
-                      (click)="deleteException(exception)"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                }
-              </div>
-            } @else {
-              <oc-empty-state
-                icon="calendar"
-                title="Aucune exception configurée"
-                description="Ajoutez un blocage ou une plage supplémentaire pour une date précise."
-              />
-            }
-          </oc-card>
-        }
-
-        <app-availability-rule-dialog
-          [open]="ruleDialogOpen()"
-          [rule]="editingRule()"
-          [day]="editingDay()"
-          contextLabel="Planning du médecin — tous les cabinets"
-          [saving]="ruleSaving()"
-          [saveError]="scheduleError()"
-          (openChange)="onRuleDialogClose()"
-          (saved)="onRuleSaved($event)"
-        />
-
-        <app-bulk-schedule-editor
-          [open]="bulkEditorOpen()"
-          [mode]="bulkEditorMode()"
-          [initialDays]="bulkEditorDays()"
-          [sourceRule]="copySourceRule()"
-          [saving]="ruleSaving()"
-          [saveError]="scheduleError()"
-          (dismissed)="closeBulkEditor()"
-          (saved)="onBulkScheduleSaved($event)"
-        />
-
-        <nz-modal
-          [nzVisible]="exceptionDialogOpen()"
-          nzTitle="Ajouter une exception"
-          [nzCentered]="true"
-          [nzWidth]="560"
-          [nzClosable]="!exceptionSaving()"
-          [nzMaskClosable]="!exceptionSaving()"
-          [nzKeyboard]="!exceptionSaving()"
-          (nzOnCancel)="closeExceptionDialog()"
-        >
-          <ng-container *nzModalContent>
-            <form
-              id="availabilityExceptionForm"
-              class="settings-page__exception-form"
-              [formGroup]="exceptionForm"
-              (ngSubmit)="addException()"
+            <div
+              class="settings-page__schedule-toolbar"
+              [class.settings-page__schedule-toolbar--setup]="availabilityRules().length === 0"
             >
-              <div class="settings-page__field">
-                <label class="settings-page__label" for="exceptionDate">Date</label>
-                <input
-                  id="exceptionDate"
-                  class="settings-page__input"
-                  type="date"
-                  formControlName="exceptionDate"
-                  [attr.aria-invalid]="exceptionForm.controls.exceptionDate.invalid"
-                />
-                @if (
-                  exceptionForm.controls.exceptionDate.touched &&
-                  exceptionForm.controls.exceptionDate.invalid
-                ) {
-                  <span class="settings-page__field-error">La date est obligatoire.</span>
-                }
-              </div>
-              <div class="settings-page__field">
-                <label class="settings-page__label" for="exceptionType">Type</label>
-                <select id="exceptionType" class="settings-page__input" formControlName="type">
-                  <option value="BLOCK">Blocage</option>
-                  <option value="EXTRA">Ouverture</option>
-                </select>
-                @if (exceptionForm.controls.type.value === 'EXTRA') {
-                  <span class="settings-page__field-hint">
-                    La plage supplémentaire s'applique uniquement à une journée ayant déjà un
-                    horaire hebdomadaire actif.
-                  </span>
-                }
-              </div>
-              <div class="settings-page__field">
-                <label class="settings-page__label" for="exceptionScope">Durée</label>
-                <select id="exceptionScope" class="settings-page__input" formControlName="scope">
-                  <option value="FULL_DAY">Toute la journée de travail</option>
-                  <option value="TIME_WINDOW">Plage horaire</option>
-                </select>
-                @if (exceptionForm.controls.scope.value === 'FULL_DAY') {
-                  <span class="settings-page__field-hint">
-                    Le blocage utilisera exactement les heures de travail configurées pour ce jour.
-                  </span>
-                }
-              </div>
-              @if (exceptionForm.controls.scope.value === 'TIME_WINDOW') {
-                <div class="settings-page__time-grid">
-                  <div class="settings-page__field">
-                    <label class="settings-page__label" for="exceptionStartTime">Début</label>
-                    <oc-time-field
-                      controlId="exceptionStartTime"
-                      formControlName="startTime"
-                      [allowClear]="false"
-                      [ariaDescribedBy]="
-                        exceptionForm.touched &&
-                        (exceptionForm.hasError('timeWindowRequired') ||
-                          exceptionForm.hasError('timeWindowOrder'))
-                          ? 'exceptionWindowError'
-                          : null
-                      "
-                      [invalid]="
-                        exceptionForm.touched &&
-                        (exceptionForm.hasError('timeWindowRequired') ||
-                          exceptionForm.hasError('timeWindowOrder'))
-                      "
-                    />
-                  </div>
-                  <div class="settings-page__field">
-                    <label class="settings-page__label" for="exceptionEndTime">Fin</label>
-                    <oc-time-field
-                      controlId="exceptionEndTime"
-                      formControlName="endTime"
-                      [allowClear]="false"
-                      [ariaDescribedBy]="
-                        exceptionForm.touched &&
-                        (exceptionForm.hasError('timeWindowRequired') ||
-                          exceptionForm.hasError('timeWindowOrder'))
-                          ? 'exceptionWindowError'
-                          : null
-                      "
-                      [invalid]="
-                        exceptionForm.touched &&
-                        (exceptionForm.hasError('timeWindowRequired') ||
-                          exceptionForm.hasError('timeWindowOrder'))
-                      "
-                    />
-                  </div>
-                </div>
-                @if (
-                  exceptionForm.touched &&
-                  (exceptionForm.hasError('timeWindowRequired') ||
-                    exceptionForm.hasError('timeWindowOrder'))
-                ) {
-                  <span id="exceptionWindowError" class="settings-page__field-error">
-                    L'heure de début doit précéder l'heure de fin.
-                  </span>
-                }
+              @if (availabilityRules().length === 0) {
+                <oc-button
+                  variant="primary"
+                  size="small"
+                  [disabled]="scheduleMutationBlocked()"
+                  (click)="openInitialSetup()"
+                >
+                  Configurer mes horaires
+                </oc-button>
+              } @else {
+                <span>{{ selectedScheduleDays().size }} jour(s) sélectionné(s)</span>
+                <oc-button
+                  variant="secondary"
+                  size="small"
+                  [disabled]="selectedScheduleDays().size === 0 || scheduleMutationBlocked()"
+                  (click)="openBulkEdit()"
+                >
+                  Modifier la sélection
+                </oc-button>
               }
-              <div class="settings-page__field">
-                <label class="settings-page__label" for="exceptionReason">Raison</label>
-                <input
-                  id="exceptionReason"
-                  class="settings-page__input"
-                  type="text"
-                  placeholder="Optionnel"
-                  maxlength="300"
-                  formControlName="reason"
-                />
+            </div>
+
+            @if (scheduleLoading()) {
+              <div class="settings-page__schedule-loading" role="status">
+                <span class="settings-page__spinner" aria-hidden="true"></span>
+                <span>Chargement des horaires…</span>
               </div>
-              @if (exceptionMutationError()) {
-                <p class="settings-page__inline-error" role="alert">
-                  {{ exceptionMutationError() }}
+            } @else if (scheduleLoadError(); as message) {
+              <oc-empty-state icon="warning" title="Horaires indisponibles" [description]="message" />
+            } @else {
+              @if (scheduleError(); as message) {
+                <p class="settings-page__feedback settings-page__feedback--error" role="alert">
+                  {{ message }}
                 </p>
               }
-            </form>
-          </ng-container>
-          <ng-template nzModalFooter>
-            <div class="settings-page__modal-actions">
-              <oc-button
-                variant="secondary"
-                [disabled]="exceptionSaving()"
-                (click)="closeExceptionDialog()"
-                >Annuler</oc-button
-              >
-              <oc-button
-                type="submit"
-                form="availabilityExceptionForm"
-                variant="primary"
-                [loading]="exceptionSaving()"
-                >Ajouter</oc-button
-              >
-            </div>
-          </ng-template>
-        </nz-modal>
-      </div>
-    }
+              @if (scheduleSuccess(); as message) {
+                <p class="settings-page__feedback settings-page__feedback--success" role="status">
+                  {{ message }}
+                </p>
+              }
 
-    @if (activeTab() === 'services') {
-      <div class="settings-page__tab-content">
+              <fieldset class="settings-page__schedule-list">
+                <legend class="oc-sr-only">Sélection des jours du planning hebdomadaire</legend>
+                @for (day of dayKeys; track day) {
+                  <article
+                    class="settings-page__schedule-day"
+                    [class.settings-page__schedule-day--selected]="selectedScheduleDays().has(day)"
+                    [class.settings-page__schedule-day--closed]="!getDayRule(day)?.active"
+                  >
+                    <label class="settings-page__day-select" [for]="'schedule-day-' + day">
+                      <input
+                        [id]="'schedule-day-' + day"
+                        type="checkbox"
+                        [checked]="selectedScheduleDays().has(day)"
+                        [disabled]="scheduleMutationBlocked()"
+                        (change)="toggleScheduleDay(day, $any($event.target).checked)"
+                      />
+                      <span>{{ getDayLabel(day) }}</span>
+                    </label>
+
+                    @if (getDayRule(day); as rule) {
+                      @if (rule.active) {
+                        <div class="settings-page__rule-summary">
+                          <span class="settings-page__status settings-page__status--open">Ouvert</span>
+                          <strong>{{ formatTime(rule.startTime) }} — {{ formatTime(rule.endTime) }}</strong>
+                          @if (rule.pauseStart && rule.pauseEnd) {
+                            <span>Pause {{ formatTime(rule.pauseStart) }} — {{ formatTime(rule.pauseEnd) }}</span>
+                          }
+                          <span>{{ rule.slotDurationMinutes }} min</span>
+                        </div>
+                        <div class="settings-page__rule-actions">
+                          <oc-button variant="quiet" size="small" [disabled]="scheduleMutationBlocked()" (click)="openEditDay(day)">
+                            Modifier
+                          </oc-button>
+                          <oc-button variant="quiet" size="small" [disabled]="scheduleMutationBlocked()" (click)="openCopyRule(rule)">
+                            Copier vers…
+                          </oc-button>
+                          <oc-button variant="quiet" size="small" [disabled]="scheduleMutationBlocked()" (click)="markDayClosed(rule)">
+                            Marquer fermé
+                          </oc-button>
+                        </div>
+                      } @else {
+                        <span class="settings-page__status settings-page__status--closed">Fermé</span>
+                        <oc-button variant="quiet" size="small" [disabled]="scheduleMutationBlocked()" (click)="openEditDay(day)">
+                          Modifier
+                        </oc-button>
+                      }
+                    } @else {
+                      <span class="settings-page__status settings-page__status--closed">Fermé</span>
+                      <oc-button variant="quiet" size="small" [disabled]="scheduleMutationBlocked()" (click)="openEditDay(day)">
+                        Modifier
+                      </oc-button>
+                    }
+                  </article>
+                }
+              </fieldset>
+
+              <p class="settings-page__appointment-note" role="note">
+                <strong>Les rendez-vous existants restent inchangés.</strong>
+                Les modifications s’appliquent uniquement aux disponibilités futures.
+              </p>
+            }
+          </oc-card>
+
+          <aside class="settings-page__calendar-link">
+            <div>
+              <strong>Besoin de bloquer une période exceptionnelle ?</strong>
+              <span>Les fermetures temporaires et indisponibilités se gèrent depuis le calendrier.</span>
+            </div>
+            <oc-button variant="secondary" size="small" trailingIcon="arrow-right" (click)="openCalendar()">
+              Ouvrir le calendrier
+            </oc-button>
+          </aside>
+        </div>
+      }
+
+      @if (activeTab() === 'services') {
         <app-services-settings-section
           (urgentConfigurationDirtyChange)="urgentConfigurationDirty.set($event)"
         />
-      </div>
-    }
+      }
 
-    @if (activeTab() === 'account') {
-      <div class="settings-page__tab-content">
+      @if (activeTab() === 'account') {
         <app-account-security-section />
-      </div>
-    }
+      }
 
-    @if (activeTab() === 'notifications') {
-      <div class="settings-page__tab-content">
+      @if (activeTab() === 'notifications') {
         <app-notification-settings-section />
-      </div>
-    }
+      }
+    </section>
   </div>
+
+  <app-availability-rule-dialog
+    [open]="ruleDialogOpen()"
+    [rule]="editingRule()"
+    [day]="editingDay()"
+    contextLabel="Planning du médecin — tous les cabinets"
+    [saving]="ruleSaving()"
+    [saveError]="scheduleError()"
+    (openChange)="onRuleDialogClose()"
+    (saved)="onRuleSaved($event)"
+  />
+
+  <app-bulk-schedule-editor
+    [open]="bulkEditorOpen()"
+    [mode]="bulkEditorMode()"
+    [initialDays]="bulkEditorDays()"
+    [sourceRule]="copySourceRule()"
+    [saving]="ruleSaving()"
+    [saveError]="scheduleError()"
+    (dismissed)="closeBulkEditor()"
+    (saved)="onBulkScheduleSaved($event)"
+  />
 
   <oc-confirm-dialog
     [open]="deleteRuleConfirmOpen()"
@@ -486,7 +210,7 @@
     [message]="
       'Marquer le ' +
       (ruleToDelete() ? getDayLabel(ruleToDelete()!.dayOfWeek) : '') +
-      ' comme fermé ? Les rendez-vous existants restent inchangés. Cette modification s’applique aux disponibilités futures.'
+      ' comme fermé ? Les rendez-vous existants restent inchangés.'
     "
     confirmLabel="Marquer comme fermé"
     cancelLabel="Annuler"
@@ -494,48 +218,4 @@
     (confirm)="confirmDeleteRule()"
     (cancelled)="cancelDeleteRule()"
   />
-
-  <nz-modal
-    [nzVisible]="deleteExceptionConfirmOpen()"
-    nzTitle="Supprimer l'exception"
-    [nzCentered]="true"
-    [nzWidth]="460"
-    [nzClosable]="!exceptionSaving()"
-    [nzMaskClosable]="!exceptionSaving()"
-    [nzKeyboard]="!exceptionSaving()"
-    (nzOnCancel)="cancelDeleteException()"
-  >
-    <ng-container *nzModalContent>
-      <div class="settings-page__delete-confirmation">
-        <p>Êtes-vous sûr de vouloir supprimer cette exception ?</p>
-        @if (exceptionToDelete(); as exception) {
-          <p class="settings-page__delete-detail">
-            {{ formatExceptionDate(exception.exceptionDate) }} ·
-            {{ formatExceptionWindow(exception) }}
-          </p>
-        }
-        @if (exceptionMutationError()) {
-          <p class="settings-page__inline-error" role="alert">
-            {{ exceptionMutationError() }}
-          </p>
-        }
-      </div>
-    </ng-container>
-    <ng-template nzModalFooter>
-      <div class="settings-page__modal-actions">
-        <oc-button
-          variant="secondary"
-          [disabled]="exceptionSaving()"
-          (click)="cancelDeleteException()"
-          >Annuler</oc-button
-        >
-        <oc-button
-          variant="destructive"
-          [loading]="exceptionSaving()"
-          (click)="confirmDeleteException()"
-          >Supprimer</oc-button
-        >
-      </div>
-    </ng-template>
-  </nz-modal>
-</div>
+</main>

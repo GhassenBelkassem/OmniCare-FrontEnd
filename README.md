@@ -31,6 +31,26 @@ ng serve
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
+## Standalone demo
+
+The static demo is a compile-time-isolated build with local fictional data. It does not
+authenticate against, request data from, or open a realtime connection to the backend.
+Its login screen offers every role that currently has an Angular workspace: platform
+administrator, doctor, secretary, and the five clinic roles.
+
+```bash
+# Development server for the standalone demo
+npm run start:static-demo
+
+# Deployable static artifact
+npm run build:static-demo
+```
+
+The deployable files are written directly to `dist/omniCareDash-static`. Configure the
+static host to fall back to `index.html` for client routes such as `/doctor/command` and
+`/clinic/requests`. The normal `npm start` and `npm run build:ci` commands remain connected
+to the configured backend.
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:

@@ -1,0 +1,422 @@
+<section class="documents-page" aria-describedby="documents-demo-note">
+  <p id="documents-demo-note" class="oc-sr-only">
+    Documents, modèles et données fictifs présentés uniquement dans la démonstration statique
+    OmniCare.
+  </p>
+
+  <header class="documents-heading">
+    <div class="documents-heading__copy">
+      <span class="documents-heading__section">Documents</span>
+      <h1>Documents &amp; modèles</h1>
+      <p>
+        Utilisez vos propres ordonnances et certificats. OmniCare les remplit automatiquement avec
+        les données du patient.
+      </p>
+    </div>
+    <div class="documents-heading__actions">
+      <input
+        #headerPdfInput
+        class="visually-hidden-file"
+        type="file"
+        accept="application/pdf,.pdf"
+        aria-label="Téléverser un document PDF"
+        (change)="uploadPdf($event)"
+      />
+      <oc-button variant="secondary" leadingIcon="upload" (click)="headerPdfInput.click()"
+        >Téléverser un PDF</oc-button
+      >
+      <oc-button variant="primary" leadingIcon="plus" (click)="openWizard()"
+        >Ajouter un modèle</oc-button
+      >
+    </div>
+  </header>
+
+  <aside class="workflow-callout" aria-labelledby="workflow-title">
+    <span class="workflow-callout__icon"><oc-icon name="info" intent="information" /></span>
+    <div>
+      <h2 id="workflow-title">Comment ça marche ?</h2>
+      <p>
+        Importez votre document habituel, positionnez les champs une seule fois, puis OmniCare le
+        remplira automatiquement pendant vos consultations. Vous pourrez ensuite l’imprimer, le
+        signer et apposer votre cachet.
+      </p>
+    </div>
+    <span
+      class="workflow-callout__steps"
+      aria-label="Étapes finales : imprimer, signer et cacheter"
+    >
+      <span>1 · Imprimer</span><span>2 · Signer</span><span>3 · Cacheter</span>
+    </span>
+  </aside>
+
+  @if (statusMessage(); as message) {
+    <div class="page-message" role="status">
+      <oc-icon name="info" intent="success" /><span>{{ message }}</span>
+      <button type="button" aria-label="Fermer le message" (click)="statusMessage.set(null)">
+        <oc-icon name="close" />
+      </button>
+    </div>
+  }
+  @if (uploadError(); as error) {
+    <div class="page-message page-message--error" role="alert">
+      <oc-icon name="warning" intent="critical" /><span>{{ error }}</span>
+      <button type="button" aria-label="Fermer l’erreur" (click)="uploadError.set(null)">
+        <oc-icon name="close" />
+      </button>
+    </div>
+  }
+  @if (replacementWarning(); as warning) {
+    <div class="page-message page-message--warning" role="status">
+      <oc-icon name="warning" intent="warning" /><span>{{ warning }}</span>
+      <button
+        type="button"
+        aria-label="Fermer l’avertissement"
+        (click)="replacementWarning.set(null)"
+      >
+        <oc-icon name="close" />
+      </button>
+    </div>
+  }
+
+  @if (pageState() === 'loading') {
+    <div class="documents-loading" aria-live="polite" aria-busy="true">
+      <section>
+        <oc-skeleton variant="line" /><oc-skeleton variant="block" /><oc-skeleton variant="block" />
+      </section>
+      <section><oc-skeleton variant="line" /><oc-skeleton variant="block" /></section>
+    </div>
+  } @else if (pageState() === 'error') {
+    <section class="documents-state" role="alert">
+      <span><oc-icon name="warning" intent="critical" /></span>
+      <h2>Impossible de charger vos documents</h2>
+      <p>Vos modèles n’ont pas pu être préparés. Aucun document n’a été modifié.</p>
+      <oc-button variant="secondary" leadingIcon="reload" (click)="retry()">Réessayer</oc-button>
+    </section>
+  } @else if (pageState() === 'empty') {
+    <section class="documents-state documents-state--empty">
+      <oc-empty-state
+        icon="requests"
+        title="Aucun modèle configuré"
+        description="Ajoutez votre ordonnance ou certificat habituel. Vous ne devrez positionner les champs qu’une seule fois."
+      >
+        <div class="empty-actions">
+          <oc-button variant="primary" leadingIcon="plus" (click)="openWizard()"
+            >Ajouter mon premier modèle</oc-button
+          >
+          <a href="#workflow-title">Comment ça marche ?</a>
+        </div>
+      </oc-empty-state>
+    </section>
+  } @else {
+    <div class="documents-layout" [class.documents-layout--fullscreen]="previewFullscreen()">
+      <main class="documents-main">
+        <section class="documents-panel templates-panel" aria-labelledby="templates-title">
+          <header class="panel-heading">
+            <div>
+              <h2 id="templates-title">Mes modèles</h2>
+              <p>Les documents prêts à être utilisés pendant vos consultations.</p>
+            </div>
+            <oc-button variant="secondary" size="small" leadingIcon="plus" (click)="openWizard()"
+              >Ajouter un modèle</oc-button
+            >
+          </header>
+
+          <div
+            class="template-table-wrap"
+            tabindex="0"
+            aria-label="Liste des modèles, défilement horizontal si nécessaire"
+          >
+            <table class="template-table">
+              <caption class="oc-sr-only">
+                Modèles de documents du médecin
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Modèle</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">PDF source</th>
+                  <th scope="col">Statut</th>
+                  <th scope="col"><span class="oc-sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (template of templates(); track template.id) {
+                  <tr [class.template-table__row--selected]="selectedTemplateId() === template.id">
+                    <td>
+                      <button
+                        type="button"
+                        class="template-identity"
+                        (click)="selectTemplate(template.id)"
+                      >
+                        <span class="template-icon"><oc-icon name="requests" /></span>
+                        <span
+                          ><strong>{{ template.name }}</strong
+                          ><small
+                            >Version v{{ template.version }}
+                            @if (template.isDefault) {
+                              <span class="default-badge">Par défaut</span>
+                            }
+                          </small></span
+                        >
+                      </button>
+                    </td>
+                    <td>{{ typeLabels[template.type] }}</td>
+                    <td class="template-table__file" [title]="template.pdfName">
+                      {{ template.pdfName }}
+                    </td>
+                    <td>
+                      <oc-status-badge
+                        [status]="statusBadge(template.status)"
+                        [customLabel]="statusLabels[template.status]"
+                      />
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        class="row-menu-trigger"
+                        [cdkMenuTriggerFor]="templateMenu"
+                        [attr.aria-label]="'Actions pour ' + template.name"
+                      >
+                        <nz-icon nzType="more" aria-hidden="true" />
+                      </button>
+                      <ng-template #templateMenu>
+                        <div class="action-menu" cdkMenu>
+                          <button
+                            type="button"
+                            cdkMenuItem
+                            (cdkMenuItemTriggered)="selectTemplate(template.id)"
+                          >
+                            <nz-icon nzType="file-text" aria-hidden="true" />Aperçu
+                          </button>
+                          <button type="button" cdkMenuItem (cdkMenuItemTriggered)="openWizard(4)">
+                            <nz-icon nzType="edit" aria-hidden="true" />Modifier les champs
+                          </button>
+                          <button
+                            type="button"
+                            cdkMenuItem
+                            [disabled]="template.isDefault"
+                            (cdkMenuItemTriggered)="setDefault(template.id)"
+                          >
+                            <nz-icon nzType="check-circle" aria-hidden="true" />Définir par défaut
+                          </button>
+                          <button
+                            type="button"
+                            cdkMenuItem
+                            (cdkMenuItemTriggered)="duplicateTemplate(template.id)"
+                          >
+                            <nz-icon nzType="copy" aria-hidden="true" />Dupliquer
+                          </button>
+                          <button
+                            type="button"
+                            class="action-menu__danger"
+                            cdkMenuItem
+                            [disabled]="template.status === 'INACTIVE'"
+                            (cdkMenuItemTriggered)="requestDeactivate(template.id)"
+                          >
+                            <nz-icon nzType="close" aria-hidden="true" />Désactiver
+                          </button>
+                        </div>
+                      </ng-template>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="template-mobile-list">
+            @for (template of templates(); track template.id) {
+              <button
+                type="button"
+                [class.template-mobile-card--selected]="selectedTemplateId() === template.id"
+                (click)="selectTemplate(template.id)"
+              >
+                <span class="template-icon"><oc-icon name="requests" /></span>
+                <span
+                  ><strong>{{ template.name }}</strong
+                  ><small>{{ typeLabels[template.type] }} · v{{ template.version }}</small></span
+                >
+                <oc-status-badge
+                  [status]="statusBadge(template.status)"
+                  [customLabel]="statusLabels[template.status]"
+                />
+              </button>
+            }
+          </div>
+        </section>
+
+        <section class="documents-panel files-panel" aria-labelledby="files-title">
+          <header class="panel-heading">
+            <div>
+              <h2 id="files-title">Mes documents PDF</h2>
+              <p>Vos documents d’origine utilisés comme base pour vos modèles.</p>
+            </div>
+            <input
+              #sectionPdfInput
+              class="visually-hidden-file"
+              type="file"
+              accept="application/pdf,.pdf"
+              aria-label="Téléverser un PDF dans la bibliothèque"
+              (change)="uploadPdf($event)"
+            />
+            <oc-button
+              variant="secondary"
+              size="small"
+              leadingIcon="upload"
+              (click)="sectionPdfInput.click()"
+              >Téléverser</oc-button
+            >
+          </header>
+          <ul class="file-list">
+            @for (pdf of pdfs(); track pdf.id) {
+              <li>
+                <span class="pdf-file-icon" aria-hidden="true">PDF</span>
+                <span class="file-copy"
+                  ><strong>{{ pdf.name }}</strong
+                  ><small>PDF · {{ pdf.sizeLabel }} · Importé le {{ pdf.uploadedAt }}</small></span
+                >
+                <span class="file-usage"
+                  >{{ pdf.usedBy }} modèle{{ pdf.usedBy > 1 ? 's' : '' }}</span
+                >
+                <div class="file-actions">
+                  <button
+                    type="button"
+                    class="compact-action"
+                    (click)="notify('Aperçu du PDF original prêt à être affiché.')"
+                  >
+                    <oc-icon name="requests" />Aperçu
+                  </button>
+                  <label class="compact-action"
+                    ><oc-icon name="refresh" />Remplacer<input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      aria-label="Remplacer le document PDF"
+                      (change)="replacePdf($event, pdf.id)"
+                  /></label>
+                  <button
+                    type="button"
+                    class="row-menu-trigger"
+                    [cdkMenuTriggerFor]="pdfMenu"
+                    [attr.aria-label]="'Actions pour ' + pdf.name"
+                  >
+                    <nz-icon nzType="more" aria-hidden="true" />
+                  </button>
+                  <ng-template #pdfMenu>
+                    <div class="action-menu" cdkMenu>
+                      <button
+                        type="button"
+                        cdkMenuItem
+                        (cdkMenuItemTriggered)="notify('Renommage du PDF prêt.')"
+                      >
+                        <nz-icon nzType="edit" aria-hidden="true" />Renommer
+                      </button>
+                      <button
+                        type="button"
+                        cdkMenuItem
+                        (cdkMenuItemTriggered)="downloadDemoPdf(pdf)"
+                      >
+                        <nz-icon nzType="file-text" aria-hidden="true" />Télécharger l’original
+                      </button>
+                      <button
+                        type="button"
+                        class="action-menu__danger"
+                        cdkMenuItem
+                        [disabled]="pdf.usedBy > 0"
+                        (cdkMenuItemTriggered)="requestDeletePdf(pdf.id)"
+                      >
+                        <nz-icon nzType="delete" aria-hidden="true" />Supprimer
+                      </button>
+                    </div>
+                  </ng-template>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      </main>
+
+      <aside class="preview-panel" aria-labelledby="preview-title">
+        <header class="preview-heading">
+          <div>
+            <h2 id="preview-title">Prévisualisation</h2>
+            <p>Rendu du modèle sélectionné</p>
+          </div>
+          <select
+            aria-label="Modèle à prévisualiser"
+            [value]="selectedTemplateId()"
+            (change)="selectTemplateFromEvent($event)"
+          >
+            @for (template of templates(); track template.id) {
+              <option [value]="template.id">{{ template.name }}</option>
+            }
+          </select>
+        </header>
+
+        <oc-tabs label="Mode de prévisualisation" [tabs]="previewTabs" [(selected)]="previewTab" />
+
+        <div class="preview-canvas">
+          @if (pdfLoadError()) {
+            <div class="preview-error" role="alert">
+              <oc-icon name="warning" intent="critical" />
+              <h3>Impossible d’afficher ce PDF</h3>
+              <p>Le fichier semble indisponible ou endommagé.</p>
+              <oc-button
+                variant="secondary"
+                size="small"
+                leadingIcon="reload"
+                (click)="pdfLoadError.set(false)"
+                >Réessayer</oc-button
+              >
+            </div>
+          } @else {
+            <app-document-preview
+              [fields]="mappingFields()"
+              [overlays]="previewTab() === 'fields'"
+            />
+          }
+        </div>
+
+        <footer class="preview-footer">
+          <span
+            ><strong>{{ selectedTemplate()?.name }}</strong
+            ><small
+              >Version v{{ selectedTemplate()?.version }} · Papier original conservé</small
+            ></span
+          >
+          <button type="button" (click)="previewFullscreen.set(!previewFullscreen())">
+            <oc-icon [name]="previewFullscreen() ? 'close' : 'external'" />{{
+              previewFullscreen() ? 'Réduire' : 'Plein écran'
+            }}
+          </button>
+        </footer>
+        <div class="print-reminder">
+          <oc-icon name="info" /><span
+            >OmniCare remplit le PDF. Après impression, vous le signez et apposez votre cachet
+            physique.</span
+          >
+        </div>
+      </aside>
+    </div>
+  }
+</section>
+
+@if (wizardOpen()) {
+  <app-document-template-wizard
+    [open]="wizardOpen()"
+    [existingPdfs]="pdfs()"
+    [initialStep]="wizardInitialStep()"
+    [forceSaveError]="forceSaveError"
+    (dismissed)="closeWizard()"
+    (saved)="createTemplate($event)"
+  />
+}
+
+<oc-confirm-dialog
+  [(open)]="confirmationOpen"
+  [title]="confirmationTitle()"
+  [message]="confirmationMessage()"
+  [confirmLabel]="confirmationLabel()"
+  cancelLabel="Annuler"
+  [destructive]="true"
+  (confirm)="confirmAction()"
+/>

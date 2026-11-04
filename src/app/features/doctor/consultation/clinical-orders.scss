@@ -1,0 +1,13 @@
+.clinical-orders { display: grid; gap: var(--oc-space-4); }
+.clinical-orders__header, .clinical-orders__item, .clinical-orders__actions, .clinical-orders__create { display: flex; align-items: center; gap: var(--oc-space-3); }
+.clinical-orders__header, .clinical-orders__item { justify-content: space-between; }
+.clinical-orders__header h2, .clinical-orders__item p { margin: 0; }
+.clinical-orders__header p, .clinical-orders__item small, .clinical-orders__empty { color: var(--oc-color-text-secondary); }
+.clinical-orders__create { flex-wrap: wrap; justify-content: flex-end; }
+.clinical-orders__editor, .clinical-orders__item, .clinical-orders__notice { padding: var(--oc-space-4); border: 1px solid var(--oc-color-border-subtle); border-radius: var(--oc-radius-md); }
+.clinical-orders__editor { display: grid; gap: var(--oc-space-3); }
+.clinical-orders__notice { border-color: var(--oc-color-warning); }
+.clinical-orders__validation { margin: 0; color: var(--oc-color-critical); }
+.clinical-orders__actions { justify-content: flex-end; }
+.clinical-orders__immutable { color: var(--oc-color-text-secondary); font-size: var(--oc-font-size-body); }
+@media (max-width: 767px) { .clinical-orders__header, .clinical-orders__item { align-items: flex-start; flex-direction: column; } .clinical-orders__create { justify-content: flex-start; } }

@@ -54,6 +54,12 @@ describe('doctor routes', () => {
     expect(consultation?.canDeactivate).toEqual([unsavedChangesGuard]);
   });
 
+  it('exposes list and read-only detail routes for completed consultations', () => {
+    const children = DOCTOR_ROUTES[0].children ?? [];
+    expect(children.some((route) => route.path === 'history')).toBe(true);
+    expect(children.some((route) => route.path === 'history/:consultationId')).toBe(true);
+  });
+
   it('exposes only the production Calendar route after FullCalendar cutover', async () => {
     const children = DOCTOR_ROUTES[0].children ?? [];
     const calendar = children.find((route) => route.path === 'calendar');
@@ -70,6 +76,16 @@ describe('doctor routes', () => {
 
     expect(urgentReadiness?.title).toBe('Préparation aux urgences | OmniCare');
     await expect(urgentReadiness?.loadComponent?.()).resolves.toBe(UrgentReadinessPage);
+  });
+
+  it('exposes the urgent request queue separately from scheduled requests', () => {
+    const children = DOCTOR_ROUTES[0].children ?? [];
+    const scheduledRequests = children.find((route) => route.path === 'requests');
+    const urgentRequests = children.find((route) => route.path === 'urgent-requests');
+
+    expect(scheduledRequests).toBeDefined();
+    expect(urgentRequests?.title).toBe('Demandes urgentes | OmniCare');
+    expect(urgentRequests?.providers).toBeDefined();
   });
 
   it('allows DOCTOR and SECRETARY sessions into the workspace', async () => {

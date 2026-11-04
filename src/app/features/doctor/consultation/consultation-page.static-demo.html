@@ -1,0 +1,233 @@
+<main class="consultation-demo">
+  <h1 class="oc-sr-only">Consultation</h1>
+  <p class="oc-sr-only">Démonstration statique hors ligne avec données patient fictives. Aucun enregistrement clinique réel.</p>
+
+  <header class="patient-strip">
+    <div class="patient-strip__identity">
+      <div class="patient-avatar" aria-hidden="true">{{ patient.initials }}</div>
+      <div class="patient-strip__copy">
+        <div class="patient-strip__title">
+          <h2>{{ patient.name }}</h2>
+          <span><nz-icon nzType="user" aria-hidden="true" /> {{ patient.age }} ans</span>
+          <span>{{ patient.gender }}</span>
+          <span><nz-icon nzType="solution" aria-hidden="true" /> {{ patient.insuranceNumber }}</span>
+          <span class="patient-strip__blood">{{ patient.bloodGroup }}</span>
+        </div>
+        <p>Consultation <i aria-hidden="true">•</i> {{ patient.cabinet }} <i aria-hidden="true">•</i> Rendez-vous {{ patient.appointmentTime }} <i aria-hidden="true">•</i> Arrivé {{ patient.arrivedAt }} ({{ patient.waitMinutes }} min)</p>
+      </div>
+    </div>
+    <div class="patient-strip__actions">
+      <oc-status-badge status="in-progress" customLabel="En cours · 00:12:34" emphasis="strong" />
+      <oc-button variant="outline" size="small" leadingIcon="solution" (click)="mrsDrawerOpen.set(true)">Dossier médical</oc-button>
+      <oc-button variant="outline" size="small" leadingIcon="file-text" [routerLink]="['/doctor/patient', patient.id]">Dossier patient</oc-button>
+    </div>
+  </header>
+
+  <oc-tabs
+    class="workspace-tabs"
+    label="Sections de la consultation"
+    [tabs]="workspaceTabs()"
+    [selected]="activeSection()"
+    (selectedChange)="setActiveSection($event)"
+  />
+
+  @if (feedback(); as message) {
+    <div class="consultation-feedback" role="status" aria-live="polite">
+      <nz-icon nzType="exclamation-circle" aria-hidden="true" />
+      <span>{{ message }}</span>
+      <button type="button" aria-label="Fermer le message" (click)="feedback.set(null)"><nz-icon nzType="close" /></button>
+    </div>
+  }
+
+  <section class="tab-stage" [attr.aria-label]="activeSectionLabel()">
+    @switch (activeSection()) {
+      @case ('note') {
+        <section class="workspace-panel workspace-panel--note" aria-labelledby="note-tab-heading">
+          <header class="workspace-panel__header">
+            <div>
+              <h2 id="note-tab-heading">Note clinique</h2>
+              <p>Documentez la consultation sans quitter le contexte patient.</p>
+            </div>
+            <div class="workspace-panel__tools">
+              <oc-popover
+                label="Modèles de note clinique"
+                triggerLabel="Choisir un modèle de note"
+                align="start"
+                width="22rem"
+                [open]="templatePopoverOpen()"
+                (openChange)="templatePopoverOpen.set($event)"
+              >
+                <span ocPopoverTrigger class="template-trigger"><nz-icon nzType="file-text" /> Modèles <nz-icon nzType="down" /></span>
+                <div class="template-popover">
+                  <label>
+                    <span class="oc-sr-only">Rechercher un modèle</span>
+                    <nz-icon nzType="search" aria-hidden="true" />
+                    <input type="search" name="templateSearch" autocomplete="off" placeholder="Rechercher un modèle…" [value]="templateSearch()" (input)="templateSearch.set($any($event.target).value)" />
+                  </label>
+                  <div class="template-popover__list">
+                    @for (template of filteredTemplates(); track template.id) {
+                      <button type="button" [class.template-popover__item--active]="selectedTemplateId() === template.id" [attr.aria-pressed]="selectedTemplateId() === template.id" (click)="selectTemplate(template.id)">
+                        <nz-icon [nzType]="template.icon" aria-hidden="true" />
+                        <span><strong>{{ template.label }}</strong><small>{{ template.hint }}</small></span>
+                      </button>
+                    } @empty { <p>Aucun modèle trouvé.</p> }
+                  </div>
+                  <footer>
+                    <small>Le modèle complète uniquement les champs vides.</small>
+                    <oc-button size="small" (click)="applySelectedTemplate()">Appliquer</oc-button>
+                  </footer>
+                </div>
+              </oc-popover>
+              <oc-status-badge [status]="activeSaveTone()" [customLabel]="activeSaveLabel()" />
+            </div>
+          </header>
+
+          @if (store.clinicalSaveState() === 'conflict' || store.clinicalSaveState() === 'error') {
+            <div class="domain-alert" role="alert">
+              <nz-icon nzType="warning" />
+              <span>{{ store.clinicalSaveState() === 'conflict' ? 'Une version plus récente est simulée. Le brouillon local est conservé.' : 'L’enregistrement local simulé a échoué. Le brouillon est conservé.' }}</span>
+              <oc-button variant="outline" size="small" (click)="resolveSaveState()">Résoudre</oc-button>
+            </div>
+          }
+
+          <form class="clinical-editor" (submit)="$event.preventDefault(); saveActiveDomain()">
+            <label class="editor-field editor-field--full">
+              <span>Motif de consultation <kbd>Ctrl + 1</kbd></span>
+              <input #chiefComplaintField type="text" name="chiefComplaint" autocomplete="off" [value]="store.clinicalDraft().chiefComplaint" (input)="updateClinical('chiefComplaint', $event)" />
+            </label>
+            <label class="editor-field">
+              <span>Histoire de la maladie <kbd>Ctrl + 2</kbd></span>
+              <textarea #presentIllnessField name="presentIllness" autocomplete="off" rows="6" [value]="store.clinicalDraft().presentIllness" (input)="updateClinical('presentIllness', $event)"></textarea>
+            </label>
+            <label class="editor-field">
+              <span>Examen clinique <kbd>Ctrl + 3</kbd></span>
+              <textarea #clinicalFindingsField name="clinicalFindings" autocomplete="off" rows="6" [value]="store.clinicalDraft().clinicalFindings" (input)="updateClinical('clinicalFindings', $event)"></textarea>
+            </label>
+            <label class="editor-field">
+              <span>Diagnostic / Évaluation <kbd>Ctrl + 4</kbd></span>
+              <textarea #assessmentField name="assessment" autocomplete="off" rows="5" [value]="store.clinicalDraft().assessment" (input)="updateClinical('assessment', $event)"></textarea>
+            </label>
+            <label class="editor-field">
+              <span>Plan de traitement <kbd>Ctrl + 5</kbd></span>
+              <textarea #treatmentPlanField name="treatmentPlan" autocomplete="off" rows="5" [value]="store.clinicalDraft().treatmentPlan" (input)="updateClinical('treatmentPlan', $event)"></textarea>
+            </label>
+            <label class="editor-field editor-field--full">
+              <span>Notes complémentaires <kbd>Ctrl + 6</kbd></span>
+              <textarea #notesField name="notes" autocomplete="off" rows="3" placeholder="Remarques, conseils, éducation du patient…" [value]="store.clinicalDraft().notes" (input)="updateClinical('notes', $event)"></textarea>
+            </label>
+            <div class="editor-decisions editor-field--full">
+              <label><span>Décision médicamenteuse</span><select name="medicationDecision" autocomplete="off" [value]="store.clinicalDraft().medicationDecision ?? ''" (change)="updateMedicationDecision($event)"><option value="" disabled>Sélectionner</option><option value="MEDICATION_PRESCRIBED">Médicament prescrit</option><option value="NO_MEDICATION">Aucun médicament</option></select></label>
+              <label><span>Suivi</span><select name="followUp" autocomplete="off" [value]="store.clinicalDraft().followUp" (change)="updateFollowUp($event)"><option value="NO_FOLLOW_UP">Aucun suivi</option><option value="FOLLOW_UP_IN_PERIOD">Suivi planifié</option><option value="FOLLOW_UP_AFTER_RESULTS">Après résultats</option><option value="FOLLOW_UP_AS_NEEDED">Selon évolution</option></select></label>
+            </div>
+          </form>
+        </section>
+      }
+
+      @case ('vitals') {
+        <section class="workspace-panel" aria-labelledby="vitals-tab-heading">
+          <header class="workspace-panel__header"><div><h2 id="vitals-tab-heading">Constantes</h2><p>Relevé local à la consultation, clairement séparé du dossier médical protégé.</p></div><oc-status-badge [status]="activeSaveTone()" [customLabel]="activeSaveLabel()" /></header>
+          <div class="demo-notice"><nz-icon nzType="exclamation-circle" /><div><strong>État de démonstration</strong><p>Ces constantes sont modifiables uniquement dans la démo statique. Aucun stockage canonique n’est simulé.</p></div></div>
+          <form class="vitals-form" (submit)="$event.preventDefault(); saveActiveDomain()">
+            <label><span>TA systolique</span><div><input type="number" name="systolicBP" inputmode="numeric" autocomplete="off" [value]="store.vitals().systolicBP" (input)="updateVital('systolicBP', $event)" /><em>mmHg</em></div></label>
+            <label><span>TA diastolique</span><div><input type="number" name="diastolicBP" inputmode="numeric" autocomplete="off" [value]="store.vitals().diastolicBP" (input)="updateVital('diastolicBP', $event)" /><em>mmHg</em></div></label>
+            <label><span>Fréquence cardiaque</span><div><input type="number" name="heartRate" inputmode="numeric" autocomplete="off" [value]="store.vitals().heartRate" (input)="updateVital('heartRate', $event)" /><em>bpm</em></div></label>
+            <label><span>Température</span><div><input type="number" name="temperature" inputmode="decimal" step="0.1" autocomplete="off" [value]="store.vitals().temperature" (input)="updateVital('temperature', $event)" /><em>°C</em></div></label>
+            <label><span>Poids</span><div><input type="number" name="weight" inputmode="decimal" step="0.1" autocomplete="off" [value]="store.vitals().weight" (input)="updateVital('weight', $event)" /><em>kg</em></div></label>
+          </form>
+        </section>
+      }
+
+      @case ('prescription') {
+        <section class="workspace-panel" aria-labelledby="prescription-tab-heading">
+          <header class="workspace-panel__header"><div><h2 id="prescription-tab-heading">Prescription</h2><p>Préparez le brouillon médicamenteux sans simuler une signature.</p></div><oc-status-badge [status]="activeSaveTone()" [customLabel]="activeSaveLabel()" /></header>
+          <div class="prescription-decision">
+            <label><span>Décision clinique <small>enregistrée avec la note clinique</small></span><select name="prescriptionMedicationDecision" autocomplete="off" [value]="store.clinicalDraft().medicationDecision ?? ''" (change)="updateMedicationDecision($event)"><option value="" disabled>Sélectionner</option><option value="MEDICATION_PRESCRIBED">Médicament prescrit</option><option value="NO_MEDICATION">Aucun médicament</option></select></label>
+            <span class="dependency-note"><nz-icon nzType="exclamation-circle" /> Modifier cette décision marque l’onglet Note clinique comme non enregistré.</span>
+          </div>
+          <div class="medication-editor" aria-label="Médicaments du brouillon">
+            <div class="medication-editor__head"><span>Médicament</span><span>Posologie</span><span>Durée</span><span class="oc-sr-only">Actions</span></div>
+            @for (medication of store.medications(); track medication.id) {
+              <div class="medication-row">
+                <label><span class="oc-sr-only">Nom du médicament</span><input type="text" [name]="'medicationName-' + medication.id" autocomplete="off" [value]="medication.name" (input)="store.updateMedication(medication.id, 'name', $any($event.target).value)" /></label>
+                <label><span class="oc-sr-only">Posologie</span><input type="text" [name]="'medicationDosage-' + medication.id" autocomplete="off" [value]="medication.dosage" (input)="store.updateMedication(medication.id, 'dosage', $any($event.target).value)" /></label>
+                <label><span class="oc-sr-only">Durée</span><input type="text" [name]="'medicationDuration-' + medication.id" autocomplete="off" [value]="medication.duration" (input)="store.updateMedication(medication.id, 'duration', $any($event.target).value)" /></label>
+                <button type="button" [attr.aria-label]="'Retirer ' + medication.name" (click)="store.removeMedication(medication.id)"><nz-icon nzType="delete" /></button>
+              </div>
+            } @empty { <div class="inline-empty"><nz-icon nzType="medicine-box" /><p>Aucun médicament dans ce brouillon.</p></div> }
+          </div>
+          <div class="panel-actions"><oc-button variant="outline" leadingIcon="plus" (click)="store.addMedication()">Ajouter un médicament</oc-button><span class="panel-actions__spacer"></span><oc-button variant="outline" [disabled]="true">Finaliser</oc-button><oc-button [disabled]="true">Signer</oc-button></div>
+          <p class="disabled-explanation">Finalisation et signature indisponibles dans la démo hors ligne : aucune signature ni ordonnance active ne sera fabriquée.</p>
+        </section>
+      }
+
+      @case ('orders') {
+        <section class="workspace-panel" aria-labelledby="orders-tab-heading">
+          <header class="workspace-panel__header"><div><h2 id="orders-tab-heading">Ordres cliniques</h2><p>LAB, IMAGING et REFERRAL restent des brouillons indépendants.</p></div><oc-status-badge [status]="activeSaveTone()" [customLabel]="activeSaveLabel()" /></header>
+          <form class="order-composer" (submit)="$event.preventDefault(); addOrder()">
+            <label><span>Catégorie</span><select name="orderCategory" autocomplete="off" [value]="newOrderCategory()" (change)="newOrderCategory.set($any($event.target).value)"><option value="LAB">Laboratoire</option><option value="IMAGING">Imagerie</option><option value="REFERRAL">Orientation</option></select></label>
+            <label class="order-composer__request"><span>Demande</span><input type="text" name="orderRequest" autocomplete="off" placeholder="Préciser l’examen, l’étude ou la spécialité…" [value]="newOrderLabel()" (input)="newOrderLabel.set($any($event.target).value)" /></label>
+            <oc-button type="submit" leadingIcon="plus">Ajouter au brouillon</oc-button>
+          </form>
+          <div class="orders-list">
+            @for (order of store.orders(); track order.id) {
+              <article><span>{{ order.category }}</span><div><strong>{{ order.label }}</strong><small>Brouillon local · non finalisé</small></div><button type="button" [attr.aria-label]="'Retirer ' + order.label" (click)="store.removeOrder(order.id)"><nz-icon nzType="delete" /></button></article>
+            } @empty { <div class="large-empty"><span><nz-icon nzType="solution" /></span><h3>Aucun ordre clinique</h3><p>Utilisez le formulaire ci-dessus pour préparer un brouillon.</p></div> }
+          </div>
+          <div class="panel-actions panel-actions--end"><oc-button variant="outline" [disabled]="true">Finaliser les ordres</oc-button></div>
+        </section>
+      }
+
+      @case ('documents') {
+        <section class="workspace-panel" aria-labelledby="documents-tab-heading">
+          <header class="workspace-panel__header"><div><h2 id="documents-tab-heading">Documents officiels</h2><p>Certificats et artefacts restent séparés du dossier clinique.</p></div><oc-status-badge [status]="activeSaveTone()" [customLabel]="activeSaveLabel()" /></header>
+          <div class="artifact-actions"><oc-button variant="outline" leadingIcon="plus" (click)="store.addArtifact('MEDICAL_CERTIFICATE')">Certificat médical</oc-button><oc-button variant="outline" leadingIcon="plus" (click)="store.addArtifact('SICK_LEAVE_CERTIFICATE')">Arrêt de travail</oc-button></div>
+          <div class="artifact-list">
+            @for (artifact of store.artifacts(); track artifact.id) {
+              <article><span class="artifact-list__icon"><nz-icon nzType="file-text" /></span><div><strong>{{ artifact.label }}</strong><small>Définition locale · aucun PDF généré</small></div><oc-status-badge status="draft" customLabel="Brouillon" /><oc-button variant="outline" size="small" [disabled]="true">Télécharger</oc-button><button type="button" [attr.aria-label]="'Retirer ' + artifact.label" (click)="store.removeArtifact(artifact.id)"><nz-icon nzType="delete" /></button></article>
+            } @empty { <div class="large-empty"><span><nz-icon nzType="file-text" /></span><h3>Aucun document préparé</h3><p>Créez une définition de certificat. La démo ne génère ni ne signe de PDF.</p></div> }
+          </div>
+        </section>
+      }
+
+      @case ('finalization') {
+        <section class="workspace-panel workspace-panel--finalization" aria-labelledby="finalization-tab-heading">
+          <header class="workspace-panel__header"><div><h2 id="finalization-tab-heading">Finalisation</h2><p>Vérifiez chaque domaine avant de terminer la simulation.</p></div><oc-status-badge [status]="store.canFinish() ? 'completed' : 'requires-attention'" [customLabel]="store.canFinish() ? 'Prêt à terminer' : 'Actions requises'" /></header>
+          <div class="completion-grid">
+            @for (item of completionItems(); track item.label) {
+              <article [class.completion-item--ready]="item.state === 'saved'"><span><nz-icon [nzType]="item.state === 'saved' ? 'check-circle' : 'exclamation-circle'" /></span><div><strong>{{ item.label }}</strong><small>{{ statusLabel(item.state) }}</small></div>@if (item.state !== 'saved') { <button type="button" (click)="setActiveSection(item.label === 'Note clinique' ? 'note' : item.label === 'Constantes' ? 'vitals' : item.label === 'Prescription' ? 'prescription' : item.label === 'Ordres cliniques' ? 'orders' : 'documents')">Ouvrir</button> }</article>
+            }
+          </div>
+          <section class="finish-summary"><div><h3>{{ store.canFinish() ? 'Tous les brouillons sont enregistrés' : 'La consultation ne peut pas encore être terminée' }}</h3><p>{{ store.canFinish() ? 'La finalisation ci-dessous reste une simulation locale sans écriture clinique.' : 'Enregistrez chaque domaine modifié. Les conflits et erreurs doivent être résolus.' }}</p></div><oc-button trailingIcon="right" [disabled]="!store.canFinish() || store.finished()" (click)="requestFinish()">{{ store.finished() ? 'Simulation terminée' : 'Terminer la consultation' }}</oc-button></section>
+        </section>
+      }
+    }
+  </section>
+
+  <footer class="consultation-action-bar">
+    <oc-status-badge [status]="activeSaveTone()" [customLabel]="activeSaveLabel()" />
+    <span class="consultation-action-bar__hint"><kbd>Ctrl</kbd> + <kbd>S</kbd> pour enregistrer cet onglet</span>
+    <span class="consultation-action-bar__spacer"></span>
+    @if (activeSection() !== 'finalization') { <oc-button variant="outline" leadingIcon="solution" [loading]="activeSaveState() === 'saving'" (click)="saveActiveDomain()">Enregistrer</oc-button> }
+    <oc-button variant="outline" leadingIcon="file-text" [disabled]="true">Aperçu PDF</oc-button>
+    <oc-button trailingIcon="right" [disabled]="!store.canFinish() || store.finished()" (click)="requestFinish()">Terminer la consultation</oc-button>
+  </footer>
+</main>
+
+<oc-sheet [open]="mrsDrawerOpen()" title="Dossier médical" [description]="patient.name + ' · accès protégé'" side="right" width="28rem" [hasFooter]="true" (dismissed)="mrsDrawerOpen.set(false)">
+  <div class="mrs-drawer">
+    <div class="mrs-drawer__patient"><div class="patient-avatar" aria-hidden="true">{{ patient.initials }}</div><div><h3>{{ patient.name }}</h3><p>{{ patient.age }} ans · {{ patient.gender }} · {{ patient.bloodGroup }}</p></div></div>
+    @if (mrsState() === 'ACTIVE') {
+      <div class="mrs-access-state mrs-access-state--active"><nz-icon nzType="check-circle" /><div><strong>Accès MRS actif</strong><p>Autorisation limitée à cette consultation fictive.</p></div></div>
+      <section><h3>Informations essentielles</h3><dl><div><dt>Allergies</dt><dd>Aucune connue</dd></div><div><dt>Conditions</dt><dd>Aucune</dd></div><div><dt>Médicaments actuels</dt><dd>Aucun traitement</dd></div></dl></section>
+      <section><h3>Consultations récentes</h3><ul>@for (consultation of recentConsultations; track consultation.date) { <li><time>{{ consultation.date }}</time><div><strong>{{ consultation.label }}</strong><small>{{ consultation.doctor }}</small></div></li> }</ul></section>
+    } @else if (mrsLockedCopy(); as lockCopy) {
+      <div class="mrs-locked"><span><nz-icon nzType="warning" /></span><h3>{{ lockCopy.title }}</h3><p>{{ lockCopy.description }}</p><small>Aucune information clinique historique n’est rendue.</small></div>
+    }
+  </div>
+  <div ocSheetFooter><oc-button variant="secondary" (click)="mrsDrawerOpen.set(false)">Fermer</oc-button><oc-button variant="outline" leadingIcon="file-text" [routerLink]="['/doctor/patient', patient.id]">Voir le dossier patient</oc-button></div>
+</oc-sheet>
+
+<oc-dialog [open]="finishDialogOpen()" title="Terminer la consultation dans la démo ?" description="Cette action clôt uniquement l’état local fictif. Elle ne finalise aucun dossier clinique et ne déclenche aucun appel réseau." [hasFooter]="true" [backdropDismissible]="true" (dismissed)="finishDialogOpen.set(false)">
+  <div class="finish-checklist">@for (item of completionItems(); track item.label) { <p><nz-icon nzType="check-circle" /> {{ item.label }} enregistré</p> }</div>
+  <div ocDialogFooter><oc-button variant="secondary" (click)="finishDialogOpen.set(false)">Annuler</oc-button><oc-button (click)="confirmFinish()">Terminer la simulation</oc-button></div>
+</oc-dialog>

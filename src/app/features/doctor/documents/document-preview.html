@@ -1,0 +1,81 @@
+<article class="document-paper" aria-label="Aperçu de l’ordonnance médicale">
+  <header class="document-letterhead">
+    <div class="document-doctor">
+      <span class="document-doctor__mark" aria-hidden="true">+</span>
+      <span>
+        <strong>Dr Ben Salah</strong>
+        <small>Médecin généraliste</small>
+        <small>Conventionné CNAM</small>
+      </span>
+    </div>
+    <address>
+      <strong>Cabinet Médical Lac 2</strong>
+      <span>Rue du Lac Léman, Les Berges du Lac 2</span>
+      <span>1053 Tunis · Tél. 71 234 567</span>
+    </address>
+  </header>
+
+  <div class="document-title">
+    <span>ORDONNANCE</span>
+    <small>Prescription médicale</small>
+  </div>
+
+  <div class="document-content" [class.document-content--sample]="sampleData()">
+    <section class="document-patient">
+      <p>
+        <span>Patient</span
+        ><strong>{{ sampleData() ? 'Mohamed Ben Salah' : 'Nom et prénom du patient' }}</strong>
+      </p>
+      <p>
+        <span>Né le</span><strong>{{ sampleData() ? '12/04/1988' : 'JJ/MM/AAAA' }}</strong>
+      </p>
+    </section>
+    <p class="document-date">Tunis, le {{ sampleData() ? '31/10/2026' : 'JJ/MM/AAAA' }}</p>
+    <section class="document-prescription">
+      <span class="document-rx" aria-hidden="true">Rx</span>
+      <div>
+        <strong>{{ sampleData() ? 'Amoxicilline 1 g' : 'Médicament' }}</strong>
+        <p>
+          {{
+            sampleData()
+              ? '1 comprimé, 2 fois par jour, pendant 7 jours.'
+              : 'Posologie et durée du traitement'
+          }}
+        </p>
+        @if (sampleData()) {
+          <p>À prendre au cours des repas.</p>
+        }
+      </div>
+    </section>
+    <div class="document-signature-space">
+      <span>Signature et cachet après impression</span>
+    </div>
+  </div>
+
+  @if (overlays()) {
+    <div class="mapping-layer" aria-label="Champs positionnés">
+      @for (field of fields(); track field.id) {
+        <button
+          type="button"
+          class="mapping-box mapping-box--{{ field.kind }}"
+          [class.mapping-box--selected]="selectedFieldId() === field.id"
+          [style.left.%]="field.x"
+          [style.top.%]="field.y"
+          [style.width.%]="field.width"
+          [style.height.%]="field.height"
+          [attr.aria-pressed]="selectedFieldId() === field.id"
+          [attr.aria-label]="'Sélectionner le champ ' + field.label"
+          (click)="selectField(field.id)"
+        >
+          <span>{{ field.label }}</span>
+        </button>
+      }
+    </div>
+  }
+
+  <footer class="document-footer">
+    <span>Réf. OMC-2026-1048</span>
+    <span>Document généré par OmniCare · À signer et cacheter après impression</span>
+    <span>Page 1/1</span>
+  </footer>
+</article>

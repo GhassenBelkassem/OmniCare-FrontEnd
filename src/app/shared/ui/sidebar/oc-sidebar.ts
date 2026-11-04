@@ -182,6 +182,7 @@ export class OcSidebar {
   readonly expandedGroups = model<ReadonlySet<string>>(new Set());
   readonly profile = input<SidebarUserProfile>();
   readonly labels = input<Partial<SidebarLabels>>({});
+  readonly notificationBadge = input(0);
   readonly profileMenu = output<void>();
   readonly query = signal('');
   readonly resolvedLabels = computed(() => ({ ...DEFAULT_LABELS, ...this.labels() }));

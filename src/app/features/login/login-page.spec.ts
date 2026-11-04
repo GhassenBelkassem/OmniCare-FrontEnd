@@ -19,7 +19,8 @@ describe('LoginPage', () => {
           provide: AuthService,
           useValue: {
             login: vi.fn(() => of<DashboardRole>('CLINIC_ADMIN')),
-            routeFor: (role: DashboardRole) => role === 'CLINIC_ADMIN' ? '/clinic' : '/login',
+            loginAsDemoRole: vi.fn((role: DashboardRole) => role),
+            routeFor: (role: DashboardRole) => (role === 'CLINIC_ADMIN' ? '/clinic' : '/login'),
           },
         },
       ],

@@ -26,7 +26,6 @@
           "options": {
             "browser": "src/main.ts",
             "server": "src/main.server.ts",
-            "prerender": true,
             "ssr": {
               "entry": "src/server.ts"
             },
@@ -59,6 +58,7 @@
           },
           "configurations": {
             "production": {
+              "prerender": true,
               "budgets": [
                 {
                   "type": "initial",
@@ -77,6 +77,36 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "static-demo": {
+              "outputMode": "static",
+              "server": false,
+              "ssr": false,
+              "optimization": true,
+              "extractLicenses": true,
+              "outputPath": {
+                "base": "dist/omniCareDash-static",
+                "browser": ""
+              },
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/app/core/config/app-mode.ts",
+                  "with": "src/app/core/config/app-mode.static-demo.ts"
+                },
+                {
+                  "replace": "src/app/shared/ui/sidebar/oc-sidebar.ts",
+                  "with": "src/app/shared/ui/sidebar/oc-sidebar.static-demo.ts"
+                },
+                {
+                  "replace": "src/app/features/doctor/doctor.routes.ts",
+                  "with": "src/app/features/doctor/doctor.routes.static-demo.ts"
+                },
+                {
+                  "replace": "src/app/core/realtime/realtime.service.ts",
+                  "with": "src/app/core/realtime/realtime.service.static-demo.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -89,6 +119,9 @@
             },
             "development": {
               "buildTarget": "omniCareDash:build:development"
+            },
+            "static-demo": {
+              "buildTarget": "omniCareDash:build:static-demo"
             }
           },
           "defaultConfiguration": "development"

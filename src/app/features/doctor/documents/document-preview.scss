@@ -1,0 +1,235 @@
+:host {
+  display: block;
+  width: min(100%, 470px);
+  aspect-ratio: 210 / 297;
+  container-type: inline-size;
+}
+
+.document-paper {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  padding: 7.5% 7% 4.5%;
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-default);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-overlay);
+  color: var(--oc-color-text-primary);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.document-letterhead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 5%;
+  padding-block-end: 4%;
+  border-block-end: 2px solid var(--oc-color-text-primary);
+}
+
+.document-doctor {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.document-doctor__mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 2px solid var(--oc-color-brand-primary-active);
+  border-radius: var(--oc-radius-pill);
+  color: var(--oc-color-brand-primary-active);
+  font-family: Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.document-doctor > span:last-child,
+.document-letterhead address {
+  display: grid;
+  gap: 2px;
+}
+
+.document-doctor strong,
+.document-letterhead address strong {
+  font-size: clamp(5.5px, 2.4cqw, 11px);
+}
+
+.document-doctor small,
+.document-letterhead address span {
+  font-size: clamp(4.5px, 1.6cqw, 7.5px);
+  line-height: 1.3;
+}
+
+.document-letterhead address {
+  max-width: 42%;
+  margin: 0;
+  font-style: normal;
+  text-align: end;
+}
+
+.document-title {
+  display: grid;
+  place-items: center;
+  padding-block: 5%;
+  letter-spacing: 0.04em;
+}
+
+.document-title span {
+  font-size: clamp(8px, 3.4cqw, 16px);
+  font-weight: 800;
+}
+
+.document-title small {
+  margin-block-start: 3px;
+  color: var(--oc-color-text-muted);
+  font-size: clamp(4px, 1.5cqw, 7px);
+  letter-spacing: 0;
+}
+
+.document-content {
+  position: relative;
+  min-height: 0;
+  font-size: clamp(5px, 1.9cqw, 9px);
+}
+
+.document-patient {
+  display: grid;
+  max-width: 68%;
+  gap: 5px;
+  padding: 8px 10px;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: 4px;
+}
+
+.document-patient p {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+}
+
+.document-patient span {
+  min-width: 42px;
+  color: var(--oc-color-text-muted);
+}
+
+.document-date {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-end: 0;
+  margin: 0;
+}
+
+.document-prescription {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  margin-block-start: 12%;
+  padding-block: 5%;
+  border-block: 1px solid var(--oc-color-border-subtle);
+}
+
+.document-rx {
+  color: var(--oc-color-brand-primary-active);
+  font-family: Georgia, serif;
+  font-size: clamp(10px, 4.2cqw, 20px);
+  font-weight: 700;
+}
+
+.document-prescription strong {
+  font-size: clamp(5.5px, 2.3cqw, 11px);
+}
+
+.document-prescription p {
+  margin: 5px 0 0;
+  line-height: 1.45;
+}
+
+.document-signature-space {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-end: 4%;
+  display: grid;
+  width: 38%;
+  height: 18%;
+  place-items: end center;
+  border-block-end: 1px solid var(--oc-color-border-default);
+  color: var(--oc-color-text-muted);
+  font-size: clamp(4px, 1.45cqw, 7px);
+  text-align: center;
+}
+
+.mapping-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mapping-box {
+  position: absolute;
+  display: grid;
+  min-width: 30px;
+  min-height: 18px;
+  place-items: start;
+  padding: 2px;
+  border: 1px dashed currentColor;
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: var(--oc-color-information);
+  cursor: pointer;
+  pointer-events: auto;
+  text-align: start;
+}
+
+.mapping-box span {
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, currentColor 12%, var(--oc-color-surface-card));
+  color: currentColor;
+  font-size: clamp(4px, 1.45cqw, 7px);
+  font-weight: 700;
+}
+
+.mapping-box--date {
+  color: var(--oc-color-success);
+}
+
+.mapping-box--clinical {
+  color: var(--oc-color-coordination);
+}
+
+.mapping-box--verification {
+  color: var(--oc-color-text-secondary);
+}
+
+.mapping-box--selected {
+  border: 2px solid var(--oc-color-information);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--oc-color-information) 18%, transparent);
+  color: var(--oc-color-information);
+}
+
+.mapping-box:focus-visible {
+  outline: 3px solid var(--oc-color-border-focus);
+  outline-offset: 2px;
+}
+
+.document-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding-block-start: 2%;
+  border-block-start: 1px solid var(--oc-color-text-primary);
+  color: var(--oc-color-text-muted);
+  font-size: clamp(3.5px, 1.25cqw, 6px);
+}
+
+.document-footer span:nth-child(2) {
+  flex: 1;
+  text-align: center;
+}

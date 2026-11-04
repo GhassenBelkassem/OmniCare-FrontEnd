@@ -1,0 +1,277 @@
+<section class="demo-dashboard" aria-describedby="demo-dashboard-fixture-note">
+  <p id="demo-dashboard-fixture-note" class="oc-sr-only">
+    Données fictives présentées uniquement dans la démonstration statique OmniCare.
+  </p>
+
+  <header class="dashboard-heading">
+    <svg class="dashboard-heading__sun" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="7" />
+      <path
+        d="M20 2v6M20 32v6M2 20h6M32 20h6M7.3 7.3l4.2 4.2M28.5 28.5l4.2 4.2M32.7 7.3l-4.2 4.2M11.5 28.5l-4.2 4.2"
+      />
+    </svg>
+    <div class="dashboard-heading__copy">
+      <h1>Bonjour, Dr Ben Salah</h1>
+      <p>
+        {{ dashboardDateLabel }} <span aria-hidden="true">·</span> 6 rendez-vous
+        <span aria-hidden="true">·</span> 2 demandes à traiter
+      </p>
+    </div>
+    <div class="dashboard-heading__art" aria-hidden="true">
+      <svg viewBox="0 0 520 88" preserveAspectRatio="xMidYMid slice">
+        <path
+          class="heading-hill heading-hill--back"
+          d="M0 84C52 36 95 73 144 49c50-25 91 30 145 7 51-22 78-4 116 13 41 18 70-2 115 15H0Z"
+        />
+        <path class="heading-hill" d="M0 84c65-21 98-10 140 0h380v4H0Z" />
+        <path
+          class="heading-plant"
+          d="M234 74c0-25-8-44-17-63m17 45c12-10 18-24 19-39m-30 17c-9-2-15-10-16-19m27 23c8-3 14-11 16-19"
+        />
+        <ellipse
+          class="heading-leaf"
+          cx="215"
+          cy="11"
+          rx="5"
+          ry="10"
+          transform="rotate(-20 215 11)"
+        />
+        <ellipse
+          class="heading-leaf"
+          cx="207"
+          cy="21"
+          rx="5"
+          ry="10"
+          transform="rotate(-45 207 21)"
+        />
+        <ellipse
+          class="heading-leaf"
+          cx="252"
+          cy="16"
+          rx="4"
+          ry="9"
+          transform="rotate(25 252 16)"
+        />
+      </svg>
+      <span>Une nouvelle journée<br />au service de vos patients</span>
+    </div>
+  </header>
+
+  <div class="dashboard-grid">
+    <div class="dashboard-column dashboard-column--primary">
+      <section class="dashboard-panel today-panel" aria-labelledby="today-title">
+        <header class="panel-header">
+          <div class="panel-title">
+            <oc-icon name="calendar" />
+            <h2 id="today-title">Aujourd’hui</h2>
+          </div>
+          <a class="secondary-action" routerLink="/doctor/calendar" aria-label="Voir le calendrier">
+            <oc-icon name="calendar" />
+            <span>Voir le calendrier</span>
+          </a>
+        </header>
+
+        <div class="appointment-timeline" data-testid="appointment-timeline">
+          @for (appointment of appointments(); track appointment.id; let last = $last) {
+            <a
+              class="appointment-row"
+              [class.appointment-row--active]="appointment.state === 'active'"
+              [class.appointment-row--last]="last"
+              [routerLink]="appointment.route"
+              [queryParams]="appointment.queryParams ?? null"
+              [attr.aria-label]="
+                appointment.time +
+                ', ' +
+                appointment.patient +
+                ', ' +
+                appointment.reason +
+                ', ' +
+                appointment.status
+              "
+            >
+              <time
+                class="appointment-time"
+                [class]="'appointment-time appointment-time--' + appointment.state"
+              >
+                {{ appointment.time }}
+              </time>
+              <span
+                class="demo-avatar"
+                [class]="'demo-avatar demo-avatar--' + appointment.avatarTone"
+                aria-hidden="true"
+              >
+                {{ appointment.initials }}
+              </span>
+              <span class="appointment-copy">
+                <strong>{{ appointment.patient }}</strong>
+                <small>{{ appointment.reason }}</small>
+              </span>
+              <span
+                class="appointment-status"
+                [class]="'appointment-status appointment-status--' + appointment.state"
+              >
+                @if (appointment.state === 'completed') {
+                  <svg viewBox="0 0 18 18" aria-hidden="true"><path d="m4 9 3 3 7-7" /></svg>
+                } @else if (appointment.state === 'confirmed') {
+                  <oc-icon name="calendar" />
+                } @else {
+                  <svg viewBox="0 0 18 18" aria-hidden="true">
+                    <circle cx="9" cy="9" r="6" />
+                    <path d="M9 5.5V9l2.5 1.5" />
+                  </svg>
+                }
+                {{ appointment.status }}
+              </span>
+              <oc-icon class="row-chevron" name="chevron-right" />
+            </a>
+          }
+        </div>
+      </section>
+
+      <section class="dashboard-panel next-panel" aria-labelledby="next-title">
+        <header class="compact-title">
+          <span class="compact-title__icon"><oc-icon name="waiting" /></span>
+          <h2 id="next-title">Prochain rendez-vous</h2>
+        </header>
+        <div class="next-appointment">
+          <span class="demo-avatar demo-avatar--blue demo-avatar--large" aria-hidden="true"
+            >ML</span
+          >
+          <div class="next-patient">
+            <strong>Marc Legrand</strong>
+            <span>Suivi d’hypertension</span>
+          </div>
+          <div class="next-detail">
+            <oc-icon name="calendar" />
+            <span
+              >Aujourd’hui<strong
+                >{{ nextAppointmentStart }} – {{ nextAppointmentEnd }}</strong
+              ></span
+            >
+          </div>
+          <div class="next-detail">
+            <oc-icon name="location" />
+            <span>Cabinet Les Berges<strong>Salle 2</strong></span>
+          </div>
+          <a
+            class="primary-action"
+            routerLink="/doctor/calendar"
+            [queryParams]="{ appointmentId: 'demo-appointment-marc' }"
+          >
+            Voir les détails
+            <oc-icon name="chevron-right" />
+          </a>
+        </div>
+      </section>
+    </div>
+
+    <aside class="dashboard-column dashboard-column--secondary" aria-label="Résumé de la journée">
+      <section class="dashboard-panel tasks-panel" aria-labelledby="tasks-title">
+        <header class="panel-header panel-header--compact">
+          <div class="panel-title panel-title--warning">
+            <oc-icon name="tasks" />
+            <span>
+              <h2 id="tasks-title">À faire</h2>
+              <small>2 demandes à traiter</small>
+            </span>
+          </div>
+          <span class="count-badge">2</span>
+        </header>
+        <div class="request-list">
+          @for (request of requests(); track request.id) {
+            <a
+              class="request-row"
+              routerLink="/doctor/requests"
+              [queryParams]="{ requestId: request.id }"
+              [attr.aria-label]="
+                request.patient + ', ' + request.reason + ', ' + request.date + ' ' + request.time
+              "
+            >
+              <span
+                class="demo-avatar"
+                [class]="'demo-avatar demo-avatar--' + request.avatarTone"
+                aria-hidden="true"
+              >
+                {{ request.initials }}
+              </span>
+              <span class="request-copy">
+                <strong>{{ request.patient }}</strong>
+                <small>{{ request.reason }}</small>
+              </span>
+              <time
+                ><strong>{{ request.date }}</strong
+                ><span>{{ request.time }}</span></time
+              >
+              <oc-icon name="chevron-right" />
+            </a>
+          }
+        </div>
+        <a class="secondary-action secondary-action--wide" routerLink="/doctor/requests">
+          Voir les demandes
+          <oc-icon name="chevron-right" />
+        </a>
+      </section>
+
+      <section class="dashboard-panel consultation-panel" aria-labelledby="consultation-title">
+        <header class="compact-title">
+          <span class="compact-title__icon"><oc-icon name="clinical" /></span>
+          <h2 id="consultation-title">Consultation en cours</h2>
+        </header>
+        <div class="consultation-patient">
+          <span class="demo-avatar demo-avatar--rose demo-avatar--large" aria-hidden="true"
+            >AS</span
+          >
+          <span>
+            <strong>Amira Ben Salah</strong>
+            <small
+              >Femme <span aria-hidden="true">·</span> 29 ans
+              <span aria-hidden="true">·</span> #78421</small
+            >
+          </span>
+        </div>
+        <div class="consultation-reason">
+          <small>Motif de consultation</small>
+          <p>Douleurs abdominales et nausées depuis 2 jours</p>
+        </div>
+        <a
+          class="primary-action primary-action--wide"
+          [routerLink]="['/doctor/consultation', activeConsultationId]"
+        >
+          <oc-icon name="clinical" />
+          <span>Continuer la consultation</span>
+          <oc-icon name="chevron-right" />
+        </a>
+        <a
+          class="secondary-action secondary-action--wide"
+          routerLink="/doctor/patient/demo-practice-patient-amira"
+        >
+          <oc-icon name="requests" />
+          <span>Voir le dossier patient</span>
+          <oc-icon name="chevron-right" />
+        </a>
+      </section>
+
+      <section class="dashboard-panel availability-panel" aria-labelledby="availability-title">
+        <div class="availability-status">
+          <oc-icon name="calendar" />
+          <span>
+            <h2 id="availability-title">Planning à jour</h2>
+            <small>Aucune indisponibilité à venir cette semaine.</small>
+          </span>
+          <span class="availability-check" aria-hidden="true">
+            <svg viewBox="0 0 18 18" aria-hidden="true"><path d="m4 9 3 3 7-7" /></svg>
+          </span>
+        </div>
+        <a
+          class="secondary-action secondary-action--wide"
+          routerLink="/doctor/settings"
+          [queryParams]="{ tab: 'schedule' }"
+        >
+          <oc-icon name="calendar" />
+          <span>Gérer mes disponibilités</span>
+          <oc-icon name="chevron-right" />
+        </a>
+      </section>
+    </aside>
+  </div>
+</section>

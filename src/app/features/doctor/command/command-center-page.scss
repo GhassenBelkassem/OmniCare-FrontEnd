@@ -92,6 +92,23 @@
   gap: var(--oc-space-4);
 }
 
+.command-page__metric-link {
+  display: block;
+  border-radius: var(--oc-radius-lg);
+  color: inherit;
+  text-decoration: none;
+}
+
+.command-page__metric-link:hover oc-metric-card {
+  display: block;
+  transform: translateY(-1px);
+}
+
+.command-page__metric-link:focus-visible {
+  outline: 3px solid var(--oc-color-focus-ring);
+  outline-offset: 2px;
+}
+
 /* ── Urgent list ── */
 .urgent-list {
   display: grid;

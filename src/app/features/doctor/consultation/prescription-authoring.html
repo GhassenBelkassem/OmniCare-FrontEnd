@@ -1,0 +1,51 @@
+<section class="panel prescription" aria-labelledby="prescription-title">
+  <div class="prescription__header">
+    <div><h2 id="prescription-title">Prescription</h2><p>Prescription MRS partagée · version {{ store.authoritative()?.prescriptionVersion ?? 0 }}</p></div>
+    <span role="status">@if (store.authoritative()?.finalized) { Finalisée et signée } @else if (store.saving()) { Enregistrement… } @else if (store.dirty()) { Modifications non enregistrées } @else { Enregistrée }</span>
+  </div>
+  @if (store.failure(); as failure) {
+    <div class="prescription__notice" role="alert">
+      @if (failure === 'PRESCRIPTION_SIGNING_UNAVAILABLE') { Le service de signature est temporairement indisponible. La prescription reste en brouillon. }
+      @else if (failure === 'PRESCRIPTION_VERSION_CONFLICT' || failure === 'CLINICAL_RECORD_VERSION_CONFLICT') { Une version plus récente existe. Rechargez et vérifiez votre saisie. }
+      @else if (failure === 'MEDICATION_DECISION_REQUIRED') { Enregistrez d’abord la décision « médicament prescrit » dans le dossier clinique. }
+      @else { L’opération a échoué. Votre saisie reste en mémoire. }
+    </div>
+  }
+  @if (store.newerVersionAvailable()) { <div class="prescription__notice" role="alert">Une version plus récente est disponible. Votre brouillon local n’a pas été remplacé.</div> }
+  @if (store.loading() && store.authoritative() === null) { <p role="status">Chargement de la prescription…</p> }
+  @else if (store.authoritative(); as current) {
+    <p>Décision : <strong>{{ clinical.authoritative()?.clinicalRecord?.medicationDecision === 'MEDICATION_PRESCRIBED' ? 'Médicament prescrit' : clinical.authoritative()?.clinicalRecord?.medicationDecision === 'NO_MEDICATION' ? 'Aucun médicament' : 'À sélectionner' }}</strong></p>
+    @if (!canAuthor()) {
+      <p class="prescription__empty">Aucune prescription à rédiger pour cette décision médicamenteuse.</p>
+    } @else {
+      @for (item of store.draft().medications; track item.itemId) {
+        <fieldset class="prescription__item" [disabled]="readOnly(current)"><legend>Médicament {{ $index + 1 }}</legend>
+          <div class="prescription__grid">
+            <label class="field"><span>Nom</span><input maxlength="200" [ngModel]="item.name" (ngModelChange)="update(item.itemId, 'name', $event)" /></label>
+            <label class="field"><span>Code médicament (optionnel)</span><input maxlength="64" [ngModel]="item.medicationCode" (ngModelChange)="update(item.itemId, 'medicationCode', $event)" /></label>
+            <label class="field"><span>Dosage</span><input type="number" min="0.01" [ngModel]="item.dose.amount" (ngModelChange)="updateDose(item.itemId, 'amount', $event)" /></label>
+            <label class="field"><span>Unité</span><input maxlength="64" [ngModel]="item.dose.unit" (ngModelChange)="updateDose(item.itemId, 'unit', $event)" /></label>
+            <label class="field"><span>Dosage/force</span><input maxlength="120" [ngModel]="item.strength" (ngModelChange)="update(item.itemId, 'strength', $event)" /></label>
+            <label class="field"><span>Voie</span><input maxlength="64" [ngModel]="item.route" (ngModelChange)="update(item.itemId, 'route', $event)" /></label>
+            <label class="field"><span>Prises par jour</span><input type="number" min="1" max="100" [ngModel]="item.frequency.timesPerDay" (ngModelChange)="updateFrequencyTimes(item.itemId, $event)" /></label>
+            <label class="field"><span>Fréquence libre</span><input maxlength="160" [ngModel]="item.frequency.text" (ngModelChange)="updateFrequencyText(item.itemId, $event)" /></label>
+            <label class="field"><span>Durée</span><input type="number" min="1" max="3650" [ngModel]="item.duration?.value" (ngModelChange)="updateDurationValue(item.itemId, $event)" /></label>
+            <label class="field"><span>Unité de durée</span><select [disabled]="item.duration === null" [ngModel]="item.duration?.unit ?? 'DAY'" (ngModelChange)="updateDurationUnit(item.itemId, $event)"><option value="DAY">Jour</option><option value="WEEK">Semaine</option><option value="MONTH">Mois</option></select></label>
+            <label class="field"><span>Quantité</span><input type="number" min="1" [ngModel]="item.quantity" (ngModelChange)="updateQuantity(item.itemId, $event)" /></label>
+            <label class="field field--wide"><span>Instructions</span><textarea maxlength="1000" [ngModel]="item.instructions" (ngModelChange)="update(item.itemId, 'instructions', $event)"></textarea></label>
+          </div>
+          @if (!readOnly(current)) { <oc-button variant="quiet" (click)="remove(item.itemId)">Supprimer</oc-button> }
+        </fieldset>
+      }
+      <label class="field"><span>Instructions générales</span><textarea maxlength="2000" [disabled]="readOnly(current)" [ngModel]="store.draft().generalInstructions" (ngModelChange)="updateGeneral($event)"></textarea></label>
+      <div class="prescription__actions">
+        @if (!readOnly(current)) { <oc-button variant="secondary" (click)="addMedication()">Ajouter un médicament</oc-button> }
+        @if (store.conflict() || store.newerVersionAvailable()) { <oc-button variant="secondary" (click)="store.refresh(true)">Recharger MRS</oc-button> }
+        @if (!readOnly(current)) {
+          <oc-button variant="secondary" [loading]="store.saving()" [disabled]="!store.dirty() || store.saving()" (click)="store.save()">Enregistrer</oc-button>
+          <oc-button variant="primary" [disabled]="store.dirty() || store.draft().medications.length === 0 || current.status !== 'DRAFT' || current.prescriptionVersion < 1 || store.finalizing() || clinical.dirty()" (click)="finalize()">Finaliser et signer</oc-button>
+        }
+      </div>
+    }
+  }
+</section>

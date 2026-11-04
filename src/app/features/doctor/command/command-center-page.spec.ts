@@ -11,6 +11,7 @@ import type {
   DoctorScheduledCareItem,
 } from '../scheduled-care/scheduled-care.models';
 import { CommandCenterPage } from './command-center-page';
+import { UrgentCabinetClinicalStore } from '../urgent-cabinet-clinical.store';
 
 function item(
   resourceType: 'BOOKING_REQUEST' | 'APPOINTMENT',
@@ -73,6 +74,14 @@ describe('CommandCenterPage scheduled-care authority', () => {
         },
         { provide: ScheduledCareFacade, useValue: care },
         { provide: ActiveConsultationStore, useValue: { refresh: vi.fn() } },
+        {
+          provide: UrgentCabinetClinicalStore,
+          useValue: {
+            refresh: vi.fn(),
+            actionable: signal(null),
+            waiting: signal(null),
+          },
+        },
       ],
     });
 
@@ -86,9 +95,9 @@ describe('CommandCenterPage scheduled-care authority', () => {
     );
   });
 
-  it('routes with the canonical consultation id and never the appointment id', async () => {
+  it('starts the dashboard Appointment through the shared command and routes canonically', async () => {
     const navigate = vi.fn();
-    const refresh = vi.fn().mockResolvedValue({
+    const consultation = {
       consultationId: '11111111-1111-4111-8111-111111111111',
       sourceType: 'SCHEDULED_APPOINTMENT',
       sourceId: 'appointment-9',
@@ -96,6 +105,11 @@ describe('CommandCenterPage scheduled-care authority', () => {
       medicalAccessStatus: 'NONE',
       version: 1,
       startedAt: '2026-10-22T09:00:00Z',
+    } as const;
+    const refresh = vi.fn().mockResolvedValue(null);
+    const startScheduledAppointment = vi.fn().mockResolvedValue({
+      kind: 'STARTED',
+      consultation,
     });
     TestBed.configureTestingModule({
       providers: [
@@ -118,13 +132,26 @@ describe('CommandCenterPage scheduled-care authority', () => {
             loadHome: vi.fn(),
           },
         },
-        { provide: ActiveConsultationStore, useValue: { refresh } },
+        {
+          provide: ActiveConsultationStore,
+          useValue: { refresh, startScheduledAppointment },
+        },
+        {
+          provide: UrgentCabinetClinicalStore,
+          useValue: {
+            refresh: vi.fn(),
+            actionable: signal(null),
+            waiting: signal(null),
+          },
+        },
       ],
     });
     const page = TestBed.inject(CommandCenterPage);
 
-    page.startConsultation('appointment-9');
+    await page.startScheduledConsultation(item('APPOINTMENT', 'appointment-9'));
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledOnce());
+
+    expect(startScheduledAppointment).toHaveBeenCalledWith('appointment-9', 1);
 
     expect(navigate).toHaveBeenCalledWith([
       '/doctor',
@@ -132,5 +159,6 @@ describe('CommandCenterPage scheduled-care authority', () => {
       '11111111-1111-4111-8111-111111111111',
     ]);
     expect(navigate).not.toHaveBeenCalledWith(['/doctor', 'consultation', 'appointment-9']);
+    expect(navigate).not.toHaveBeenCalledWith(['/doctor', 'consultation', 'new']);
   });
 });

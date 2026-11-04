@@ -1,8 +1,9 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
 
+import { APP_MODE } from '../config/app-mode';
 import { RUNTIME_CONFIG } from '../config/runtime-config';
 import {
   ApiErrorBody,
@@ -12,6 +13,7 @@ import {
   dashboardRouteFor,
 } from './auth.models';
 import { AuthTokenStore } from './auth-token.store';
+import { createDemoSession, DemoWorkspaceRole, isDemoWorkspaceRole } from './demo-auth';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -26,6 +28,9 @@ export class AuthService {
   private refreshInFlight: Observable<LoginSession> | null = null;
 
   login(email: string, password: string): Observable<DashboardRole> {
+    if (APP_MODE.staticDemo) {
+      return throwError(() => new Error('Choose a demo workspace to continue.'));
+    }
     return this.http
       .post<EmailPasswordLoginResponse>(`${this.config.apiBaseUrl}/auth/login`, {
         identifier: email,
@@ -45,6 +50,13 @@ export class AuthService {
   }
 
   refreshSession(): Observable<LoginSession> {
+    if (APP_MODE.staticDemo) {
+      const role = this.tokens.user()?.role;
+      if (role !== undefined && isDemoWorkspaceRole(role)) {
+        return of(createDemoSession(role)).pipe(tap((session) => this.tokens.setSession(session)));
+      }
+      return throwError(() => new Error('No demo session is available.'));
+    }
     const refreshToken = this.tokens.refreshToken();
     if (refreshToken === null) {
       return throwError(() => new Error('No refresh session is available.'));
@@ -68,6 +80,10 @@ export class AuthService {
   }
 
   logout(): void {
+    if (APP_MODE.staticDemo) {
+      this.finishLogout();
+      return;
+    }
     this.http.post<void>(`${this.config.apiBaseUrl}/auth/logout`, {}).subscribe({
       complete: () => this.finishLogout(),
       error: () => this.finishLogout(),
@@ -75,6 +91,10 @@ export class AuthService {
   }
 
   logoutAll(): Observable<void> {
+    if (APP_MODE.staticDemo) {
+      this.finishLogout();
+      return of(undefined);
+    }
     return this.http
       .post<void>(`${this.config.apiBaseUrl}/auth/logout-all`, {})
       .pipe(tap(() => this.finishLogout()));
@@ -82,6 +102,14 @@ export class AuthService {
 
   routeFor(role: DashboardRole): string {
     return dashboardRouteFor(role);
+  }
+
+  loginAsDemoRole(role: DemoWorkspaceRole): DashboardRole {
+    if (!APP_MODE.staticDemo) {
+      throw new Error('Demo authentication is not available in this build.');
+    }
+    this.tokens.setSession(createDemoSession(role));
+    return role;
   }
 
   private finishLogout(): void {

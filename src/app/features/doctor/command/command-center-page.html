@@ -14,7 +14,13 @@
   } @else {
     <div class="command-page__stats">
       @for (stat of stats(); track stat.label) {
-        <oc-metric-card [icon]="stat.icon" [label]="stat.label" [value]="'' + stat.value" />
+        @if (stat.route) {
+          <a class="command-page__metric-link" [routerLink]="stat.route" [attr.aria-label]="stat.label + ' : ' + stat.value + '. Ouvrir l’historique'">
+            <oc-metric-card [icon]="stat.icon" [label]="stat.label" [value]="'' + stat.value" />
+          </a>
+        } @else {
+          <oc-metric-card [icon]="stat.icon" [label]="stat.label" [value]="'' + stat.value" />
+        }
       }
     </div>
 
@@ -72,8 +78,63 @@
       </oc-card>
     }
 
-    @if (nextScheduledAppointment(); as appointment) {
-      <oc-card title="Prochain rendez-vous confirmé">
+    @if (activeConsultation.active(); as consultation) {
+      <oc-card title="Consultation en cours">
+        <div class="appointment-list">
+          <article class="appointment-row appointment-row--active-consultation">
+            <div class="appointment-row__info">
+              <strong>Consultation en cours</strong>
+              <span>Épisode {{ consultation.consultationId }}</span>
+            </div>
+            <oc-status-badge status="in-progress" customLabel="En cours" />
+            <div class="appointment-row__actions">
+              <oc-button
+                variant="primary"
+                size="small"
+                (click)="continueConsultation(consultation.consultationId)"
+              >Continuer la consultation</oc-button>
+            </div>
+          </article>
+        </div>
+      </oc-card>
+    } @else if (activeConsultation.loading()) {
+      <div class="command-page__state" role="status">Synchronisation de la consultation en cours…</div>
+    } @else if (activeConsultation.error(); as activeError) {
+      <div class="command-page__error" role="alert">{{ activeError }}</div>
+    } @else if (urgentCabinet.actionable(); as commitment) {
+      <oc-card title="Urgence au cabinet prête">
+        <div class="appointment-list">
+          <article class="appointment-row appointment-row--urgent">
+            <div class="appointment-row__info">
+              <strong>Patient arrivé au cabinet</strong>
+              <span>Responsabilité urgente confirmée · démarrage manuel</span>
+            </div>
+            <oc-status-badge status="requires-attention" customLabel="Prête" />
+            <div class="appointment-row__actions">
+              <oc-button
+                variant="primary"
+                size="small"
+                [loading]="activeConsultation.starting()"
+                (click)="startUrgentCabinetConsultation(commitment)"
+              >Démarrer la consultation</oc-button>
+            </div>
+          </article>
+        </div>
+      </oc-card>
+    } @else if (urgentCabinet.waiting(); as commitment) {
+      <oc-card title="Responsabilité urgente au cabinet">
+        <div class="appointment-list">
+          <article class="appointment-row appointment-row--urgent">
+            <div class="appointment-row__info">
+              <strong>Patient arrivé au cabinet</strong>
+              <span>Terminez la consultation en cours puis actualisez. Aucun démarrage automatique.</span>
+            </div>
+            <oc-status-badge status="pending" customLabel="En attente" />
+          </article>
+        </div>
+      </oc-card>
+    } @else if (nextScheduledAppointment(); as appointment) {
+      <oc-card title="Rendez-vous à démarrer">
         <div class="appointment-list">
           <article class="appointment-row" (click)="openScheduledAppointment(appointment)">
             <time class="appointment-row__time">{{ scheduledTime(appointment) }}</time>
@@ -85,6 +146,12 @@
             <oc-status-badge status="confirmed" customLabel="Confirmé" />
             <div class="appointment-row__actions" (click)="$event.stopPropagation()">
               <oc-button
+                variant="primary"
+                size="small"
+                [loading]="activeConsultation.starting()"
+                (click)="startScheduledConsultation(appointment)"
+              >Démarrer la consultation</oc-button>
+              <oc-button
                 variant="secondary"
                 size="small"
                 (click)="openScheduledAppointment(appointment)"
@@ -94,6 +161,17 @@
           </article>
         </div>
       </oc-card>
+    }
+
+    @if (activeConsultation.startError(); as startError) {
+      <div class="command-page__error" role="alert">
+        <span>{{ startError }}</span>
+        @if (activeConsultation.active(); as consultation) {
+          <oc-button variant="quiet" size="small" (click)="continueConsultation(consultation.consultationId)">
+            Continuer la consultation
+          </oc-button>
+        }
+      </div>
     }
 
     <oc-card title="Rendez-vous du jour">
@@ -114,8 +192,8 @@
               {{ apt.source }}
             </span>
             <div class="appointment-row__actions" (click)="$event.stopPropagation()">
-              <oc-button variant="primary" size="small" (click)="startConsultation(apt.id)">
-                Consultation
+              <oc-button variant="secondary" size="small" (click)="openAptDetail(apt)">
+                Détails
               </oc-button>
             </div>
           </article>
@@ -142,10 +220,6 @@
         <button class="quick-action" (click)="goTo('/doctor/requests')">
           <nz-icon nzType="inbox" />
           <span>Demandes</span>
-        </button>
-        <button class="quick-action" (click)="goTo('/doctor/consultation/new')">
-          <nz-icon nzType="plus-circle" />
-          <span>Nouvelle consultation</span>
         </button>
       </div>
     </oc-card>
