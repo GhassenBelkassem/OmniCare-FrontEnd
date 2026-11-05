@@ -18,11 +18,7 @@
 export type MonitoringStatus = 'HEALTHY' | 'DEGRADED' | 'CRITICAL' | 'UNKNOWN' | 'NOT_INSTRUMENTED';
 
 export type MonitoringSection =
-  | 'overview'
-  | 'performance'
-  | 'operations'
-  | 'alerts'
-  | 'diagnostics';
+  'overview' | 'performance' | 'operations' | 'alerts' | 'diagnostics';
 
 /** Closed set of bounded windows. The backend rejects anything outside it. */
 export type PerformanceWindow = '15m' | '1h' | '6h' | '24h';
@@ -39,6 +35,8 @@ export interface MonitoringDependency {
   readonly detail: string;
   /** True when the optional exporter that would provide this signal is disabled. */
   readonly exporterOptional: boolean;
+  /** Browser-safe Grafana Explore link supplied by the backend, when available. */
+  readonly monitoringLink?: string | null;
 }
 
 export interface MonitoringOverview {
@@ -243,9 +241,18 @@ export interface RequestTechnicalDetail {
   readonly logsAvailable: boolean;
 }
 
+/** Browser-safe, read-only monitoring destinations assembled by the backend. */
+export interface RequestMonitoringLinks {
+  readonly logsUrl: string | null;
+  readonly traceUrl: string | null;
+  readonly metricsUrl: string | null;
+}
+
 export interface RequestDetail extends RequestSummaryItem {
   /** Never `null` on the client: a missing backend detail is normalised to an all-absent detail. */
   readonly detail: RequestTechnicalDetail;
+  /** Optional during a rolling deployment against an older backend. */
+  readonly links?: RequestMonitoringLinks | null;
 }
 
 export interface RequestSearchQuery {

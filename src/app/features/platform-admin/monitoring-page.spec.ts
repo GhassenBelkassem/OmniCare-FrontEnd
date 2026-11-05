@@ -20,6 +20,7 @@ const OVERVIEW = {
       status: 'HEALTHY',
       detail: 'Serving requests; scrape target up.',
       exporterOptional: false,
+      monitoringLink: 'https://grafana.example/explore?backend',
     },
     {
       id: 'postgres',
@@ -27,6 +28,7 @@ const OVERVIEW = {
       status: 'NOT_INSTRUMENTED',
       detail: 'Exporter not instrumented — availability cannot be asserted from metrics.',
       exporterOptional: true,
+      monitoringLink: 'https://grafana.example/explore?postgres',
     },
   ],
   telemetryFreshnessSeconds: 12,
@@ -233,6 +235,12 @@ describe('MonitoringPage (live monitoring API)', () => {
     expect(text).toContain('Overall system status');
     expect(text).toContain('Not instrumented');
     expect(text).toContain('PostgreSQL exporter');
+    const metricsLink = fixture.nativeElement.querySelector(
+      'a[href="https://grafana.example/explore?backend"]',
+    ) as HTMLAnchorElement | null;
+    expect(metricsLink?.textContent).toContain('View metrics');
+    expect(metricsLink?.target).toBe('_blank');
+    expect(metricsLink?.rel).toContain('noopener');
   });
   it('surfaces a monitoring API failure instead of showing an empty healthy screen', () => {
     http
@@ -438,11 +446,23 @@ describe('MonitoringPage (live monitoring API)', () => {
         traceAvailable: true,
         logsAvailable: true,
       },
+      links: {
+        logsUrl: 'https://kibana.example/app/discover#request-1',
+        traceUrl: 'https://grafana.example/explore?trace-1',
+        metricsUrl: 'https://grafana.example/explore?metrics-1',
+      },
     });
     fixture.detectChanges();
     const drawerText = document.body.textContent ?? '';
     expect(drawerText).toContain('Correlation');
     expect(drawerText).toContain('Copy');
+    expect(drawerText).toContain('Open logs in Kibana');
+    expect(drawerText).toContain('Open trace in Grafana');
+    expect(drawerText).toContain('Open related metrics');
+    const externalLinks = Array.from(
+      document.body.querySelectorAll('.monitoring-action-link'),
+    ) as HTMLAnchorElement[];
+    expect(externalLinks.some((link) => link.rel.includes('noopener'))).toBe(true);
   });
   it('looks up a request by identifier and rejects a malformed one', () => {
     flushOverview();

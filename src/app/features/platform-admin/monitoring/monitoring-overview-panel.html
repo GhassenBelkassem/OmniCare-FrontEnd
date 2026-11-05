@@ -1,28 +1,64 @@
 <div class="monitoring-stack">
   <oc-card title="Overall system status" [subtitle]="overview().overallDetail">
     <div class="status-hero">
-      <oc-status-badge [status]="statusBadge(overview().overallStatus)" [customLabel]="statusLabel(overview().overallStatus)" />
-      <span class="status-hero__meta">Snapshot {{ overview().snapshotCollected ? 'collected' : 'not collected' }} · telemetry fresh {{ formatFreshness(overview().telemetryFreshnessSeconds) }}</span>
+      <oc-status-badge
+        [status]="statusBadge(overview().overallStatus)"
+        [customLabel]="statusLabel(overview().overallStatus)"
+      />
+      <span class="status-hero__meta"
+        >Snapshot {{ overview().snapshotCollected ? 'collected' : 'not collected' }} · telemetry
+        fresh {{ formatFreshness(overview().telemetryFreshnessSeconds) }}</span
+      >
     </div>
     <dl class="status-counts">
-      <div><dt>Critical alerts</dt><dd class="is-critical">{{ overview().criticalAlertCount }}</dd></div>
-      <div><dt>Warning alerts</dt><dd class="is-warning">{{ overview().warningAlertCount }}</dd></div>
+      <div>
+        <dt>Critical alerts</dt>
+        <dd class="is-critical">{{ overview().criticalAlertCount }}</dd>
+      </div>
+      <div>
+        <dt>Warning alerts</dt>
+        <dd class="is-warning">{{ overview().warningAlertCount }}</dd>
+      </div>
     </dl>
   </oc-card>
 
-  <oc-card title="Component availability" subtitle="Unavailable optional exporters are never reported as an outage.">
+  <oc-card
+    title="Component availability"
+    subtitle="Unavailable optional exporters are never reported as an outage."
+  >
     <ul class="dependency-list">
       @for (dependency of overview().dependencies; track dependency.id) {
         <li class="dependency-item">
-          <span class="dependency-item__icon" [class]="'dependency-item__icon dependency-item__icon--' + dependency.status">
-            <oc-icon [name]="dependency.status === 'HEALTHY' ? 'tasks' : 'warning'" [intent]="statusIntent(dependency.status)" />
+          <span
+            class="dependency-item__icon"
+            [class]="'dependency-item__icon dependency-item__icon--' + dependency.status"
+          >
+            <oc-icon
+              [name]="dependency.status === 'HEALTHY' ? 'tasks' : 'warning'"
+              [intent]="statusIntent(dependency.status)"
+            />
           </span>
           <div class="dependency-item__body">
             <div class="dependency-item__head">
               <span class="dependency-item__label">{{ dependency.label }}</span>
-              <oc-status-badge [status]="statusBadge(dependency.status)" [customLabel]="statusLabel(dependency.status)" />
+              <oc-status-badge
+                [status]="statusBadge(dependency.status)"
+                [customLabel]="statusLabel(dependency.status)"
+              />
             </div>
             <p class="dependency-item__detail">{{ dependency.detail }}</p>
+            @if (dependency.monitoringLink) {
+              <div class="dependency-item__actions">
+                <a
+                  class="monitoring-action-link"
+                  [href]="dependency.monitoringLink"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View metrics
+                </a>
+              </div>
+            }
           </div>
         </li>
       }
@@ -33,7 +69,8 @@
     <p class="incident-summary">{{ overview().incidentSummary }}</p>
     @if (overview().unavailableSources.length) {
       <p class="unavailable-note" role="status">
-        Not instrumented: {{ overview().unavailableSources.join(', ') }}. These signals are reported as Unknown, not Healthy.
+        Not instrumented: {{ overview().unavailableSources.join(', ') }}. These signals are reported
+        as Unknown, not Healthy.
       </p>
     }
   </oc-card>
