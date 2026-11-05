@@ -36,9 +36,9 @@ const ABSENT_TECHNICAL_DETAIL: RequestTechnicalDetail = Object.freeze({
  * Typed client for the read-only Super Admin monitoring API.
  *
  * Every call is a `GET` against `/api/v1/admin/monitoring/**`, which the backend security
- * filter chain restricts to `ROLE_ADMIN`. The client never learns the Prometheus,
- * Alertmanager or Elasticsearch endpoints: it only ever talks to the platform API, so no
- * monitoring infrastructure URL or credential can reach the browser.
+ * filter chain restricts to `ROLE_ADMIN`. The client never learns private Prometheus,
+ * Alertmanager, Tempo or Elasticsearch endpoints. Request details may include browser-safe,
+ * read-only Grafana/Kibana links assembled from trusted backend configuration.
  *
  * The service is deliberately thin — it owns the URL shape, the query parameters and the
  * normalisation of a nullable detail block. Filtering, sorting, pagination and every bound
@@ -109,6 +109,8 @@ export class MonitoringApiService {
       .get<Omit<RequestDetail, 'detail'> & { detail: RequestTechnicalDetail | null }>(
         `${this.baseUrl}/requests/${encodeURIComponent(requestId)}`,
       )
-      .pipe(map((response) => ({ ...response, detail: response.detail ?? ABSENT_TECHNICAL_DETAIL })));
+      .pipe(
+        map((response) => ({ ...response, detail: response.detail ?? ABSENT_TECHNICAL_DETAIL })),
+      );
   }
 }
