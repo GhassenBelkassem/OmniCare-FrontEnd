@@ -209,7 +209,7 @@
 }
 
 .doctor-calendar-demo oc-segmented-control button.oc-segmented__button--selected {
-  color: var(--oc-color-brand-primary-active);
+  color: var(--oc-color-text-primary);
 }
 
 .doctor-calendar-demo__calendar .fc {
@@ -677,16 +677,17 @@
   border: 1px solid
     color-mix(in srgb, var(--oc-color-brand-primary) 22%, var(--oc-color-border-default));
   border-radius: var(--oc-radius-md);
-  background: var(--oc-color-surface-selected);
-  color: var(--oc-color-brand-primary-active);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
   font-size: 12px;
   font-weight: var(--oc-font-weight-semibold);
   text-decoration: none;
 }
 
 .appointment-panel__patient-link:hover {
-  border-color: var(--oc-color-brand-primary);
-  background: color-mix(in srgb, var(--oc-color-brand-primary) 12%, var(--oc-color-surface-card));
+  border-color: var(--oc-color-text-primary);
+  background: var(--oc-color-brand-primary);
+  box-shadow: var(--oc-shadow-card);
 }
 
 .appointment-panel oc-tabs {

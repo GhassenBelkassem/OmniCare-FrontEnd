@@ -219,20 +219,21 @@
 
 .secondary-action:hover {
   border-color: var(--oc-color-brand-primary);
-  background: var(--oc-color-surface-selected);
-  color: var(--oc-color-brand-primary-active);
+  background: var(--oc-color-surface-hover);
+  color: var(--oc-color-text-primary);
 }
 
 .primary-action {
-  border: 1px solid var(--oc-color-brand-primary-active);
-  background: var(--oc-color-brand-primary-active);
-  color: var(--oc-color-text-inverse);
+  border: 1px solid var(--oc-color-brand-primary);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
 }
 
 .primary-action:hover {
-  border-color: var(--oc-color-brand-primary-hover);
-  background: var(--oc-color-brand-primary-hover);
-  color: var(--oc-color-text-inverse);
+  border-color: var(--oc-color-text-primary);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
+  box-shadow: var(--oc-shadow-card);
   transform: translateY(-1px);
 }
 
@@ -242,7 +243,7 @@
 .request-row:focus-visible {
   position: relative;
   z-index: 2;
-  outline: 3px solid var(--oc-color-border-focus);
+  outline: 3px solid var(--oc-color-text-primary);
   outline-offset: 2px;
 }
 
@@ -674,6 +675,78 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
+}
+
+button.secondary-action,
+button.primary-action {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+button.primary-action:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+
+.dashboard-state {
+  display: grid;
+  min-height: 104px;
+  align-content: center;
+  justify-items: start;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-4) var(--oc-space-5);
+  color: var(--oc-color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-state strong {
+  color: var(--oc-color-text-primary);
+  font-size: 14px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.dashboard-state--compact {
+  min-height: 72px;
+  padding-inline: 0;
+}
+
+.dashboard-state--error {
+  color: var(--oc-color-critical);
+}
+
+.dashboard-state--error .secondary-action {
+  min-height: 36px;
+}
+
+.clinical-status,
+.clinical-error {
+  margin: 0;
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.clinical-status {
+  background: var(--oc-color-neutral-surface);
+  color: var(--oc-color-text-secondary);
+}
+
+.clinical-error {
+  border: 1px solid var(--oc-color-critical);
+  background: var(--oc-color-critical-surface);
+  color: var(--oc-color-critical);
+}
+
+.availability-panel--warning {
+  border-color: color-mix(in srgb, var(--oc-color-warning) 38%, var(--oc-color-border-default));
+}
+
+.availability-panel--warning .availability-status > oc-icon {
+  color: var(--oc-color-warning);
 }
 
 @media (max-width: 1180px) {

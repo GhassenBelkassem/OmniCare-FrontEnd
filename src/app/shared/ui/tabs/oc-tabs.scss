@@ -33,6 +33,7 @@
   font-weight: var(--oc-font-weight-medium);
   white-space: nowrap;
   text-decoration: none;
+  touch-action: manipulation;
   transition:
     color var(--oc-motion-fast) var(--oc-ease-standard),
     border-color var(--oc-motion-fast) var(--oc-ease-standard);
@@ -43,13 +44,13 @@
 }
 
 .oc-tabs__item:focus-visible {
-  outline: 3px solid var(--oc-color-border-focus);
+  outline: 3px solid var(--oc-color-text-primary);
   outline-offset: -3px;
 }
 
 .oc-tabs__item--active {
-  color: var(--oc-color-brand-primary-active);
-  border-block-end-color: var(--oc-color-brand-primary-active);
+  color: var(--oc-color-text-primary);
+  border-block-end-color: var(--oc-color-brand-primary);
   font-weight: var(--oc-font-weight-semibold);
 }
 

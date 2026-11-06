@@ -58,6 +58,24 @@ function demoResponse(request: HttpRequest<unknown>, role: DemoWorkspaceRole): u
       resolvedAt: now,
     };
   }
+  if (path === '/api/v1/me/professional-profile') {
+    return {
+      userId: 'demo-doctor',
+      firstName: 'Ben',
+      lastName: 'Salah',
+      displayName: 'Dr Ben Salah',
+      photoUrl: null,
+      professionalLicenseNumber: 'DEMO',
+      specialty: 'Médecine générale',
+      governorate: 'Tunis',
+      affiliatedClinicId: null,
+      affiliatedClinicName: null,
+      alsoIndependent: true,
+      verifiedAt: now,
+      mfaMethod: null,
+      revision: 1,
+    };
+  }
   if (path === '/api/v1/me/professional-readiness') {
     return professionalReadiness(now);
   }

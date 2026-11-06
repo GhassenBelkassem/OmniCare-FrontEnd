@@ -136,14 +136,14 @@
 .urgent-detail button:focus-visible,
 .urgent-feedback button:focus-visible,
 .urgent-page__connection-warning button:focus-visible {
-  outline: 3px solid var(--oc-color-border-focus);
+  outline: 3px solid var(--oc-color-text-primary);
   outline-offset: 2px;
 }
 
 .filter-row__modes .filter-row__mode--active {
-  border-color: var(--oc-color-brand-primary-active);
-  background: var(--oc-color-brand-primary-active);
-  color: var(--oc-color-text-inverse);
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
   font-weight: var(--oc-font-weight-semibold);
 }
 
@@ -415,24 +415,25 @@
 }
 
 .request-action--primary {
-  border-color: var(--oc-color-brand-primary-active);
-  background: var(--oc-color-brand-primary-active);
-  color: var(--oc-color-text-inverse);
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
 }
 
 .request-action--primary:hover:not(:disabled) {
-  border-color: var(--oc-color-brand-primary-hover);
-  background: var(--oc-color-brand-primary-hover);
+  border-color: var(--oc-color-text-primary);
+  background: var(--oc-color-brand-primary);
+  box-shadow: var(--oc-shadow-card);
 }
 
 .request-action--secondary {
-  border-color: var(--oc-color-brand-primary-active);
+  border-color: var(--oc-color-brand-primary);
   background: var(--oc-color-surface-card);
-  color: var(--oc-color-brand-primary-active);
+  color: var(--oc-color-text-primary);
 }
 
 .request-action--secondary:hover {
-  background: var(--oc-color-success-surface);
+  background: var(--oc-color-surface-hover);
 }
 
 .request-action--destructive {
@@ -707,7 +708,7 @@
   border: 1px solid var(--oc-color-border-default);
   border-radius: var(--oc-radius-md);
   background: var(--oc-color-surface-card);
-  color: var(--oc-color-brand-primary-active);
+  color: var(--oc-color-text-primary);
   cursor: pointer;
   font-size: 12px;
   font-weight: var(--oc-font-weight-medium);

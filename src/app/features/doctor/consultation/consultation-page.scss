@@ -1,102 +1,323 @@
 :host {
   display: block;
+  min-width: 0;
 }
 
-.consultation-workspace {
-  display: grid;
-  gap: var(--oc-space-6);
-}
-
-.panel {
-  background: var(--oc-color-surface-card);
+.consultation-domain {
+  min-width: 0;
+  min-height: 570px;
+  padding: var(--oc-space-5);
   border: 1px solid var(--oc-color-border-subtle);
   border-radius: var(--oc-radius-lg);
-}
-
-.consultation-patient-select {
   background: var(--oc-color-surface-card);
-  border: 1px solid var(--oc-color-border-subtle);
-  border-radius: var(--oc-radius-lg);
-  padding: var(--oc-space-8);
+  box-shadow: var(--oc-shadow-card);
 }
 
-.consultation-patient-select__search {
+.consultation-domain[hidden] {
+  display: none !important;
+}
+
+.consultation-domain > app-clinical-authoring,
+.consultation-domain > app-prescription-authoring,
+.consultation-domain > app-clinical-orders,
+.consultation-domain > app-official-artifacts {
+  display: block;
+  min-width: 0;
+}
+
+.urgent-intake {
   display: grid;
-  gap: var(--oc-space-2);
+  grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.2fr);
+  gap: var(--oc-space-5);
+  margin-block-end: var(--oc-space-4);
+  padding: var(--oc-space-4);
+  border: 1px solid var(--oc-color-information);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-information-surface);
 }
 
-.consultation-patient-select__search h2 {
+.urgent-intake h2,
+.urgent-intake p,
+.urgent-intake dl,
+.urgent-intake dd {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
 }
 
-.consultation-patient-select__search p {
-  margin: 0;
+.urgent-intake h2 {
+  font-size: 15px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.urgent-intake p,
+.urgent-intake dt,
+.urgent-intake dd {
+  font-size: 12px;
+}
+
+.urgent-intake p,
+.urgent-intake dt {
   color: var(--oc-color-text-muted);
-  font-size: 14px;
 }
 
-.consultation-patient-select__input {
-  width: 100%;
-  max-width: 480px;
-  padding: 10px 14px;
-  border: 1px solid var(--oc-color-border-subtle);
-  border-radius: var(--oc-radius-md);
-  font-size: 14px;
-  background: var(--oc-color-surface-subtle);
-  outline: none;
-  transition: border-color 0.15s;
-
-  &:focus {
-    border-color: var(--oc-color-brand-primary);
-  }
-}
-
-.consultation-patient-select__results {
-  list-style: none;
-  margin: var(--oc-space-4) 0 0;
-  padding: 0;
+.urgent-intake dl {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--oc-space-3);
+}
+
+.urgent-intake dl > div {
+  display: grid;
+  align-content: start;
   gap: var(--oc-space-1);
 }
 
-.consultation-patient-select__result {
+.urgent-intake dd {
+  color: var(--oc-color-text-primary);
+  font-weight: var(--oc-font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.unsupported-panel {
   display: flex;
+  max-width: 720px;
+  min-height: 260px;
+  align-items: flex-start;
+  gap: var(--oc-space-4);
+  margin: var(--oc-space-10) auto;
+  padding: var(--oc-space-8);
+  border: 1px dashed var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-subtle);
+}
+
+.unsupported-panel__icon,
+.consultation-state__icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--oc-color-surface-subtle);
+  color: var(--oc-color-text-secondary);
+  font-size: 20px;
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.unsupported-panel__eyebrow,
+.finalization-panel__eyebrow {
+  margin: 0 0 var(--oc-space-1);
+  color: var(--oc-color-brand-primary);
+  font-size: 11px;
+  font-weight: var(--oc-font-weight-strong);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.unsupported-panel h2,
+.unsupported-panel p,
+.finalization-panel h2,
+.finalization-panel p {
+  margin: 0;
+}
+
+.unsupported-panel h2,
+.finalization-panel h2 {
+  font-size: 20px;
+  font-weight: var(--oc-font-weight-strong);
+  letter-spacing: -0.02em;
+}
+
+.unsupported-panel p:not(.unsupported-panel__eyebrow),
+.finalization-panel header > p:not(.finalization-panel__eyebrow) {
+  max-width: 720px;
+  margin-block-start: var(--oc-space-2);
+  color: var(--oc-color-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.finalization-panel {
+  display: grid;
+  gap: var(--oc-space-5);
+}
+
+.finalization-checklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--oc-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finalization-checklist li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--oc-space-3);
-  width: 100%;
-  padding: var(--oc-space-2) var(--oc-space-3);
-  background: none;
-  border: 1px solid transparent;
+  min-height: 74px;
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border: 1px solid var(--oc-color-warning);
   border-radius: var(--oc-radius-md);
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.1s, border-color 0.1s;
-
-  &:hover {
-    background: var(--oc-color-surface-subtle);
-    border-color: var(--oc-color-border-subtle);
-  }
+  background: var(--oc-color-warning-surface);
 }
 
-.consultation-patient-select__result-info {
+.finalization-checklist li > span {
   display: grid;
-  gap: 2px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-warning);
+  font-size: 13px;
+  font-weight: var(--oc-font-weight-strong);
+}
 
-  strong {
-    font-size: 14px;
-    color: var(--oc-color-text-primary);
+.finalization-checklist .finalization-checklist__item--ready {
+  border-color: var(--oc-color-success);
+  background: var(--oc-color-success-surface);
+}
+
+.finalization-checklist .finalization-checklist__item--ready > span {
+  color: var(--oc-color-success);
+}
+
+.finalization-checklist div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.finalization-checklist strong {
+  font-size: 13px;
+}
+
+.finalization-checklist small {
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.finalization-checklist button {
+  min-height: 32px;
+  padding: 0 var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.finalization-checklist button:hover,
+.finalization-checklist button:focus-visible {
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-surface-hover);
+}
+
+.finish-alert {
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border: 1px solid var(--oc-color-critical);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-critical-surface);
+  color: var(--oc-color-critical);
+  font-size: 13px;
+}
+
+.consultation-state {
+  display: grid;
+  width: min(640px, 100%);
+  min-height: 360px;
+  align-content: center;
+  justify-items: center;
+  gap: var(--oc-space-3);
+  margin: var(--oc-space-10) auto;
+  padding: var(--oc-space-8);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+  text-align: center;
+}
+
+.consultation-state--embedded {
+  min-height: 440px;
+  margin: 0;
+  box-shadow: none;
+}
+
+.consultation-state__icon--pending {
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-information);
+}
+
+.consultation-state__icon--complete {
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-success);
+}
+
+.consultation-state h1,
+.consultation-state h2,
+.consultation-state p {
+  margin: 0;
+}
+
+.consultation-state h1,
+.consultation-state h2 {
+  font-size: 22px;
+  font-weight: var(--oc-font-weight-strong);
+  letter-spacing: -0.025em;
+}
+
+.consultation-state p {
+  max-width: 500px;
+  color: var(--oc-color-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.consultation-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--oc-space-2);
+}
+
+@media (max-width: 900px) {
+  .urgent-intake {
+    grid-template-columns: 1fr;
   }
 
-  span {
-    font-size: 12px;
-    color: var(--oc-color-text-muted);
+  .finalization-checklist {
+    grid-template-columns: 1fr;
   }
 }
 
-.consultation-patient-select__empty {
-  margin: var(--oc-space-4) 0 0;
-  color: var(--oc-color-text-muted);
-  font-size: 14px;
+@media (max-width: 640px) {
+  .consultation-domain {
+    min-height: 480px;
+    padding: var(--oc-space-3);
+  }
+
+  .urgent-intake dl {
+    grid-template-columns: 1fr;
+  }
+
+  .unsupported-panel {
+    min-height: auto;
+    margin: var(--oc-space-4) 0;
+    padding: var(--oc-space-5);
+  }
+
+  .finalization-checklist li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .finalization-checklist button {
+    grid-column: 2;
+    justify-self: start;
+  }
 }

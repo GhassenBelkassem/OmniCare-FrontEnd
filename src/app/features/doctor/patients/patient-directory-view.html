@@ -1,0 +1,437 @@
+<section
+  class="patient-directory"
+  [attr.aria-describedby]="model().notice ? 'patient-directory-note' : null"
+>
+  @if (model().notice; as notice) {
+    <p id="patient-directory-note" class="oc-sr-only">{{ notice }}</p>
+  }
+
+  <header class="directory-heading">
+    <div class="directory-heading__main">
+      <span class="directory-heading__icon" aria-hidden="true"><oc-icon name="staff" /></span>
+      <div>
+        <h1>Mes patients</h1>
+        <p>
+          Base patient de votre pratique
+          <span aria-hidden="true">·</span>
+          <strong>{{ model().headingCount.toLocaleString('fr-FR') }} patients</strong>
+        </p>
+      </div>
+    </div>
+    <oc-button variant="primary" leadingIcon="plus" (click)="action.emit({ kind: 'ADD_PATIENT' })">
+      Ajouter un patient
+    </oc-button>
+  </header>
+
+  @if (model().createdMessage; as message) {
+    <div class="created-message" role="status">
+      <oc-icon name="info" intent="success" />
+      <span>{{ message }}</span>
+      <button
+        type="button"
+        aria-label="Fermer le message"
+        (click)="action.emit({ kind: 'DISMISS_CREATED' })"
+      >
+        <oc-icon name="close" />
+      </button>
+    </div>
+  }
+
+  <div class="directory-segments" role="group" aria-label="Catégorie de patients">
+    @for (option of model().categories; track option.value) {
+      <button
+        type="button"
+        [class.directory-segments__button--active]="model().activeCategory === option.value"
+        [attr.aria-pressed]="model().activeCategory === option.value"
+        (click)="action.emit({ kind: 'SELECT_CATEGORY', value: option.value })"
+      >
+        {{ option.label }}
+      </button>
+    }
+  </div>
+
+  <section class="directory-filters" aria-label="Filtres du répertoire">
+    <div class="directory-filters__topline">
+      <label class="directory-search">
+        <span class="oc-sr-only">Rechercher un patient</span>
+        <nz-icon nzType="search" aria-hidden="true" />
+        <input
+          type="search"
+          name="patient-search"
+          autocomplete="off"
+          [placeholder]="model().searchPlaceholder"
+          [value]="model().searchTerm"
+          (input)="emitSearch($event)"
+        />
+      </label>
+      <button type="button" class="filter-reset" (click)="action.emit({ kind: 'RESET_FILTERS' })">
+        <oc-icon name="refresh" />
+        Réinitialiser
+      </button>
+      @if (model().advancedFilters; as filters) {
+        <button
+          type="button"
+          class="more-filters"
+          [attr.aria-expanded]="filters.expanded"
+          aria-controls="advanced-patient-filters"
+          (click)="action.emit({ kind: 'TOGGLE_FILTERS' })"
+        >
+          <nz-icon nzType="filter" aria-hidden="true" />
+          Plus de filtres
+          @if (filters.activeCount > 0) {
+            <span>{{ filters.activeCount }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    @if (model().advancedFilters; as filters) {
+      <div
+        id="advanced-patient-filters"
+        class="directory-filters__advanced"
+        [class.directory-filters__advanced--expanded]="filters.expanded"
+      >
+        <label class="filter-select">
+          <span>Dernière consultation</span>
+          <select
+            name="last-consultation"
+            [value]="filters.lastConsultation"
+            (change)="emitSelect('SELECT_LAST_CONSULTATION', $event)"
+          >
+            @for (option of filters.lastConsultationOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="filter-select">
+          <span>Source</span>
+          <select
+            name="patient-source"
+            [value]="filters.source"
+            (change)="emitSelect('SELECT_SOURCE', $event)"
+          >
+            @for (option of filters.sourceOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="filter-select">
+          <span>Liaison OmniCare</span>
+          <select
+            name="omnicare-linkage"
+            [value]="filters.linkage"
+            (change)="emitSelect('SELECT_LINKAGE', $event)"
+          >
+            @for (option of filters.linkageOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+      </div>
+    }
+  </section>
+
+  @if (model().state === 'loading') {
+    <section class="directory-state" aria-live="polite" aria-busy="true">
+      <span class="directory-state__spinner" aria-hidden="true"></span>
+      <h2>Chargement des patients…</h2>
+      <p>{{ model().loadingDescription }}</p>
+    </section>
+  } @else if (model().state === 'error') {
+    <section class="directory-state directory-state--error" role="alert">
+      <span class="directory-state__icon"><oc-icon name="warning" intent="critical" /></span>
+      <h2>Impossible de charger les patients</h2>
+      <p>{{ model().errorDescription }}</p>
+      <oc-button variant="secondary" leadingIcon="reload" (click)="action.emit({ kind: 'RETRY' })">
+        Réessayer
+      </oc-button>
+    </section>
+  } @else {
+    <oc-data-table-shell
+      density="compact"
+      [state]="model().totalResults === 0 ? 'empty' : 'default'"
+    >
+      <div ocTableTitle class="table-summary" aria-live="polite">
+        <strong>{{ model().totalResults.toLocaleString('fr-FR') }} résultats</strong>
+        @if (model().selectedIds.size > 0) {
+          <span>
+            {{ model().selectedIds.size }} sélectionné{{ model().selectedIds.size > 1 ? 's' : '' }}
+          </span>
+        }
+      </div>
+
+      @if (model().totalResults === 0) {
+        <oc-empty-state
+          ocTableEmpty
+          icon="staff"
+          title="Aucun patient trouvé"
+          description="Modifiez votre recherche ou réinitialisez les filtres pour retrouver des patients."
+        >
+          <oc-button variant="secondary" (click)="action.emit({ kind: 'RESET_FILTERS' })">
+            Réinitialiser les filtres
+          </oc-button>
+        </oc-empty-state>
+      } @else {
+        <table class="patient-table">
+          <caption class="oc-sr-only">
+            Répertoire administratif des patients. Aucune donnée clinique n’est affichée dans cette
+            vue.
+          </caption>
+          <thead>
+            <tr>
+              @if (model().selectable) {
+                <th class="patient-table__select" scope="col">
+                  <input
+                    type="checkbox"
+                    name="select-visible-patients"
+                    aria-label="Sélectionner les patients de cette page"
+                    [checked]="model().allVisibleSelected"
+                    (change)="emitChecked('TOGGLE_VISIBLE', $event)"
+                  />
+                </th>
+              }
+              <th class="patient-table__patient" scope="col" [attr.aria-sort]="ariaSort('patient')">
+                @if (model().sortable) {
+                  <button
+                    type="button"
+                    class="sort-button"
+                    (click)="action.emit({ kind: 'SORT', value: 'patient' })"
+                  >
+                    Patient <span aria-hidden="true">↕</span>
+                  </button>
+                } @else {
+                  Patient
+                }
+              </th>
+              <th
+                class="patient-table__contact-heading"
+                scope="col"
+                [attr.aria-sort]="ariaSort('contact')"
+              >
+                @if (model().sortable) {
+                  <button
+                    type="button"
+                    class="sort-button"
+                    (click)="action.emit({ kind: 'SORT', value: 'contact' })"
+                  >
+                    Contact <span aria-hidden="true">↕</span>
+                  </button>
+                } @else {
+                  Contact
+                }
+              </th>
+              <th
+                class="patient-table__last"
+                scope="col"
+                [attr.aria-sort]="ariaSort('lastConsultation')"
+              >
+                @if (model().sortable) {
+                  <button
+                    type="button"
+                    class="sort-button"
+                    (click)="action.emit({ kind: 'SORT', value: 'lastConsultation' })"
+                  >
+                    Dernière consultation <span aria-hidden="true">↕</span>
+                  </button>
+                } @else {
+                  Dernière consultation
+                }
+              </th>
+              <th
+                class="patient-table__next"
+                scope="col"
+                [attr.aria-sort]="ariaSort('nextAppointment')"
+              >
+                @if (model().sortable) {
+                  <button
+                    type="button"
+                    class="sort-button"
+                    (click)="action.emit({ kind: 'SORT', value: 'nextAppointment' })"
+                  >
+                    Prochain rendez-vous <span aria-hidden="true">↕</span>
+                  </button>
+                } @else {
+                  Prochain rendez-vous
+                }
+              </th>
+              <th class="patient-table__linkage" scope="col" [attr.aria-sort]="ariaSort('linkage')">
+                @if (model().sortable) {
+                  <button
+                    type="button"
+                    class="sort-button"
+                    (click)="action.emit({ kind: 'SORT', value: 'linkage' })"
+                  >
+                    Liaison OmniCare <span aria-hidden="true">↕</span>
+                  </button>
+                } @else {
+                  Liaison OmniCare
+                }
+              </th>
+              <th class="patient-table__source" scope="col" [attr.aria-sort]="ariaSort('source')">
+                @if (model().sortable) {
+                  <button
+                    type="button"
+                    class="sort-button"
+                    (click)="action.emit({ kind: 'SORT', value: 'source' })"
+                  >
+                    Source <span aria-hidden="true">↕</span>
+                  </button>
+                } @else {
+                  Source
+                }
+              </th>
+              <th class="patient-table__action" scope="col">
+                <span class="oc-sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (patient of model().rows; track patient.id) {
+              <tr [class.patient-table__row--selected]="model().selectedIds.has(patient.id)">
+                @if (model().selectable) {
+                  <td class="patient-table__select">
+                    <input
+                      type="checkbox"
+                      [attr.name]="'select-' + patient.id"
+                      [attr.aria-label]="'Sélectionner ' + patient.accessibleName"
+                      [checked]="model().selectedIds.has(patient.id)"
+                      (change)="emitChecked('TOGGLE_PATIENT', $event, patient.id)"
+                    />
+                  </td>
+                }
+                <td>
+                  <a
+                    class="patient-identity"
+                    [href]="patient.href"
+                    (click)="openPatient(patient, $event)"
+                  >
+                    <span class="demo-patient-avatar" aria-hidden="true">{{
+                      patient.initials
+                    }}</span>
+                    <span>
+                      <strong>{{ patient.displayName }}</strong>
+                      <small>{{ patient.secondaryLabel }}</small>
+                    </span>
+                  </a>
+                </td>
+                <td class="patient-table__contact">
+                  <strong>{{ patient.phone }}</strong>
+                  <small>{{ patient.emailLabel }}</small>
+                </td>
+                <td>
+                  @if (patient.lastConsultation; as consultation) {
+                    <time [attr.datetime]="consultation.dateTime">{{
+                      consultation.dateLabel
+                    }}</time>
+                  } @else {
+                    <span aria-label="Dernière consultation non disponible">—</span>
+                  }
+                </td>
+                <td>
+                  @if (patient.nextAppointment; as appointment) {
+                    <span class="appointment-date">
+                      <oc-icon name="calendar" />
+                      <time [attr.datetime]="appointment.dateTime">
+                        {{ appointment.dateLabel }}
+                        @if (appointment.timeLabel) {
+                          <strong>{{ appointment.timeLabel }}</strong>
+                        }
+                      </time>
+                    </span>
+                  } @else {
+                    <span aria-label="Aucun prochain rendez-vous disponible">—</span>
+                  }
+                </td>
+                <td>
+                  <span class="status-pill status-pill--{{ patient.linkage }}">
+                    {{ patient.linkageLabel }}
+                  </span>
+                </td>
+                <td>
+                  <span class="source-pill source-pill--{{ patient.source }}">
+                    {{ patient.sourceLabel }}
+                  </span>
+                </td>
+                <td class="patient-table__action">
+                  <a
+                    [href]="patient.href"
+                    [attr.aria-label]="'Ouvrir le dossier de ' + patient.accessibleName"
+                    (click)="openPatient(patient, $event)"
+                  >
+                    <oc-icon name="chevron-right" />
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+
+      <div ocTableFooter class="table-footer">
+        <p>
+          Afficher {{ model().resultStart.toLocaleString('fr-FR') }}–{{
+            model().resultEnd.toLocaleString('fr-FR')
+          }}
+          sur {{ model().totalResults.toLocaleString('fr-FR') }} patients
+        </p>
+        <div class="table-footer__controls">
+          @if (model().pageSizeOptions.length > 0) {
+            <label>
+              <span>Éléments par page</span>
+              <select
+                name="page-size"
+                [value]="model().pageSize"
+                (change)="action.emit({ kind: 'SET_PAGE_SIZE', value: +$any($event.target).value })"
+              >
+                @for (option of model().pageSizeOptions; track option) {
+                  <option [value]="option">{{ option }}</option>
+                }
+              </select>
+            </label>
+          }
+          @if (model().pageCount > 1) {
+            <nav class="pagination" aria-label="Pagination des patients">
+              <button
+                type="button"
+                aria-label="Page précédente"
+                [disabled]="model().page === 1"
+                (click)="action.emit({ kind: 'SET_PAGE', value: model().page - 1 })"
+              >
+                <oc-icon name="chevron-left" />
+              </button>
+              @for (pageNumber of model().pageNumbers; track pageNumber) {
+                <button
+                  type="button"
+                  [class.pagination__page--active]="pageNumber === model().page"
+                  [attr.aria-current]="pageNumber === model().page ? 'page' : null"
+                  [attr.aria-label]="'Page ' + pageNumber"
+                  (click)="action.emit({ kind: 'SET_PAGE', value: pageNumber })"
+                >
+                  {{ pageNumber }}
+                </button>
+              }
+              @if (model().pageCount > 6 && model().page < model().pageCount - 2) {
+                <span aria-hidden="true">…</span>
+                <button
+                  type="button"
+                  [attr.aria-label]="'Page ' + model().pageCount"
+                  (click)="action.emit({ kind: 'SET_PAGE', value: model().pageCount })"
+                >
+                  {{ model().pageCount }}
+                </button>
+              }
+              <button
+                type="button"
+                aria-label="Page suivante"
+                [disabled]="model().page === model().pageCount"
+                (click)="action.emit({ kind: 'SET_PAGE', value: model().page + 1 })"
+              >
+                <oc-icon name="chevron-right" />
+              </button>
+            </nav>
+          }
+        </div>
+      </div>
+    </oc-data-table-shell>
+  }
+</section>

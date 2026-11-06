@@ -1,172 +1,15 @@
-<section class="omnicare-calendar">
-  <oc-page-header title="Planning" description="Gestion de votre agenda et de vos disponibilités" />
-
-  <div class="omnicare-calendar__controls">
-    <oc-segmented-control
-      label="Mode d'affichage"
-      [options]="viewOptions"
-      [selected]="viewMode()"
-      (selectedChange)="setViewMode($event)"
-    />
-    <div class="omnicare-calendar__actions" aria-label="Actions du calendrier">
-      <oc-button variant="secondary" size="small" (click)="configureSchedule()">
-        Modifier les horaires
-      </oc-button>
-      <oc-button variant="primary" size="small" (click)="openExceptionForm()">
-        + Exception
-      </oc-button>
-    </div>
-  </div>
-
-  <div class="omnicare-calendar__period">
-    <h2 class="omnicare-calendar__title" aria-live="polite">
-      {{ visibleTitle() || 'Calendrier' }}
-    </h2>
-    <div class="omnicare-calendar__nav" aria-label="Navigation du calendrier">
-      @if (realtimeHealth() !== 'live') {
-        <span class="omnicare-calendar__sync-warning" role="status">
-          Synchronisation différée
-        </span>
-      }
-      <oc-button
-        variant="secondary"
-        size="small"
-        [leadingIcon]="'left'"
-        [iconOnly]="true"
-        ariaLabel="Période précédente"
-        (click)="previous()"
-      />
-      <oc-button variant="primary" size="small" (click)="goToday()">Aujourd'hui</oc-button>
-      <oc-button
-        variant="secondary"
-        size="small"
-        [leadingIcon]="'right'"
-        [iconOnly]="true"
-        ariaLabel="Période suivante"
-        (click)="next()"
-      />
-    </div>
-  </div>
-
-  @if (loading()) {
-    <div class="omnicare-calendar__loading" role="status" aria-live="polite">
-      <span class="omnicare-calendar__spinner" aria-hidden="true"></span>Chargement des rendez-vous…
-    </div>
-  }
-  @if (loadError(); as error) {
-    <div class="omnicare-calendar__error" role="alert">
-      <span>{{ error }}</span
-      ><oc-button variant="secondary" size="small" (click)="retryLoad()">Réessayer</oc-button>
-    </div>
-  }
-  @if (rulesError(); as error) {
-    <div class="omnicare-calendar__warning" role="alert">
-      <span>{{ error }}</span
-      ><oc-button variant="secondary" size="small" (click)="retryRules()">Réessayer</oc-button>
-    </div>
-  }
-  @if (exceptionsError(); as error) {
-    <div class="omnicare-calendar__warning" role="alert">
-      <span>{{ error }} Les rendez-vous restent disponibles.</span
-      ><oc-button variant="secondary" size="small" (click)="retryLoad()">Réessayer</oc-button>
-    </div>
-  }
-  @if (noSchedule()) {
-    <div class="omnicare-calendar__schedule-empty" role="status">
-      <span>Aucun horaire habituel configuré.</span>
-      <oc-button variant="primary" size="small" (click)="configureSchedule()"
-        >Configurer mes horaires</oc-button
-      >
-    </div>
-  }
-  @if (mutationError(); as error) {
-    <p class="omnicare-calendar__error" role="alert">{{ error }}</p>
-  }
-
-  <div
-    class="omnicare-calendar__surface"
-    [attr.aria-busy]="loading() || exceptionsLoading() || rulesLoading()"
-  >
-    <full-calendar #calendar [options]="calendarOptions()" [events]="calendarEvents()">
-      <ng-template #dayCellTopContent let-info>
-        <span
-          class="omnicare-calendar-day-number"
-          [class.omnicare-calendar-day-number--today]="info.isToday"
-          [class.omnicare-calendar-day-number--outside]="info.isOther"
-        >
-          {{ info.dayNumberText || info.text }}
-        </span>
-      </ng-template>
-
-      <ng-template #slotHeaderContent let-info>
-        <span class="omnicare-calendar-slot-label">{{ info.text }}</span>
-      </ng-template>
-
-      <ng-template #eventContent let-info>
-        @if (isAppointmentEvent(info)) {
-          <div
-            class="omnicare-calendar-event"
-            [class.omnicare-calendar-event--confirmed]="
-              $any(eventMetadata(info)).status === 'CONFIRMED'
-            "
-            [class.omnicare-calendar-event--in-progress]="
-              $any(eventMetadata(info)).status === 'IN_PROGRESS'
-            "
-            [class.omnicare-calendar-event--completed]="
-              $any(eventMetadata(info)).status === 'COMPLETED'
-            "
-            [attr.aria-label]="eventAccessibleLabel(info)"
-          >
-            @if (info.view.type === 'timeGridDay') {
-              <span class="omnicare-calendar-event__time">{{ eventTimeRange(info) }}</span
-              ><strong class="omnicare-calendar-event__patient">{{
-                $any(eventMetadata(info)).patientLabel
-              }}</strong
-              ><span class="omnicare-calendar-event__status">{{
-                $any(eventMetadata(info)).statusLabel
-              }}</span>
-            } @else if (info.view.type === 'timeGridWeek') {
-              <span class="omnicare-calendar-event__time">{{ eventTime(info) }}</span
-              ><strong class="omnicare-calendar-event__patient">{{
-                compactPatientLabel(info)
-              }}</strong
-              ><span class="omnicare-calendar-event__status">{{
-                $any(eventMetadata(info)).statusLabel
-              }}</span>
-            } @else {
-              <span class="omnicare-calendar-event__month"
-                >{{ eventTime(info) }} {{ compactPatientLabel(info) }}</span
-              >
-            }
-          </div>
-        } @else {
-          <div
-            class="omnicare-exception-annotation"
-            [class.omnicare-exception-annotation--block]="
-              $any(eventMetadata(info)).exceptionType === 'BLOCK'
-            "
-            [class.omnicare-exception-annotation--extra]="
-              $any(eventMetadata(info)).exceptionType === 'EXTRA'
-            "
-            [attr.aria-label]="eventAccessibleLabel(info)"
-          >
-            <strong>{{ $any(eventMetadata(info)).typeLabel }}</strong
-            ><span>{{ $any(eventMetadata(info)).timeLabel }}</span>
-            @if ($any(eventMetadata(info)).reason; as reason) {
-              <span>{{ reason }}</span>
-            }
-          </div>
-        }
-      </ng-template>
-    </full-calendar>
-  </div>
-
-  <p class="omnicare-calendar__notice">
-    Les horaires affichent les valeurs enregistrées telles quelles. Une ouverture exceptionnelle ne
-    garantit pas à elle seule la génération de créneaux réservables.
-  </p>
-
-  <app-scheduled-appointment-detail-panel #appointmentPanel />
+<app-calendar-view
+  #calendarView
+  [model]="viewModel()"
+  [presentation]="presentation()"
+  (action)="handleViewAction($event)"
+>
+  <app-scheduled-appointment-detail-panel
+    #appointmentPanel
+    calendarDetail
+    presentation="drawer"
+  />
+</app-calendar-view>
 
   <nz-modal
     [nzVisible]="selectedException() !== null"
@@ -301,4 +144,3 @@
       ></ng-template
     >
   </nz-modal>
-</section>

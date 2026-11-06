@@ -94,4 +94,40 @@ test.describe('static-demo Doctor Accueil', () => {
     await page.getByRole('link', { name: 'Gérer mes disponibilités' }).click();
     await expect(page).toHaveURL(/\/doctor\/settings\?tab=schedule$/);
   });
+
+  test('captures the approved collapsed and mobile navigation states', async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'tablet',
+      'The expanded tablet state is covered by the responsive screenshot.',
+    );
+    await openDoctorDashboard(page);
+
+    if (testInfo.project.name === 'mobile') {
+      const menu = page.getByRole('button', { name: 'Ouvrir la navigation' });
+      await menu.click();
+      await expect(page.getByRole('heading', { name: 'Navigation' })).toBeVisible();
+      await expect(page.locator('.oc-sheet').getByText('Dr Ben Salah', { exact: true })).toBeVisible();
+      const accessibility = await new AxeBuilder({ page })
+        .include('.oc-sheet')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      expect(accessibility.violations).toEqual([]);
+      await page.screenshot({
+        path: testInfo.outputPath('doctor-sidebar-static-mobile-open.png'),
+        fullPage: true,
+      });
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('heading', { name: 'Navigation' })).toBeHidden();
+      await expect(menu).toBeFocused();
+      return;
+    }
+
+    const sidebar = page.locator('app-doctor-sidebar.doctor-shell__desktop-sidebar');
+    await sidebar.getByRole('button', { name: 'Réduire la navigation' }).click();
+    await expect(sidebar.locator('.doctor-sidebar')).toHaveCSS('width', '80px');
+    await page.screenshot({
+      path: testInfo.outputPath('doctor-sidebar-static-desktop-collapsed.png'),
+      fullPage: true,
+    });
+  });
 });

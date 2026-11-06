@@ -6,25 +6,14 @@ export type BookingRequestStatus =
   | 'CANCELLED_BY_DOCTOR'
   | 'EXPIRED';
 
-export type AppointmentStatus =
-  | 'CONFIRMED'
-  | 'IN_PROGRESS'
-  | 'CANCELLED'
-  | 'COMPLETED'
-  | 'NO_SHOW';
+export type AppointmentStatus = 'CONFIRMED' | 'IN_PROGRESS' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 
 export type ScheduledCareResourceType = 'BOOKING_REQUEST' | 'APPOINTMENT';
 
 export type ScheduledCareAction =
-  | 'ACCEPT_REQUEST'
-  | 'PROPOSE_NEW_TIME'
-  | 'DECLINE_REQUEST'
-  | 'CANCEL_APPOINTMENT';
+  'ACCEPT_REQUEST' | 'PROPOSE_NEW_TIME' | 'DECLINE_REQUEST' | 'CANCEL_APPOINTMENT';
 
-export type DoctorReasonCode =
-  | 'CABINET_UNAVAILABLE'
-  | 'DOCTOR_UNAVAILABLE'
-  | 'SCHEDULE_CONFLICT';
+export type DoctorReasonCode = 'CABINET_UNAVAILABLE' | 'DOCTOR_UNAVAILABLE' | 'SCHEDULE_CONFLICT';
 
 export interface CareSubject {
   readonly subjectType: string;
@@ -97,6 +86,15 @@ export interface QuotedPrice {
   readonly quotedAt: string;
 }
 
+export interface AppointmentPracticePatient {
+  readonly practicePatientId: string;
+  readonly dateOfBirth: string;
+  readonly sex: string;
+  readonly phone: string;
+  readonly email: string | null;
+  readonly address: string | null;
+}
+
 export interface Appointment {
   readonly appointmentId: string;
   readonly sourceBookingRequestId: string;
@@ -113,6 +111,8 @@ export interface Appointment {
   readonly cancellation: CancellationSummary | null;
   readonly intakeStatus: string | null;
   readonly availableActions: readonly ScheduledCareAction[];
+  readonly practicePatient?: AppointmentPracticePatient | null;
+  readonly consultationReason?: string | null;
 }
 
 export interface DoctorScheduledCareItem {

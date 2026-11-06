@@ -1,5 +1,6 @@
-// TODO(brand): These values are provisional until OmniCare supplies approved brand assets.
-$oc-brand-primary: #1FBF9A;
+// OmniCare's approved primary action color. Darker green values remain temporarily
+// for legacy non-button surfaces and must not be used for interactive action states.
+$oc-brand-primary: #1fbf9a;
 $oc-brand-primary-hover: #12594c;
 $oc-brand-primary-active: #0d473d;
 $oc-brand-secondary: #294b63;

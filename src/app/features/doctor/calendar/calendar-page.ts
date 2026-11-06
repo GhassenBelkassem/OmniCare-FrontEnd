@@ -22,11 +22,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   CalendarOptions,
   DatesSetInfo,
-  DayHeaderInfo,
   EventClickInfo,
   EventDisplayInfo,
-  FullCalendarComponent,
-  FullCalendarModule,
 } from '@fullcalendar/angular';
 import dayGridPlugin from '@fullcalendar/angular/daygrid';
 import themePlugin from '@fullcalendar/angular/themes/monarch';
@@ -36,11 +33,6 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
 import { interval } from 'rxjs';
 import { RealtimeService } from '../../../core/realtime/realtime.service';
 import { OcButton } from '../../../shared/ui/button/oc-button';
-import { OcPageHeader } from '../../../shared/ui/page-header/oc-page-header';
-import {
-  OcSegmentedControl,
-  OcSegmentOption,
-} from '../../../shared/ui/segmented-control/oc-segmented-control';
 import { OcTimeField } from '../../../shared/ui/time-field/oc-time-field';
 import type {
   AvailabilityExceptionDto,
@@ -62,6 +54,13 @@ import {
   projectScheduledAppointmentEvents,
   projectExceptionEvents,
 } from './calendar-event.adapter';
+import { CalendarView } from './calendar-view';
+import type {
+  CalendarPresentationInput,
+  CalendarViewAction,
+  CalendarViewMode,
+  CalendarViewModel,
+} from './calendar-view.models';
 import {
   CalendarVisibleRange,
   fullyBlockedDateKeys,
@@ -72,25 +71,10 @@ import {
   toLocalDateOnly,
 } from './calendar-time.adapter';
 
-function escapeHeaderText(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
-type CalendarViewMode = 'day' | 'week' | 'month';
 type FullCalendarView = 'timeGridDay' | 'timeGridWeek' | 'dayGridMonth';
 type CalendarEventMetadata = AppointmentEventMetadata | ExceptionEventMetadata;
 
 const REALTIME_FALLBACK_REFETCH_MS = 120_000;
-const CALENDAR_VIEW_BY_MODE: Readonly<Record<CalendarViewMode, FullCalendarView>> = {
-  day: 'timeGridDay',
-  week: 'timeGridWeek',
-  month: 'dayGridMonth',
-};
 const MODE_BY_CALENDAR_VIEW: Readonly<Record<FullCalendarView, CalendarViewMode>> = {
   timeGridDay: 'day',
   timeGridWeek: 'week',
@@ -107,14 +91,12 @@ function exceptionWindowValidator(control: AbstractControl): ValidationErrors | 
 @Component({
   selector: 'oc-calendar-page',
   imports: [
-    FullCalendarModule,
     ReactiveFormsModule,
     NzModalModule,
     OcButton,
-    OcPageHeader,
-    OcSegmentedControl,
     OcTimeField,
     ScheduledAppointmentDetailPanel,
+    CalendarView,
   ],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
@@ -128,7 +110,7 @@ export class CalendarPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
-  private readonly calendar = viewChild.required<FullCalendarComponent>('calendar');
+  private readonly calendarView = viewChild.required<CalendarView>('calendarView');
   private readonly appointmentPanel =
     viewChild.required<ScheduledAppointmentDetailPanel>('appointmentPanel');
   private readonly expectsRealtimeActivity = signal(true);
@@ -164,6 +146,23 @@ export class CalendarPage {
   readonly noSchedule = computed(
     () => this.rulesLoaded() && !this.rulesError() && this.businessHours().length === 0,
   );
+  readonly calendarSlotBounds = computed(() => {
+    const activeRules = this.rules().filter((rule) => rule.active);
+    if (activeRules.length === 0) return { min: '08:00:00', max: '18:00:00' };
+    const earliest = activeRules.reduce(
+      (value, rule) => (rule.startTime < value ? rule.startTime : value),
+      activeRules[0]?.startTime ?? '08:00',
+    );
+    const latest = activeRules.reduce(
+      (value, rule) => (rule.endTime > value ? rule.endTime : value),
+      activeRules[0]?.endTime ?? '18:00',
+    );
+    return { min: withSeconds(earliest), max: withSeconds(latest) };
+  });
+  readonly workingHoursLabel = computed(() => {
+    const bounds = this.calendarSlotBounds();
+    return `${bounds.min.slice(0, 5)} – ${bounds.max.slice(0, 5)}`;
+  });
   readonly appointmentEvents = computed(() =>
     projectScheduledAppointmentEvents(this.appointments()),
   );
@@ -187,25 +186,39 @@ export class CalendarPage {
     { validators: exceptionWindowValidator },
   );
 
-  readonly viewOptions: readonly OcSegmentOption[] = [
-    { value: 'day', label: 'Jour' },
-    { value: 'week', label: 'Semaine' },
-    { value: 'month', label: 'Mois' },
-  ];
+  readonly viewModel = computed<CalendarViewModel>(() => ({
+    viewMode: this.viewMode(),
+    visibleTitle: this.visibleTitle(),
+    visibleSubtitle: '',
+    weekNumber: '',
+    panelOpen: false,
+    loading: this.loading(),
+    loadError: this.loadError(),
+    rulesError: this.rulesError(),
+    exceptionsError: this.exceptionsError(),
+    mutationError: this.mutationError(),
+    noSchedule: this.noSchedule(),
+    realtimeDeferred: this.realtimeHealth() !== 'live',
+    ariaBusy: this.loading() || this.exceptionsLoading() || this.rulesLoading(),
+    daySummary:
+      this.viewMode() === 'day'
+        ? {
+            appointmentCountLabel: `${this.appointments().length} rendez-vous`,
+            appointmentCountHint: "pour la journée affichée",
+            availabilityLabel: this.noSchedule() ? 'Non configuré' : 'Horaires configurés',
+            availabilityHint: this.noSchedule() ? 'Aucune plage habituelle' : 'Disponibilité habituelle',
+            workingHoursLabel: this.workingHoursLabel(),
+            workingHoursHint: 'Plage utile affichée',
+          }
+        : null,
+    notice:
+      "Les horaires affichent les valeurs enregistrées telles quelles. Une ouverture exceptionnelle ne garantit pas à elle seule la génération de créneaux réservables.",
+  }));
 
-  readonly renderDayHeader = (info: DayHeaderInfo): { html: string } => {
-    const weekday = escapeHeaderText(info.weekdayText);
-    const date = escapeHeaderText(info.dayNumberText);
-    const todayClass = info.isToday ? ' omnicare-calendar-day-heading--today' : '';
-    const dateContent =
-      info.view.type === 'dayGridMonth' || !date
-        ? ''
-        : `<strong class="omnicare-calendar-day-heading__date">${date}</strong>`;
-
-    return {
-      html: `<span class="omnicare-calendar-day-heading${todayClass}"><span class="omnicare-calendar-day-heading__weekday">${weekday}</span>${dateContent}</span>`,
-    };
-  };
+  readonly presentation = computed<CalendarPresentationInput>(() => ({
+    options: this.calendarOptions(),
+    events: this.calendarEvents(),
+  }));
 
   readonly calendarOptions = computed<CalendarOptions>(() => {
     const fullyBlockedDates = this.fullyBlockedDates();
@@ -215,15 +228,18 @@ export class CalendarPage {
       locale: frLocale,
       firstDay: 1,
       headerToolbar: false,
-      height: 'clamp(36rem, 68vh, 46rem)',
+      height: this.viewMode() === 'month' ? 798 : this.viewMode() === 'day' ? 638 : 714,
       expandRows: true,
       allDaySlot: false,
-      scrollTime: '07:00:00',
+      slotMinTime: this.calendarSlotBounds().min,
+      slotMaxTime: this.calendarSlotBounds().max,
+      scrollTime: this.calendarSlotBounds().min,
       scrollTimeReset: false,
-      slotDuration: '00:30:00',
-      slotMinHeight: 28,
-      eventMinHeight: 30,
-      dayMaxEvents: true,
+      slotDuration: this.viewMode() === 'day' ? '01:00:00' : '00:30:00',
+      slotLabelInterval: '01:00:00',
+      slotMinHeight: this.viewMode() === 'day' ? 54 : 30,
+      eventMinHeight: this.viewMode() === 'month' ? 28 : this.viewMode() === 'day' ? 36 : 44,
+      dayMaxEvents: 3,
       nowIndicator: true,
       navLinks: false,
       editable: false,
@@ -231,36 +247,38 @@ export class CalendarPage {
       eventStartEditable: false,
       eventDurationEditable: false,
       businessHours: [...this.businessHours()],
-      dayHeaderFormat: { weekday: 'short', day: 'numeric' },
-      dayHeaderContent: this.renderDayHeader,
+      dayHeaderFormat: {
+        weekday: 'short',
+        day: this.viewMode() === 'month' ? undefined : 'numeric',
+      },
       eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-      slotHeaderFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-      viewClass: (info) => `omnicare-fc-view omnicare-fc-view--${info.view.type}`,
+      slotLabelFormat: {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        omitZeroMinute: false,
+      },
+      viewClass: (info) => `demo-calendar-view demo-calendar-view--${info.view.type}`,
       dayHeaderClass: (info) =>
-        `omnicare-fc-day-header${info.isToday ? ' omnicare-fc-day-header--today' : ''}`,
-      dayHeaderInnerClass: 'omnicare-fc-day-header__inner',
+        `demo-calendar-day-header${info.isToday ? ' demo-calendar-day-header--today' : ''}`,
       dayCellClass: (info) =>
         [
-          'omnicare-fc-day-cell',
-          info.isToday ? 'omnicare-fc-day-cell--today' : '',
-          info.isOther ? 'omnicare-fc-day-cell--other' : '',
-          fullyBlockedDates.has(toLocalDateOnly(info.date)) ? 'omnicare-fc-day-cell--blocked' : '',
+          'demo-calendar-day-cell',
+          info.isToday ? 'demo-calendar-day-cell--selected' : '',
+          info.isOther ? 'demo-calendar-day-cell--other' : '',
+          fullyBlockedDates.has(toLocalDateOnly(info.date)) ? 'demo-calendar-day-cell--exception' : '',
         ]
           .filter(Boolean)
           .join(' '),
-      dayCellTopClass: 'omnicare-fc-day-cell__top',
-      dayCellInnerClass: 'omnicare-fc-day-cell__events',
       dayLaneClass: (info) =>
-        `omnicare-fc-day-lane${info.isToday ? ' omnicare-fc-day-lane--today' : ''}`,
+        `demo-calendar-day-lane${info.isToday ? ' demo-calendar-day-lane--selected' : ''}${fullyBlockedDates.has(toLocalDateOnly(info.date)) ? ' demo-calendar-day-lane--exception' : ''}`,
       slotLaneClass: (info) =>
-        `omnicare-fc-slot-lane ${
-          info.isMajor ? 'omnicare-fc-slot-lane--major' : 'omnicare-fc-slot-lane--minor'
+        `demo-calendar-slot ${
+          info.isMajor ? 'demo-calendar-slot--major' : 'demo-calendar-slot--minor'
         }`,
-      slotHeaderClass: 'omnicare-fc-slot-header',
-      slotHeaderInnerClass: 'omnicare-fc-slot-header__inner',
-      nonBusinessHoursClass: 'omnicare-fc-non-business',
-      nowIndicatorLineClass: 'omnicare-fc-now-line',
-      nowIndicatorDotClass: 'omnicare-fc-now-dot',
+      slotHeaderClass: 'demo-calendar-slot-header',
+      slotHeaderInnerClass: 'demo-calendar-slot-label',
+      nonBusinessHoursClass: 'demo-calendar-non-business',
       eventClass: (info) => this.calendarEventClasses(info),
       backgroundEventClass: 'omnicare-fc-background-event',
       datesSet: (info) => this.onDatesSet(info),
@@ -289,17 +307,31 @@ export class CalendarPage {
   setViewMode(value: string): void {
     if (this.isCalendarViewMode(value)) {
       this.viewMode.set(value);
-      this.calendar().getApi().changeView(CALENDAR_VIEW_BY_MODE[value]);
+      this.calendarView().changeView(value);
     }
   }
   previous(): void {
-    this.calendar().getApi().prev();
+    this.calendarView().previous();
   }
   goToday(): void {
-    this.calendar().getApi().today();
+    this.calendarView().today();
   }
   next(): void {
-    this.calendar().getApi().next();
+    this.calendarView().next();
+  }
+
+  handleViewAction(action: CalendarViewAction): void {
+    switch (action.kind) {
+      case 'SET_VIEW': this.setViewMode(action.value); break;
+      case 'PREVIOUS': this.previous(); break;
+      case 'TODAY': this.goToday(); break;
+      case 'NEXT': this.next(); break;
+      case 'CONFIGURE_SCHEDULE': this.configureSchedule(); break;
+      case 'ADD_EXCEPTION': this.openExceptionForm(); break;
+      case 'RETRY_RULES': this.retryRules(); break;
+      case 'RETRY_APPOINTMENTS':
+      case 'RETRY_EXCEPTIONS': this.retryLoad(); break;
+    }
   }
 
   onDatesSet(info: DatesSetInfo): void {
@@ -439,17 +471,16 @@ export class CalendarPage {
   }
   calendarEventClasses(info: EventDisplayInfo): string {
     const metadata = this.eventMetadata(info);
-    const classes = ['omnicare-fc-event'];
+    const classes: string[] = [];
 
     if (metadata.kind === 'appointment') {
-      classes.push('omnicare-fc-event--appointment');
-      if (metadata.status === 'CONFIRMED') classes.push('omnicare-fc-event--confirmed');
-      if (metadata.status === 'IN_PROGRESS') classes.push('omnicare-fc-event--in-progress');
-      if (metadata.status === 'COMPLETED') classes.push('omnicare-fc-event--completed');
+      classes.push('demo-calendar-appointment');
+      if (metadata.status === 'IN_PROGRESS') classes.push('demo-calendar-appointment--follow-up');
+      if (metadata.status === 'COMPLETED') classes.push('demo-calendar-appointment--control');
     } else if (metadata.exceptionType === 'BLOCK') {
-      classes.push('omnicare-fc-event--block');
+      classes.push('demo-calendar-state', 'demo-calendar-state--unavailable');
     } else {
-      classes.push('omnicare-fc-event--extra');
+      classes.push('demo-calendar-state', 'demo-calendar-state--exception');
     }
 
     return classes.join(' ');
@@ -568,7 +599,7 @@ export class CalendarPage {
       this.viewMode.set(MODE_BY_CALENDAR_VIEW[calendarView]);
   }
   private isCalendarViewMode(value: string): value is CalendarViewMode {
-    return value in CALENDAR_VIEW_BY_MODE;
+    return value === 'day' || value === 'week' || value === 'month';
   }
   private isFullCalendarView(value: string): value is FullCalendarView {
     return value in MODE_BY_CALENDAR_VIEW;
@@ -580,4 +611,7 @@ function byAppointmentStart(left: DoctorScheduledCareItem, right: DoctorSchedule
 }
 function minutesToTime(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+function withSeconds(value: string): string {
+  return /^\d{2}:\d{2}$/.test(value) ? `${value}:00` : value;
 }

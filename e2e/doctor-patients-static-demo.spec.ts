@@ -73,12 +73,10 @@ test.describe('static-demo Doctor patients', () => {
     expect(backendRequests).toEqual([]);
     expect(applicationWebSockets).toEqual([]);
 
-    if (testInfo.project.name !== 'mobile') {
-      await page.screenshot({
-        path: testInfo.outputPath(`doctor-patients-${testInfo.project.name}.png`),
-        fullPage: true,
-      });
-    }
+    await page.screenshot({
+      path: testInfo.outputPath(`doctor-patients-${testInfo.project.name}.png`),
+      fullPage: true,
+    });
   });
 
   test('supports search, filters, sorting, pagination, selection and row navigation', async ({

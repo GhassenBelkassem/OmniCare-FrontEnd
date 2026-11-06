@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signa
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import { OcButton, OcDialog, OcPopover, OcSheet, OcStatusBadge, OcTab, OcTabs } from '../../../shared/ui';
+import { OcButton, OcDialog, OcPopover, OcSheet, OcStatusBadge, OcTab } from '../../../shared/ui';
 import {
   DEMO_CLINICAL_TEMPLATES,
   DEMO_CONSULTATION_PATIENT,
@@ -13,15 +13,30 @@ import {
   DemoSaveState,
 } from './consultation-demo.fixtures';
 import { ConsultationDemoStore } from './consultation-demo.store';
+import { ConsultationWorkspaceView } from './consultation-workspace-view';
+import type {
+  ConsultationWorkspaceAction,
+  ConsultationWorkspaceSection,
+  ConsultationWorkspaceViewModel,
+} from './consultation-workspace-view.models';
 
-type WorkspaceSection = 'note' | 'vitals' | 'prescription' | 'orders' | 'documents' | 'finalization';
+type WorkspaceSection = ConsultationWorkspaceSection;
 
 const WORKSPACE_SECTIONS: readonly WorkspaceSection[] = ['note', 'vitals', 'prescription', 'orders', 'documents', 'finalization'];
 const MRS_STATES: readonly DemoMrsAccessState[] = ['ACTIVE', 'NONE', 'EXPIRED', 'REVOKED', 'UNAVAILABLE'];
 
 @Component({
   selector: 'oc-consultation-page',
-  imports: [NzIconModule, RouterLink, OcButton, OcDialog, OcPopover, OcSheet, OcStatusBadge, OcTabs],
+  imports: [
+    NzIconModule,
+    RouterLink,
+    OcButton,
+    OcDialog,
+    OcPopover,
+    OcSheet,
+    OcStatusBadge,
+    ConsultationWorkspaceView,
+  ],
   providers: [ConsultationDemoStore],
   templateUrl: './consultation-page.static-demo.html',
   styleUrls: ['./consultation-page.static-demo.scss', './consultation-page.static-demo.responsive.scss'],
@@ -73,6 +88,41 @@ export class ConsultationPage {
   readonly activeSectionLabel = computed(() =>
     this.workspaceTabs().find(({ id }) => id === this.activeSection())?.label ?? 'Consultation',
   );
+  readonly viewModel = computed<ConsultationWorkspaceViewModel>(() => ({
+    screenReaderDescription:
+      'Démonstration statique hors ligne avec données patient fictives. Aucun enregistrement clinique réel.',
+    title: this.patient.name,
+    initials: this.patient.initials,
+    identityBadges: [
+      { label: `${this.patient.age} ans`, icon: 'user' },
+      { label: this.patient.gender },
+      { label: this.patient.insuranceNumber, icon: 'solution' },
+      { label: this.patient.bloodGroup, emphasis: true },
+    ],
+    contextItems: [
+      'Consultation',
+      this.patient.cabinet,
+      `Rendez-vous ${this.patient.appointmentTime}`,
+      `Arrivé ${this.patient.arrivedAt} (${this.patient.waitMinutes} min)`,
+    ],
+    status: 'in-progress',
+    statusLabel: 'En cours · 00:12:34',
+    tabs: this.workspaceTabs(),
+    activeSection: this.activeSection(),
+    activeSectionLabel: this.activeSectionLabel(),
+    feedback: this.feedback(),
+    patientRecordHref: `/doctor/patient/${this.patient.id}`,
+    activeSaveStatus: this.activeSaveTone(),
+    activeSaveLabel: this.activeSaveLabel(),
+    showSaveAction: this.activeSection() !== 'finalization',
+    canSave: this.activeSaveState() !== 'saving',
+    saving: this.activeSaveState() === 'saving',
+    showPdfPreview: true,
+    canPreviewPdf: false,
+    canFinish: this.store.canFinish() && !this.store.finished(),
+    finishing: false,
+    finishLabel: this.store.finished() ? 'Simulation terminée' : 'Terminer la consultation',
+  }));
   readonly completionItems = computed(() => [
     { label: 'Note clinique', state: this.store.clinicalSaveState() },
     { label: 'Constantes', state: this.store.vitalsSaveState() },
@@ -94,6 +144,29 @@ export class ConsultationPage {
     if (WORKSPACE_SECTIONS.includes(id as WorkspaceSection)) {
       this.activeSection.set(id as WorkspaceSection);
       this.feedback.set(null);
+    }
+  }
+
+  handleWorkspaceAction(action: ConsultationWorkspaceAction): void {
+    switch (action.kind) {
+      case 'SET_SECTION':
+        this.setActiveSection(action.section);
+        break;
+      case 'OPEN_MEDICAL_RECORD':
+        this.mrsDrawerOpen.set(true);
+        break;
+      case 'DISMISS_FEEDBACK':
+        this.feedback.set(null);
+        break;
+      case 'SAVE_ACTIVE':
+        this.saveActiveDomain();
+        break;
+      case 'PREVIEW_PDF':
+        this.feedback.set('Aucun PDF n’est généré dans la démo statique.');
+        break;
+      case 'FINISH':
+        this.requestFinish();
+        break;
     }
   }
 

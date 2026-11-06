@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import { ActivatedRoute, Router } from '@angular/router';
 
-import { OcButton, OcDataTableShell, OcEmptyState, OcIcon } from '../../../shared/ui';
 import { PracticePatientDto } from '../practice-patient-api.models';
 import { AddPatientDialog } from './add-patient-dialog';
+import { PatientDirectoryView } from './patient-directory-view';
+import type {
+  PatientDirectoryAction,
+  PatientDirectoryRow,
+  PatientDirectoryViewModel,
+} from './patient-directory-view.models';
 import {
   DemoPatientCategory,
   DemoPatientLinkage,
@@ -53,17 +57,9 @@ function compareNullableDates(left: string | null, right: string | null): number
 
 @Component({
   selector: 'app-patients-page',
-  imports: [
-    RouterLink,
-    NzIconModule,
-    OcButton,
-    OcDataTableShell,
-    OcEmptyState,
-    OcIcon,
-    AddPatientDialog,
-  ],
-  templateUrl: './patients-page.static-demo.html',
-  styleUrl: './patients-page.static-demo.scss',
+  imports: [PatientDirectoryView, AddPatientDialog],
+  templateUrl: './patients-page.html',
+  styleUrl: './patients-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PatientsPage {
@@ -231,8 +227,116 @@ export class PatientsPage {
     return visible.length > 0 && visible.every((patient) => this.selectedIds().has(patient.id));
   });
 
-  onSearch(event: Event): void {
-    this.searchTerm.set((event.target as HTMLInputElement).value);
+  readonly viewModel = computed<PatientDirectoryViewModel>(() => ({
+    notice: this.demoNotice,
+    headingCount: this.categoryCounts().ALL,
+    createdMessage: this.createdMessage(),
+    categories: this.categoryOptions(),
+    activeCategory: this.activeCategory(),
+    searchTerm: this.searchTerm(),
+    searchPlaceholder: 'Rechercher par nom, téléphone ou identifiant administratif…',
+    advancedFilters: {
+      expanded: this.filtersExpanded(),
+      activeCount: this.activeFilterCount(),
+      lastConsultation: this.lastConsultationFilter(),
+      lastConsultationOptions: [
+        { value: 'ALL', label: 'Toutes les périodes' },
+        { value: '30', label: '30 derniers jours' },
+        { value: '90', label: '90 derniers jours' },
+        { value: '365', label: '12 derniers mois' },
+        { value: 'NONE', label: 'Aucune consultation' },
+      ],
+      source: this.sourceFilter(),
+      sourceOptions: [
+        { value: 'ALL', label: 'Toutes les sources' },
+        { value: 'OMNICARE', label: 'OmniCare' },
+        { value: 'MANUAL', label: 'Saisie manuelle' },
+        { value: 'IMPORTED', label: 'Importé' },
+        { value: 'WALK_IN', label: 'Patient de passage' },
+      ],
+      linkage: this.linkageFilter(),
+      linkageOptions: [
+        { value: 'ALL', label: 'Tous les statuts' },
+        { value: 'LINKED', label: 'Lié à OmniCare' },
+        { value: 'POSSIBLE', label: 'Correspondance possible' },
+        { value: 'UNLINKED', label: 'Non lié' },
+      ],
+    },
+    state: this.tableState(),
+    loadingDescription: 'Préparation du répertoire de démonstration.',
+    errorDescription: 'Les données de démonstration n’ont pas pu être préparées.',
+    rows: this.visiblePatients().map((patient) => this.demoRow(patient)),
+    totalResults: this.sortedPatients().length,
+    selectable: true,
+    selectedIds: this.selectedIds(),
+    allVisibleSelected: this.allVisibleSelected(),
+    sortable: true,
+    sortKey: this.sortKey(),
+    sortDirection: this.sortDirection(),
+    resultStart: this.resultStart(),
+    resultEnd: this.resultEnd(),
+    page: this.page(),
+    pageCount: this.pageCount(),
+    pageNumbers: this.pageNumbers(),
+    pageSize: this.pageSize(),
+    pageSizeOptions: [10, 20, 50],
+  }));
+
+  handleViewAction(action: PatientDirectoryAction): void {
+    switch (action.kind) {
+      case 'ADD_PATIENT':
+        this.addDialogOpen.set(true);
+        return;
+      case 'DISMISS_CREATED':
+        this.createdMessage.set(null);
+        return;
+      case 'SEARCH':
+        this.onSearch(action.value);
+        return;
+      case 'SELECT_CATEGORY':
+        this.onCategoryChange(action.value);
+        return;
+      case 'RESET_FILTERS':
+        this.resetFilters();
+        return;
+      case 'TOGGLE_FILTERS':
+        this.toggleFilters();
+        return;
+      case 'SELECT_LAST_CONSULTATION':
+        this.onLastConsultationChange(action.value);
+        return;
+      case 'SELECT_SOURCE':
+        this.onSourceChange(action.value);
+        return;
+      case 'SELECT_LINKAGE':
+        this.onLinkageChange(action.value);
+        return;
+      case 'RETRY':
+        this.retry();
+        return;
+      case 'SORT':
+        this.toggleSort(action.value);
+        return;
+      case 'TOGGLE_VISIBLE':
+        this.toggleVisible(action.checked);
+        return;
+      case 'TOGGLE_PATIENT':
+        this.togglePatient(action.id, action.checked);
+        return;
+      case 'OPEN_PATIENT':
+        this.openDuplicate(action.id);
+        return;
+      case 'SET_PAGE_SIZE':
+        this.onPageSizeChange(action.value);
+        return;
+      case 'SET_PAGE':
+        this.setPage(action.value);
+        return;
+    }
+  }
+
+  onSearch(value: string): void {
+    this.searchTerm.set(value);
     this.page.set(1);
     this.syncQueryState();
   }
@@ -244,28 +348,26 @@ export class PatientsPage {
     this.syncQueryState();
   }
 
-  onSourceChange(event: Event): void {
-    this.sourceFilter.set((event.target as HTMLSelectElement).value as DemoPatientSource | 'ALL');
+  onSourceChange(value: string): void {
+    this.sourceFilter.set(value as DemoPatientSource | 'ALL');
     this.page.set(1);
     this.syncQueryState();
   }
 
-  onLinkageChange(event: Event): void {
-    this.linkageFilter.set((event.target as HTMLSelectElement).value as DemoPatientLinkage | 'ALL');
+  onLinkageChange(value: string): void {
+    this.linkageFilter.set(value as DemoPatientLinkage | 'ALL');
     this.page.set(1);
     this.syncQueryState();
   }
 
-  onLastConsultationChange(event: Event): void {
-    this.lastConsultationFilter.set(
-      (event.target as HTMLSelectElement).value as LastConsultationFilter,
-    );
+  onLastConsultationChange(value: string): void {
+    this.lastConsultationFilter.set(value as LastConsultationFilter);
     this.page.set(1);
     this.syncQueryState();
   }
 
-  onPageSizeChange(event: Event): void {
-    this.pageSize.set(Number((event.target as HTMLSelectElement).value));
+  onPageSizeChange(value: number): void {
+    this.pageSize.set(value);
     this.page.set(1);
     this.syncQueryState();
   }
@@ -335,6 +437,10 @@ export class PatientsPage {
     void this.router.navigate(['/doctor/patient', id]);
   }
 
+  onDuplicateConfirmed(id: string): void {
+    this.openDuplicate(id);
+  }
+
   retry(): void {
     this.tableState.set('ready');
     void this.router.navigate([], {
@@ -392,6 +498,39 @@ export class PatientsPage {
 
   formatInteger(value: number): string {
     return new Intl.NumberFormat('fr-FR').format(value);
+  }
+
+  private demoRow(patient: DemoPatientRecord): PatientDirectoryRow {
+    const displayName = `${patient.lastName} ${patient.firstName}`;
+    return {
+      id: patient.id,
+      href: `/doctor/patient/${encodeURIComponent(patient.id)}`,
+      initials: this.initials(patient),
+      displayName,
+      accessibleName: this.fullName(patient),
+      secondaryLabel: `${this.age(patient)} ans · ${
+        patient.sex === 'F' ? 'Femme' : patient.sex === 'M' ? 'Homme' : 'Autre'
+      }`,
+      phone: patient.phone,
+      emailLabel: patient.email ?? 'Email non renseigné',
+      lastConsultation: patient.lastConsultation
+        ? {
+            dateTime: patient.lastConsultation,
+            dateLabel: this.formatDate(patient.lastConsultation),
+          }
+        : null,
+      nextAppointment: patient.nextAppointment
+        ? {
+            dateTime: patient.nextAppointment,
+            dateLabel: this.formatDate(patient.nextAppointment),
+            timeLabel: this.formatTime(patient.nextAppointment),
+          }
+        : null,
+      linkage: patient.linkage.toLocaleLowerCase('fr-FR') as PatientDirectoryRow['linkage'],
+      linkageLabel: this.linkageLabel(patient.linkage),
+      source: patient.source.toLocaleLowerCase('fr-FR') as PatientDirectoryRow['source'],
+      sourceLabel: this.sourceLabel(patient.source),
+    };
   }
 
   private initialState(): DirectoryState {

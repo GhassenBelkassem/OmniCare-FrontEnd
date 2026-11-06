@@ -1,0 +1,66 @@
+.doctor-calendar-demo__sync-warning {
+  color: var(--oc-color-warning);
+  font-size: 11px;
+  font-weight: var(--oc-font-weight-semibold);
+  white-space: nowrap;
+}
+
+.doctor-calendar-demo__state {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+  margin: 0;
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-secondary);
+  font-size: var(--oc-font-size-sm);
+}
+
+.doctor-calendar-demo__state--loading,
+.doctor-calendar-demo__state--empty {
+  background: var(--oc-color-surface-subtle);
+}
+
+.doctor-calendar-demo__state--warning {
+  border-color: color-mix(in srgb, var(--oc-color-warning) 32%, var(--oc-color-border-subtle));
+  background: var(--oc-color-warning-surface);
+}
+
+.doctor-calendar-demo__state--error {
+  border-color: color-mix(in srgb, var(--oc-color-critical) 32%, var(--oc-color-border-subtle));
+  background: var(--oc-color-critical-surface);
+  color: var(--oc-color-critical);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-state--exception {
+  border: 1px solid color-mix(in srgb, var(--oc-color-warning) 46%, var(--oc-color-border-default));
+  border-radius: var(--oc-radius-sm);
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-text-primary);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-state--unavailable {
+  border: 1px dashed var(--oc-color-border-default);
+  border-radius: var(--oc-radius-sm);
+  background: color-mix(in srgb, var(--oc-color-neutral-surface) 80%, var(--oc-color-surface-card));
+  color: var(--oc-color-text-secondary);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-non-business {
+  background: color-mix(
+    in srgb,
+    var(--oc-color-neutral-surface) 64%,
+    var(--oc-color-surface-card)
+  );
+}
+
+.doctor-calendar-demo__notice {
+  margin: 0;
+  color: var(--oc-color-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}

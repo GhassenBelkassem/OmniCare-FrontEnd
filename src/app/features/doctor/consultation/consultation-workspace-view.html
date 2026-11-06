@@ -1,0 +1,109 @@
+<main class="consultation-workspace-view">
+  <h1 class="oc-sr-only">Consultation</h1>
+  <p class="oc-sr-only">{{ model().screenReaderDescription }}</p>
+
+  <header class="patient-strip">
+    <div class="patient-strip__identity">
+      <div class="patient-avatar" aria-hidden="true">{{ model().initials }}</div>
+      <div class="patient-strip__copy">
+        <div class="patient-strip__title">
+          <h2>{{ model().title }}</h2>
+          @for (badge of model().identityBadges; track badge.label) {
+            <span [class.patient-strip__badge--emphasis]="badge.emphasis">
+              @if (badge.icon) {
+                <nz-icon [nzType]="badge.icon" aria-hidden="true" />
+              }
+              {{ badge.label }}
+            </span>
+          }
+        </div>
+        @if (model().contextItems.length > 0) {
+          <p>
+            @for (item of model().contextItems; track item; let first = $first) {
+              @if (!first) { <i aria-hidden="true">•</i> }
+              {{ item }}
+            }
+          </p>
+        }
+      </div>
+    </div>
+
+    <div class="patient-strip__actions">
+      <oc-status-badge
+        [status]="model().status"
+        [customLabel]="model().statusLabel"
+        emphasis="strong"
+      />
+      <oc-button
+        variant="outline"
+        size="small"
+        leadingIcon="solution"
+        (click)="action.emit({ kind: 'OPEN_MEDICAL_RECORD' })"
+      >Dossier médical</oc-button>
+      @if (model().patientRecordHref; as href) {
+        <a class="patient-strip__link" [routerLink]="href">
+          <nz-icon nzType="file-text" aria-hidden="true" />
+          Dossier patient
+        </a>
+      }
+    </div>
+  </header>
+
+  <oc-tabs
+    class="workspace-tabs"
+    label="Sections de la consultation"
+    [tabs]="model().tabs"
+    [selected]="model().activeSection"
+    (selectedChange)="setSection($event)"
+  />
+
+  @if (model().feedback; as message) {
+    <div class="consultation-feedback" role="status" aria-live="polite">
+      <nz-icon nzType="exclamation-circle" aria-hidden="true" />
+      <span>{{ message }}</span>
+      <button
+        type="button"
+        aria-label="Fermer le message"
+        (click)="action.emit({ kind: 'DISMISS_FEEDBACK' })"
+      ><nz-icon nzType="close" aria-hidden="true" /></button>
+    </div>
+  }
+
+  <section class="tab-stage" [attr.aria-label]="model().activeSectionLabel">
+    <ng-content />
+  </section>
+
+  <footer class="consultation-action-bar">
+    <oc-status-badge
+      [status]="model().activeSaveStatus"
+      [customLabel]="model().activeSaveLabel"
+    />
+    @if (model().showSaveAction) {
+      <span class="consultation-action-bar__hint"><kbd>Ctrl</kbd> + <kbd>S</kbd> pour enregistrer cet onglet</span>
+    }
+    <span class="consultation-action-bar__spacer"></span>
+    @if (model().showSaveAction) {
+      <oc-button
+        variant="outline"
+        leadingIcon="solution"
+        [loading]="model().saving"
+        [disabled]="!model().canSave"
+        (click)="action.emit({ kind: 'SAVE_ACTIVE' })"
+      >Enregistrer</oc-button>
+    }
+    @if (model().showPdfPreview) {
+      <oc-button
+        variant="outline"
+        leadingIcon="file-text"
+        [disabled]="!model().canPreviewPdf"
+        (click)="action.emit({ kind: 'PREVIEW_PDF' })"
+      >Aperçu PDF</oc-button>
+    }
+    <oc-button
+      trailingIcon="right"
+      [loading]="model().finishing"
+      [disabled]="!model().canFinish"
+      (click)="action.emit({ kind: 'FINISH' })"
+    >{{ model().finishLabel }}</oc-button>
+  </footer>
+</main>

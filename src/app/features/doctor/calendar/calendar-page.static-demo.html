@@ -1,159 +1,10 @@
-<section
-  class="doctor-calendar-demo"
-  [class.doctor-calendar-demo--panel-open]="selectedAppointment() !== null"
-  [class.doctor-calendar-demo--day]="viewMode() === 'day'"
+<app-calendar-view
+  #calendarView
+  [model]="viewModel()"
+  [presentation]="presentation()"
+  (action)="handleViewAction($event)"
 >
-  <header class="doctor-calendar-demo__toolbar">
-    <div class="doctor-calendar-demo__period">
-      <div>
-        <h1 aria-live="polite">{{ visibleTitle() }}</h1>
-        @if (visibleSubtitle()) {
-          <p>{{ visibleSubtitle() }}</p>
-        }
-      </div>
-      @if (weekNumber()) {
-        <span class="doctor-calendar-demo__week">{{ weekNumber() }}</span>
-      }
-    </div>
-
-    <div class="doctor-calendar-demo__navigation" aria-label="Navigation du calendrier">
-      <oc-button
-        variant="secondary"
-        size="small"
-        leadingIcon="left"
-        [iconOnly]="true"
-        ariaLabel="Période précédente"
-        (click)="previous()"
-      />
-      <oc-button variant="secondary" size="small" (click)="goToday()">Aujourd'hui</oc-button>
-      <oc-button
-        variant="secondary"
-        size="small"
-        leadingIcon="right"
-        [iconOnly]="true"
-        ariaLabel="Période suivante"
-        (click)="next()"
-      />
-    </div>
-
-    <oc-segmented-control
-      label="Mode d'affichage du calendrier"
-      [options]="viewOptions"
-      [selected]="viewMode()"
-      (selectedChange)="setViewMode($event)"
-    />
-
-    <div class="doctor-calendar-demo__actions" aria-label="Actions du calendrier">
-      <oc-button
-        variant="secondary"
-        size="small"
-        leadingIcon="clock-circle"
-        (click)="scheduleDialogOpen.set(true)"
-      >
-        Modifier les horaires
-      </oc-button>
-      <oc-button
-        variant="primary"
-        size="small"
-        leadingIcon="plus"
-        (click)="exceptionDialogOpen.set(true)"
-      >
-        Exception
-      </oc-button>
-    </div>
-  </header>
-
-  <div class="doctor-calendar-demo__layout">
-    <main class="doctor-calendar-demo__calendar" aria-label="Calendrier des rendez-vous">
-      @if (viewMode() === 'day') {
-        <div class="doctor-calendar-demo__summary" aria-label="Résumé de la journée">
-          <div>
-            <span class="doctor-calendar-demo__summary-icon"
-              ><nz-icon nzType="calendar" aria-hidden="true"
-            /></span>
-            <span
-              ><strong>{{ dayAppointmentCount() }} rendez-vous</strong
-              ><small>aujourd'hui</small></span
-            >
-          </div>
-          <div>
-            <span class="doctor-calendar-demo__availability-dot" aria-hidden="true"></span>
-            <span><strong>Disponible</strong><small>Journée active</small></span>
-          </div>
-          <div>
-            <span class="doctor-calendar-demo__summary-icon"
-              ><nz-icon nzType="clock-circle" aria-hidden="true"
-            /></span>
-            <span><strong>08:00 – 17:00</strong><small>Plage de travail</small></span>
-          </div>
-        </div>
-      }
-      <div #calendarHost class="doctor-calendar-demo__calendar-host">
-        <full-calendar #calendar [options]="calendarOptions()" [events]="calendarEvents()">
-          <ng-template #eventContent let-info>
-            @if (isAppointmentEvent(info)) {
-              @if (appointmentForEvent(info); as appointment) {
-                <div
-                  class="demo-event"
-                  [class.demo-event--selected]="selectedAppointmentId() === appointment.id"
-                  [attr.aria-label]="
-                    eventTimeRange(appointment) +
-                    ', ' +
-                    appointment.patientName +
-                    ', ' +
-                    appointment.reason
-                  "
-                >
-                  @if (info.view.type === 'dayGridMonth') {
-                    <span class="demo-event__time">{{ eventStartTime(appointment) }}</span>
-                    <span class="demo-event__month-copy">
-                      <strong>{{ eventCategoryLabel(appointment) }}</strong>
-                      <small>{{ appointment.patientName }}</small>
-                    </span>
-                  } @else if (info.view.type === 'timeGridWeek') {
-                    <span class="demo-event__week-time">{{ eventTimeRange(appointment) }}</span>
-                    <strong>{{ appointment.patientName }}</strong>
-                    <small>{{ appointment.categoryLabel }}</small>
-                  } @else {
-                    <span class="demo-event__day-time">{{ eventTimeRange(appointment) }}</span>
-                    <span class="demo-event__patient-icon" aria-hidden="true"
-                      ><nz-icon nzType="user"
-                    /></span>
-                    <span class="demo-event__day-copy">
-                      <strong>{{ appointment.patientName }}</strong>
-                      <small>{{ appointment.reason }}</small>
-                    </span>
-                    <nz-icon
-                      class="demo-event__status-icon"
-                      [nzType]="appointment.status === 'pending' ? 'clock-circle' : 'check-circle'"
-                      aria-hidden="true"
-                    />
-                  }
-                </div>
-              }
-            } @else if (isDayStateEvent(info)) {
-              @if (dayStateForEvent(info); as state) {
-                <div class="demo-state" [attr.aria-label]="state.title + ', ' + state.description">
-                  <nz-icon
-                    [nzType]="state.kind === 'day-off' ? 'calendar' : 'clock-circle'"
-                    aria-hidden="true"
-                  />
-                  <strong>{{ state.title }}</strong>
-                  <span>{{ state.description }}</span>
-                </div>
-              }
-            } @else if (isBreakEvent(info)) {
-              <div class="demo-break">
-                <span>12:00 – 13:00</span>
-                <nz-icon nzType="clock-circle" aria-hidden="true" />
-                <strong>Pause déjeuner</strong>
-              </div>
-            }
-          </ng-template>
-        </full-calendar>
-      </div>
-    </main>
-
+  <ng-container calendarDetail>
     @if (selectedAppointment(); as appointment) {
       <button
         type="button"
@@ -316,8 +167,8 @@
         </footer>
       </aside>
     }
-  </div>
-</section>
+  </ng-container>
+</app-calendar-view>
 
 <nz-modal
   [nzVisible]="scheduleDialogOpen()"
