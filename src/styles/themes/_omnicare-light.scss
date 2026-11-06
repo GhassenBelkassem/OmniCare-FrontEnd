@@ -26,7 +26,8 @@
   --oc-color-border-subtle: #{color.$oc-slate-100};
   --oc-color-border-default: #{color.$oc-slate-200};
   --oc-color-border-strong: #{color.$oc-slate-300};
-  --oc-color-border-focus: #{brand.$oc-brand-primary};
+  // A neutral focus ring preserves 3:1 non-text contrast on white surfaces.
+  --oc-color-border-focus: #{color.$oc-slate-900};
   --oc-color-information: #{color.$oc-blue};
   --oc-color-information-surface: #{color.$oc-blue-surface};
   --oc-color-success: #{color.$oc-green};

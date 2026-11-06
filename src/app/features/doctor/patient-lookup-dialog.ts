@@ -9,6 +9,9 @@ import { DoctorMockService } from './doctor-mock.service';
   imports: [OcButton],
   templateUrl: './patient-lookup-dialog.html',
   styleUrl: './patient-lookup-dialog.scss',
+  host: {
+    '(document:keydown.escape)': 'onEscape()',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PatientLookupDialog {
@@ -33,6 +36,10 @@ export class PatientLookupDialog {
   dismiss(): void {
     this.reset();
     this.dismissed.emit();
+  }
+
+  onEscape(): void {
+    if (this.open()) this.dismiss();
   }
 
   private reset(): void {

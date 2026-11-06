@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  ViewEncapsulation,
   afterRenderEffect,
   computed,
   signal,
@@ -15,8 +14,6 @@ import {
   EventClickInfo,
   EventDisplayInfo,
   EventInput,
-  FullCalendarComponent,
-  FullCalendarModule,
 } from '@fullcalendar/angular';
 import dayGridPlugin from '@fullcalendar/angular/daygrid';
 import themePlugin from '@fullcalendar/angular/themes/monarch';
@@ -26,10 +23,6 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { OcAvatar } from '../../../shared/ui/avatar/oc-avatar';
 import { OcButton } from '../../../shared/ui/button/oc-button';
-import {
-  OcSegmentedControl,
-  OcSegmentOption,
-} from '../../../shared/ui/segmented-control/oc-segmented-control';
 import { OcStatusBadge } from '../../../shared/ui/status-badge/oc-status-badge';
 import { OcTab, OcTabs } from '../../../shared/ui/tabs/oc-tabs';
 import {
@@ -38,6 +31,12 @@ import {
   DemoCalendarAppointment,
   DemoDayState,
 } from './calendar-demo.fixtures';
+import { CalendarView } from './calendar-view';
+import type {
+  CalendarPresentationInput,
+  CalendarViewAction,
+  CalendarViewModel,
+} from './calendar-view.models';
 
 type CalendarViewMode = 'day' | 'week' | 'month';
 type FullCalendarView = 'timeGridDay' | 'timeGridWeek' | 'dayGridMonth';
@@ -46,25 +45,28 @@ type PanelTab = 'details' | 'history' | 'documents' | 'notes';
 interface AppointmentEventMetadata {
   readonly kind: 'appointment';
   readonly appointmentId: string;
+  readonly patientLabel: string;
+  readonly statusLabel: string;
+  readonly categoryLabel: string;
+  readonly detailLabel: string;
+  readonly statusIcon: 'clock-circle' | 'check-circle';
 }
 
 interface DayStateEventMetadata {
   readonly kind: 'day-state';
   readonly state: DemoDayState;
+  readonly title: string;
+  readonly description: string;
+  readonly icon: 'calendar' | 'clock-circle';
 }
 
 interface BreakEventMetadata {
   readonly kind: 'break';
+  readonly title: string;
 }
 
 type DemoCalendarEventMetadata =
   AppointmentEventMetadata | DayStateEventMetadata | BreakEventMetadata;
-
-const VIEW_BY_MODE: Readonly<Record<CalendarViewMode, FullCalendarView>> = {
-  day: 'timeGridDay',
-  week: 'timeGridWeek',
-  month: 'dayGridMonth',
-};
 
 const MODE_BY_VIEW: Readonly<Record<FullCalendarView, CalendarViewMode>> = {
   timeGridDay: 'day',
@@ -116,23 +118,19 @@ function toDateKey(value: Date): string {
   selector: 'oc-calendar-page',
   imports: [
     RouterLink,
-    FullCalendarModule,
+    CalendarView,
     NzIconModule,
     NzModalModule,
     OcAvatar,
     OcButton,
-    OcSegmentedControl,
     OcStatusBadge,
     OcTabs,
   ],
   templateUrl: './calendar-page.static-demo.html',
-  styleUrls: ['./calendar-page.static-demo.scss', './calendar-page.static-demo.responsive.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  encapsulation: ViewEncapsulation.None,
 })
 export class CalendarPage {
-  private readonly calendar = viewChild.required<FullCalendarComponent>('calendar');
-  private readonly calendarHost = viewChild.required<ElementRef<HTMLElement>>('calendarHost');
+  private readonly calendarView = viewChild.required<CalendarView>('calendarView');
   private readonly panelHeading = viewChild<ElementRef<HTMLHeadingElement>>('panelHeading');
   private previouslyFocusedEvent: HTMLElement | null = null;
   private lastFocusedAppointmentId: string | null = null;
@@ -146,12 +144,6 @@ export class CalendarPage {
   readonly scheduleDialogOpen = signal(false);
   readonly exceptionDialogOpen = signal(false);
   readonly actionMessage = signal<string | null>(null);
-
-  readonly viewOptions: readonly OcSegmentOption[] = [
-    { value: 'day', label: 'Jour' },
-    { value: 'week', label: 'Semaine' },
-    { value: 'month', label: 'Mois' },
-  ];
 
   readonly panelTabs: readonly OcTab[] = [
     { id: 'details', label: 'Détails' },
@@ -183,6 +175,11 @@ export class CalendarPage {
       extendedProps: {
         kind: 'appointment',
         appointmentId: appointment.id,
+        patientLabel: appointment.patientName,
+        statusLabel: appointment.statusLabel,
+        categoryLabel: this.eventCategoryLabel(appointment),
+        detailLabel: appointment.reason,
+        statusIcon: appointment.status === 'pending' ? 'clock-circle' : 'check-circle',
       } satisfies AppointmentEventMetadata,
     }));
 
@@ -193,7 +190,13 @@ export class CalendarPage {
       end: this.viewMode() === 'month' ? undefined : `${state.date}T13:30:00`,
       allDay: this.viewMode() === 'month',
       interactive: false,
-      extendedProps: { kind: 'day-state', state } satisfies DayStateEventMetadata,
+      extendedProps: {
+        kind: 'day-state',
+        state,
+        title: state.title,
+        description: state.description,
+        icon: state.kind === 'day-off' ? 'calendar' : 'clock-circle',
+      } satisfies DayStateEventMetadata,
     }));
 
     const breakEvent: EventInput[] =
@@ -206,7 +209,7 @@ export class CalendarPage {
               end: '2026-10-30T13:00:00',
               allDay: false,
               interactive: false,
-              extendedProps: { kind: 'break' } satisfies BreakEventMetadata,
+              extendedProps: { kind: 'break', title: 'Pause déjeuner' } satisfies BreakEventMetadata,
             },
           ]
         : [];
@@ -266,6 +269,39 @@ export class CalendarPage {
     eventClick: (info) => this.openAppointment(info),
   }));
 
+  readonly viewModel = computed<CalendarViewModel>(() => ({
+    viewMode: this.viewMode(),
+    visibleTitle: this.visibleTitle(),
+    visibleSubtitle: this.visibleSubtitle(),
+    weekNumber: this.weekNumber(),
+    panelOpen: this.selectedAppointment() !== null,
+    loading: false,
+    loadError: null,
+    rulesError: null,
+    exceptionsError: null,
+    mutationError: null,
+    noSchedule: false,
+    realtimeDeferred: false,
+    ariaBusy: false,
+    daySummary:
+      this.viewMode() === 'day'
+        ? {
+            appointmentCountLabel: `${this.dayAppointmentCount()} rendez-vous`,
+            appointmentCountHint: "aujourd'hui",
+            availabilityLabel: 'Disponible',
+            availabilityHint: 'Journée active',
+            workingHoursLabel: '08:00 – 17:00',
+            workingHoursHint: 'Plage de travail',
+          }
+        : null,
+    notice: null,
+  }));
+
+  readonly presentation = computed<CalendarPresentationInput>(() => ({
+    options: this.calendarOptions(),
+    events: this.calendarEvents(),
+  }));
+
   constructor() {
     afterRenderEffect({
       write: () => {
@@ -284,23 +320,36 @@ export class CalendarPage {
     if (value !== 'day' && value !== 'week' && value !== 'month') return;
     this.viewMode.set(value);
     this.closeAppointment(false);
-    this.calendar().getApi().changeView(VIEW_BY_MODE[value]);
-    if (value === 'day') this.calendar().getApi().gotoDate('2026-10-30');
+    this.calendarView().changeView(value, value === 'day' ? '2026-10-30' : undefined);
   }
 
   previous(): void {
     this.closeAppointment(false);
-    this.calendar().getApi().prev();
+    this.calendarView().previous();
   }
 
   next(): void {
     this.closeAppointment(false);
-    this.calendar().getApi().next();
+    this.calendarView().next();
   }
 
   goToday(): void {
     this.closeAppointment(false);
-    this.calendar().getApi().gotoDate('2026-10-30');
+    this.calendarView().today('2026-10-30');
+  }
+
+  handleViewAction(action: CalendarViewAction): void {
+    switch (action.kind) {
+      case 'SET_VIEW': this.setViewMode(action.value); break;
+      case 'PREVIOUS': this.previous(); break;
+      case 'TODAY': this.goToday(); break;
+      case 'NEXT': this.next(); break;
+      case 'CONFIGURE_SCHEDULE': this.scheduleDialogOpen.set(true); break;
+      case 'ADD_EXCEPTION': this.exceptionDialogOpen.set(true); break;
+      case 'RETRY_APPOINTMENTS':
+      case 'RETRY_RULES':
+      case 'RETRY_EXCEPTIONS': break;
+    }
   }
 
   openAppointment(info: EventClickInfo): void {
@@ -424,12 +473,7 @@ export class CalendarPage {
   }
 
   private resetMonthScroll(): void {
-    const scrollContainers = [
-      ...this.calendarHost().nativeElement.querySelectorAll<HTMLElement>('div'),
-    ].filter((element) => element.scrollHeight > element.clientHeight + 1);
-    scrollContainers.forEach((element) => {
-      element.scrollTop = 0;
-    });
+    this.calendarView().resetScroll();
   }
 
   private dayLaneClasses(date: Date): string {

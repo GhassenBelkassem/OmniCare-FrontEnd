@@ -1,0 +1,297 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.consultation-workspace-view {
+  width: calc(100% + var(--oc-space-8));
+  min-width: 0;
+  margin: calc(var(--oc-space-3) * -1) calc(var(--oc-space-4) * -1) 88px;
+  color: var(--oc-color-text-primary);
+}
+
+.patient-strip,
+.patient-strip__identity,
+.patient-strip__title,
+.patient-strip__actions,
+.consultation-action-bar {
+  display: flex;
+  align-items: center;
+}
+
+.patient-strip {
+  min-height: 112px;
+  justify-content: space-between;
+  gap: var(--oc-space-5);
+  padding: var(--oc-space-4) var(--oc-space-3);
+  border-block-end: 1px solid var(--oc-color-border-subtle);
+}
+
+.patient-strip__identity {
+  min-width: 0;
+  gap: var(--oc-space-4);
+}
+
+.patient-avatar {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  place-items: center;
+  border: 3px solid var(--oc-color-surface-card);
+  border-radius: 50%;
+  background: var(--oc-color-brand-primary-active);
+  box-shadow: var(--oc-shadow-card);
+  color: var(--oc-color-text-inverse);
+  font-size: 20px;
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.patient-strip__copy,
+.patient-strip__title {
+  min-width: 0;
+}
+
+.patient-strip__title {
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+}
+
+.patient-strip__title h2 {
+  margin: 0 var(--oc-space-2) 0 0;
+  font-size: 26px;
+  font-weight: var(--oc-font-weight-strong);
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.patient-strip__title > span {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: var(--oc-space-1);
+  padding: 0 var(--oc-space-2);
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-surface-muted);
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.patient-strip__title .patient-strip__badge--emphasis {
+  color: var(--oc-color-text-primary);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.patient-strip__copy > p {
+  margin: var(--oc-space-2) 0 0;
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.patient-strip__copy > p i {
+  margin: 0 var(--oc-space-1);
+  color: var(--oc-color-border-strong);
+  font-style: normal;
+}
+
+.patient-strip__actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--oc-space-2);
+}
+
+.patient-strip__link {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: var(--oc-space-2);
+  padding: 0 var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+  font-size: 12px;
+  font-weight: var(--oc-font-weight-semibold);
+  text-decoration: none;
+}
+
+.patient-strip__link:hover,
+.patient-strip__link:focus-visible {
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-surface-hover);
+}
+
+.workspace-tabs {
+  display: block;
+  padding-inline: var(--oc-space-2);
+  background: var(--oc-color-surface-card);
+}
+
+.consultation-feedback {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: var(--oc-space-2);
+  margin: var(--oc-space-3) var(--oc-space-2) 0;
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border: 1px solid var(--oc-color-information-border);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+}
+
+.consultation-feedback button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  margin-inline-start: auto;
+  place-items: center;
+  border: 0;
+  border-radius: var(--oc-radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.consultation-feedback button:hover,
+.consultation-feedback button:focus-visible {
+  background: var(--oc-color-surface-hover);
+  color: var(--oc-color-text-primary);
+}
+
+.tab-stage {
+  min-width: 0;
+  padding: var(--oc-space-4) var(--oc-space-2);
+}
+
+.consultation-action-bar {
+  position: fixed;
+  z-index: var(--oc-z-sticky, 20);
+  right: 0;
+  bottom: 0;
+  left: 328px;
+  min-height: 72px;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-3) var(--oc-space-6) max(var(--oc-space-3), env(safe-area-inset-bottom));
+  border-block-start: 1px solid var(--oc-color-border-subtle);
+  background: color-mix(in srgb, var(--oc-color-surface-card) 94%, transparent);
+  box-shadow: 0 -10px 30px rgb(15 23 42 / 6%);
+  backdrop-filter: blur(14px);
+}
+
+:host-context(body:has(.oc-sidebar--collapsed)) .consultation-action-bar {
+  left: 88px;
+}
+
+.consultation-action-bar__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--oc-color-text-muted);
+  font-size: 10px;
+}
+
+kbd {
+  min-width: max-content;
+  padding: 2px 6px;
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: 5px;
+  background: var(--oc-color-surface-muted);
+  color: var(--oc-color-text-muted);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: var(--oc-font-weight-medium);
+}
+
+.consultation-action-bar__spacer {
+  flex: 1;
+}
+
+@media (max-width: 1279px) {
+  .consultation-workspace-view {
+    width: 100%;
+    margin: 0 0 88px;
+  }
+
+  .patient-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .patient-strip__actions {
+    width: 100%;
+    justify-content: flex-start;
+    padding-inline-start: 80px;
+  }
+
+  .consultation-action-bar {
+    left: 294px;
+    padding-inline: var(--oc-space-4);
+  }
+
+  :host-context(body:has(.oc-sidebar--collapsed)) .consultation-action-bar {
+    left: 88px;
+  }
+}
+
+@media (max-width: 767px) {
+  .consultation-action-bar,
+  :host-context(body:has(.oc-sidebar--collapsed)) .consultation-action-bar {
+    left: 0;
+  }
+
+  .consultation-action-bar {
+    min-height: 64px;
+    overflow-x: auto;
+    padding-inline: var(--oc-space-3);
+  }
+
+  .consultation-action-bar__hint,
+  .consultation-action-bar .oc-status {
+    display: none;
+  }
+
+  .tab-stage,
+  .patient-strip {
+    padding-inline: 0;
+  }
+
+  .workspace-tabs {
+    padding-inline: 0;
+  }
+
+  .patient-strip__actions {
+    padding-inline-start: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .patient-strip__identity {
+    align-items: flex-start;
+  }
+
+  .patient-avatar {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    font-size: 16px;
+  }
+
+  .patient-strip__title h2 {
+    width: 100%;
+    font-size: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consultation-workspace-view *,
+  .consultation-workspace-view *::before,
+  .consultation-workspace-view *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

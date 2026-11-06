@@ -1,31 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
-import { OcButton, OcIcon, OcTabs, OcTab } from '../../../shared/ui';
+import type { OcTab } from '../../../shared/ui';
 import {
-  DemoPatientLinkage,
   DemoPatientRecord,
-  DemoPatientSource,
   demoPatientAge,
   demoPatientFullName,
 } from '../patients/patient-directory-demo.fixtures';
 import { PatientDirectoryDemoStore } from '../patients/patient-directory-demo.store';
-
-type DetailTab = 'overview' | 'consultations' | 'documents' | 'timeline';
-
-interface AdministrativeAppointment {
-  readonly id: string;
-  readonly date: string;
-  readonly status: 'Terminé' | 'Planifié';
-}
-
-interface AdministrativeTimelineEvent {
-  readonly id: string;
-  readonly date: string;
-  readonly title: string;
-  readonly description: string;
-  readonly icon: string;
-}
+import { PatientDetailView, isPatientDetailTab } from './patient-detail-view';
+import type {
+  PatientDetailAction,
+  PatientDetailAppointment,
+  PatientDetailPerson,
+  PatientDetailTab,
+  PatientDetailTimelineEvent,
+  PatientDetailViewModel,
+} from './patient-detail-view.models';
 
 const DETAIL_TABS: readonly OcTab[] = [
   { id: 'overview', label: 'Vue d’ensemble', icon: 'user' },
@@ -34,26 +25,10 @@ const DETAIL_TABS: readonly OcTab[] = [
   { id: 'timeline', label: 'Timeline', icon: 'history' },
 ];
 
-function isDetailTab(value: string | null): value is DetailTab {
-  return (
-    value === 'overview' ||
-    value === 'consultations' ||
-    value === 'documents' ||
-    value === 'timeline'
-  );
-}
-
-function shiftDays(value: string, days: number): string {
-  const date = new Date(value);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString();
-}
-
 @Component({
   selector: 'app-patient-chart-page',
-  imports: [RouterLink, OcButton, OcIcon, OcTabs],
-  templateUrl: './patient-chart-page.static-demo.html',
-  styleUrl: './patient-chart-page.static-demo.scss',
+  imports: [PatientDetailView],
+  template: `<app-patient-detail-view [model]="viewModel()" (action)="handleViewAction($event)" />`,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PatientChartPage {
@@ -63,151 +38,164 @@ export class PatientChartPage {
 
   readonly patientId = this.route.snapshot.paramMap.get('id') ?? '';
   readonly patient = signal<DemoPatientRecord | null>(this.patientStore.find(this.patientId));
-  readonly tabs = DETAIL_TABS;
-  readonly activeTab = signal<DetailTab>(this.initialTab());
-  readonly demoNotice =
-    'Données administratives fictives. Aucun contenu clinique réel ou simulé n’est chargé dans cette démonstration.';
+  readonly activeTab = signal<PatientDetailTab>(this.initialTab());
 
-  readonly appointments = computed<readonly AdministrativeAppointment[]>(() => {
+  readonly viewModel = computed<PatientDetailViewModel>(() => {
     const patient = this.patient();
-    if (!patient) return [];
-    const rows: AdministrativeAppointment[] = [];
-    if (patient.nextAppointment) {
-      rows.push({ id: 'next', date: patient.nextAppointment, status: 'Planifié' });
-    }
-    if (patient.lastConsultation) {
-      rows.push(
-        { id: 'last', date: patient.lastConsultation, status: 'Terminé' },
-        { id: 'previous', date: shiftDays(patient.lastConsultation, -47), status: 'Terminé' },
-        { id: 'older', date: shiftDays(patient.lastConsultation, -126), status: 'Terminé' },
-      );
-    }
-    return rows;
-  });
-
-  readonly timeline = computed<readonly AdministrativeTimelineEvent[]>(() => {
-    const patient = this.patient();
-    if (!patient) return [];
-    const events: AdministrativeTimelineEvent[] = [
-      {
-        id: 'created',
-        date: patient.createdAt,
-        title: 'Ajout à la base patient',
-        description: `Fiche administrative créée depuis la source ${this.sourceLabel(patient.source)}.`,
-        icon: 'staff',
-      },
-    ];
-    if (patient.linkage === 'LINKED') {
-      events.unshift({
-        id: 'linked',
-        date: shiftDays(patient.createdAt, 2),
-        title: 'Liaison OmniCare confirmée',
-        description:
-          'Identité administrative reliée. Cette liaison ne donne pas un accès automatique au dossier médical.',
-        icon: 'coverage',
-      });
-    }
-    if (patient.nextAppointment) {
-      events.unshift({
-        id: 'scheduled',
-        date: patient.nextAppointment,
-        title: 'Rendez-vous planifié',
-        description: 'Créneau enregistré dans le calendrier du cabinet.',
-        icon: 'calendar',
-      });
-    }
-    return events;
-  });
-
-  setTab(value: string): void {
-    if (!isDetailTab(value)) return;
-    this.activeTab.set(value);
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { tab: value === 'overview' ? null : value },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
-  }
-
-  fullName(patient: DemoPatientRecord): string {
-    return demoPatientFullName(patient);
-  }
-
-  age(patient: DemoPatientRecord): number {
-    return demoPatientAge(patient);
-  }
-
-  initials(patient: DemoPatientRecord): string {
-    return `${patient.firstName[0] ?? ''}${patient.lastName[0] ?? ''}`.toLocaleUpperCase('fr-FR');
-  }
-
-  sexLabel(patient: DemoPatientRecord): string {
-    return patient.sex === 'F' ? 'Femme' : patient.sex === 'M' ? 'Homme' : 'Autre';
-  }
-
-  sourceLabel(source: DemoPatientSource): string {
     return {
+      notice:
+        'Données administratives fictives. Aucun contenu clinique réel ou simulé n’est chargé dans cette démonstration.',
+      state: patient ? 'ready' : 'not-found',
+      stateDescription: patient
+        ? ''
+        : 'Aucune fiche de démonstration ne correspond à l’identifiant demandé.',
+      directoryHref: '/doctor/patients',
+      scheduleHref: patient ? `/doctor/calendar?patientId=${encodeURIComponent(patient.id)}` : null,
+      patient: patient ? demoPatient(patient) : null,
+      tabs: DETAIL_TABS,
+      activeTab: this.activeTab(),
+      appointments: patient ? demoAppointments(patient) : [],
+      timeline: patient ? demoTimeline(patient) : [],
+    };
+  });
+
+  handleViewAction(action: PatientDetailAction): void {
+    switch (action.kind) {
+      case 'SELECT_TAB':
+        this.activeTab.set(action.value);
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { tab: action.value === 'overview' ? null : action.value },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+        return;
+      case 'NAVIGATE_DIRECTORY':
+        void this.router.navigate(['/doctor/patients']);
+        return;
+      case 'SCHEDULE': {
+        const patient = this.patient();
+        if (patient) {
+          void this.router.navigate(['/doctor/calendar'], {
+            queryParams: { patientId: patient.id },
+          });
+        }
+        return;
+      }
+      case 'RETRY':
+        return;
+    }
+  }
+
+  private initialTab(): PatientDetailTab {
+    const requested = this.route.snapshot.queryParamMap.get('tab');
+    return isPatientDetailTab(requested) ? requested : 'overview';
+  }
+}
+
+function demoPatient(patient: DemoPatientRecord): PatientDetailPerson {
+  return {
+    id: patient.id,
+    fullName: demoPatientFullName(patient),
+    initials: `${patient.firstName[0] ?? ''}${patient.lastName[0] ?? ''}`.toLocaleUpperCase(
+      'fr-FR',
+    ),
+    dateOfBirth: patient.dateOfBirth,
+    dateOfBirthLabel: formatShortDate(patient.dateOfBirth),
+    age: demoPatientAge(patient),
+    sexLabel: patient.sex === 'F' ? 'Femme' : patient.sex === 'M' ? 'Homme' : 'Autre',
+    phone: patient.phone,
+    email: patient.email,
+    address: patient.address,
+    administrativeId: patient.insuranceNumber,
+    insuranceNumber: patient.insuranceNumber,
+    source: (
+      {
+        OMNICARE: 'omnicare',
+        MANUAL: 'manual',
+        IMPORTED: 'imported',
+        WALK_IN: 'walk_in',
+      } as const
+    )[patient.source],
+    sourceLabel: {
       OMNICARE: 'OmniCare',
       MANUAL: 'Saisie manuelle',
       IMPORTED: 'Import',
       WALK_IN: 'Passage',
-    }[source];
-  }
-
-  linkageLabel(linkage: DemoPatientLinkage): string {
-    return {
+    }[patient.source],
+    linkage: (
+      {
+        LINKED: 'linked',
+        POSSIBLE: 'possible',
+        UNLINKED: 'unlinked',
+      } as const
+    )[patient.linkage],
+    linkageLabel: {
       LINKED: 'Lié à OmniCare',
       POSSIBLE: 'Correspondance possible',
       UNLINKED: 'Non lié',
-    }[linkage];
-  }
+    }[patient.linkage],
+  };
+}
 
-  formatDate(value: string): string {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'Africa/Tunis',
-    }).format(new Date(value));
+function demoAppointments(patient: DemoPatientRecord): readonly PatientDetailAppointment[] {
+  const rows: PatientDetailAppointment[] = [];
+  if (patient.nextAppointment) {
+    rows.push({ id: 'next', date: patient.nextAppointment, status: 'Planifié' });
   }
+  if (patient.lastConsultation) {
+    rows.push(
+      { id: 'last', date: patient.lastConsultation, status: 'Terminé' },
+      { id: 'previous', date: shiftDays(patient.lastConsultation, -47), status: 'Terminé' },
+      { id: 'older', date: shiftDays(patient.lastConsultation, -126), status: 'Terminé' },
+    );
+  }
+  return rows;
+}
 
-  formatShortDate(value: string): string {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      timeZone: 'Africa/Tunis',
-    }).format(new Date(value));
+function demoTimeline(patient: DemoPatientRecord): readonly PatientDetailTimelineEvent[] {
+  const events: PatientDetailTimelineEvent[] = [
+    {
+      id: 'created',
+      date: patient.createdAt,
+      title: 'Ajout à la base patient',
+      description: `Fiche administrative créée depuis la source ${demoPatient(patient).sourceLabel}.`,
+      icon: 'staff',
+    },
+  ];
+  if (patient.linkage === 'LINKED') {
+    events.unshift({
+      id: 'linked',
+      date: shiftDays(patient.createdAt, 2),
+      title: 'Liaison OmniCare confirmée',
+      description:
+        'Identité administrative reliée. Cette liaison ne donne pas un accès automatique au dossier médical.',
+      icon: 'coverage',
+    });
   }
+  if (patient.nextAppointment) {
+    events.unshift({
+      id: 'scheduled',
+      date: patient.nextAppointment,
+      title: 'Rendez-vous planifié',
+      description: 'Créneau enregistré dans le calendrier du cabinet.',
+      icon: 'calendar',
+    });
+  }
+  return events;
+}
 
-  formatTime(value: string): string {
-    return new Intl.DateTimeFormat('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Africa/Tunis',
-    }).format(new Date(value));
-  }
+function shiftDays(value: string, days: number): string {
+  const date = new Date(value);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString();
+}
 
-  formatDay(value: string): string {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      timeZone: 'Africa/Tunis',
-    }).format(new Date(value));
-  }
-
-  formatMonth(value: string): string {
-    return new Intl.DateTimeFormat('fr-FR', {
-      month: 'short',
-      timeZone: 'Africa/Tunis',
-    })
-      .format(new Date(value))
-      .replace('.', '')
-      .toLocaleUpperCase('fr-FR');
-  }
-
-  private initialTab(): DetailTab {
-    const requested = this.route.snapshot.queryParamMap.get('tab');
-    return isDetailTab(requested) ? requested : 'overview';
-  }
+function formatShortDate(value: string): string {
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'Africa/Tunis',
+  }).format(new Date(value));
 }

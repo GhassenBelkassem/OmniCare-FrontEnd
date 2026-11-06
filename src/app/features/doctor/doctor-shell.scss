@@ -47,6 +47,21 @@
   gap: var(--oc-space-3);
 }
 
+.topbar__avatar {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: var(--oc-radius-pill);
+  background: hsl(310deg 45% 40%);
+  color: var(--oc-color-text-inverse);
+  font-size: 13px;
+  font-weight: var(--oc-font-weight-strong);
+  white-space: nowrap;
+  user-select: none;
+}
+
 .topbar-menu {
   display: none;
   width: 40px;

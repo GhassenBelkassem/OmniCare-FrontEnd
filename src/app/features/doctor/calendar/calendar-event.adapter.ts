@@ -7,6 +7,7 @@ import type {
 } from '../appointment-api.models';
 import type { UrgentRequestSummaryDto } from '../doctor-urgent-api.service';
 import type { DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.models';
+import type { CalendarAppointmentPresentationMetadata } from './calendar-view.models';
 import {
   addEstimatedMinutesToInstant,
   exceptionWallClockDateTime,
@@ -16,12 +17,8 @@ import {
 
 export type ProjectedAppointmentStatus = 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED';
 
-export interface AppointmentEventMetadata {
-  readonly kind: 'appointment';
-  readonly appointmentId: string;
+export interface AppointmentEventMetadata extends CalendarAppointmentPresentationMetadata {
   readonly status: ProjectedAppointmentStatus;
-  readonly patientLabel: string;
-  readonly statusLabel: string;
 }
 
 export interface AppointmentCalendarEvent extends EventInput {
@@ -41,6 +38,9 @@ export interface ExceptionEventMetadata {
   readonly typeLabel: string;
   readonly reason: string | null;
   readonly timeLabel: string;
+  readonly title: string;
+  readonly description: string;
+  readonly icon: 'calendar' | 'clock-circle';
 }
 
 export interface ExceptionCalendarEvent extends EventInput {
@@ -152,6 +152,9 @@ export function projectExceptionEvents(
       typeLabel,
       reason: exception.reason,
       timeLabel,
+      title: typeLabel,
+      description: exception.reason ?? timeLabel,
+      icon: isBlock ? 'calendar' : 'clock-circle',
     } as const;
     const start = exceptionWallClockDateTime(exception.exceptionDate, exception.startTime);
     const end = exceptionWallClockDateTime(exception.exceptionDate, exception.endTime);

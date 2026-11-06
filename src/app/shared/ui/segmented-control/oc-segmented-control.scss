@@ -20,6 +20,7 @@ button {
   cursor: pointer;
   font-size: 13px;
   font-weight: var(--oc-font-weight-medium);
+  touch-action: manipulation;
 }
 
 button:hover:not(:disabled) {
@@ -27,9 +28,14 @@ button:hover:not(:disabled) {
 }
 
 button.oc-segmented__button--selected {
-  background: var(--oc-color-surface-card);
-  color: var(--oc-color-brand-primary);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
   box-shadow: var(--oc-shadow-card);
+}
+
+button:focus-visible {
+  outline: 3px solid var(--oc-color-text-primary);
+  outline-offset: 2px;
 }
 
 button:disabled {

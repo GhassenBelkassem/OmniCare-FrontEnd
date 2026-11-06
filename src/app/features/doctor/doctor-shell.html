@@ -1,5 +1,5 @@
 <div class="doctor-layout">
-  <oc-sidebar
+  <app-doctor-sidebar
     class="doctor-shell__desktop-sidebar"
     [items]="navigation()"
     [activeId]="activeNav()"
@@ -9,7 +9,7 @@
     [expandedGroups]="expandedNavigationGroups()"
     [notificationBadge]="notificationUnread()"
     (profileMenu)="logout()"
-  ></oc-sidebar>
+  ></app-doctor-sidebar>
 
   <div class="doctor-shell">
     <header class="topbar">
@@ -23,7 +23,13 @@
           <oc-icon name="menu" />
         </button>
         @if (!isSecretary()) {
-          <button type="button" class="topbar-button topbar-button--lookup" (click)="openLookup()">
+          <button
+            type="button"
+            class="topbar-button topbar-button--lookup"
+            aria-label="Rechercher un patient"
+            #lookupTrigger
+            (click)="openLookup()"
+          >
             <nz-icon nzType="search" aria-hidden="true" />
             <span>Rechercher un patient</span>
           </button>
@@ -119,7 +125,13 @@
               }
             </div>
           </oc-popover>
-          <oc-avatar name="Dr Ben Salah" />
+          <span
+            class="topbar__avatar"
+            [attr.aria-label]="sidebarProfile().name"
+            [attr.title]="sidebarProfile().name"
+          >
+            {{ topbarInitials() }}
+          </span>
         </div>
       }
     </header>
@@ -137,15 +149,16 @@
   [backdropDismissible]="true"
   (dismissed)="mobileNavigationOpen.set(false)"
 >
-  <oc-sidebar
+  <app-doctor-sidebar
     [items]="navigation()"
     [activeId]="activeNav()"
+    [(mobileOpen)]="mobileNavigationOpen"
     [profile]="sidebarProfile()"
     [labels]="sidebarLabels"
     [expandedGroups]="expandedNavigationGroups()"
     [notificationBadge]="notificationUnread()"
     (profileMenu)="logout()"
-  ></oc-sidebar>
+  ></app-doctor-sidebar>
 </oc-sheet>
 
 @if (!isSecretary()) {

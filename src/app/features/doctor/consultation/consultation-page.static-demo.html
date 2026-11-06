@@ -1,45 +1,7 @@
-<main class="consultation-demo">
-  <h1 class="oc-sr-only">Consultation</h1>
-  <p class="oc-sr-only">Démonstration statique hors ligne avec données patient fictives. Aucun enregistrement clinique réel.</p>
-
-  <header class="patient-strip">
-    <div class="patient-strip__identity">
-      <div class="patient-avatar" aria-hidden="true">{{ patient.initials }}</div>
-      <div class="patient-strip__copy">
-        <div class="patient-strip__title">
-          <h2>{{ patient.name }}</h2>
-          <span><nz-icon nzType="user" aria-hidden="true" /> {{ patient.age }} ans</span>
-          <span>{{ patient.gender }}</span>
-          <span><nz-icon nzType="solution" aria-hidden="true" /> {{ patient.insuranceNumber }}</span>
-          <span class="patient-strip__blood">{{ patient.bloodGroup }}</span>
-        </div>
-        <p>Consultation <i aria-hidden="true">•</i> {{ patient.cabinet }} <i aria-hidden="true">•</i> Rendez-vous {{ patient.appointmentTime }} <i aria-hidden="true">•</i> Arrivé {{ patient.arrivedAt }} ({{ patient.waitMinutes }} min)</p>
-      </div>
-    </div>
-    <div class="patient-strip__actions">
-      <oc-status-badge status="in-progress" customLabel="En cours · 00:12:34" emphasis="strong" />
-      <oc-button variant="outline" size="small" leadingIcon="solution" (click)="mrsDrawerOpen.set(true)">Dossier médical</oc-button>
-      <oc-button variant="outline" size="small" leadingIcon="file-text" [routerLink]="['/doctor/patient', patient.id]">Dossier patient</oc-button>
-    </div>
-  </header>
-
-  <oc-tabs
-    class="workspace-tabs"
-    label="Sections de la consultation"
-    [tabs]="workspaceTabs()"
-    [selected]="activeSection()"
-    (selectedChange)="setActiveSection($event)"
-  />
-
-  @if (feedback(); as message) {
-    <div class="consultation-feedback" role="status" aria-live="polite">
-      <nz-icon nzType="exclamation-circle" aria-hidden="true" />
-      <span>{{ message }}</span>
-      <button type="button" aria-label="Fermer le message" (click)="feedback.set(null)"><nz-icon nzType="close" /></button>
-    </div>
-  }
-
-  <section class="tab-stage" [attr.aria-label]="activeSectionLabel()">
+<app-consultation-workspace-view
+  [model]="viewModel()"
+  (action)="handleWorkspaceAction($event)"
+>
     @switch (activeSection()) {
       @case ('note') {
         <section class="workspace-panel workspace-panel--note" aria-labelledby="note-tab-heading">
@@ -201,17 +163,7 @@
         </section>
       }
     }
-  </section>
-
-  <footer class="consultation-action-bar">
-    <oc-status-badge [status]="activeSaveTone()" [customLabel]="activeSaveLabel()" />
-    <span class="consultation-action-bar__hint"><kbd>Ctrl</kbd> + <kbd>S</kbd> pour enregistrer cet onglet</span>
-    <span class="consultation-action-bar__spacer"></span>
-    @if (activeSection() !== 'finalization') { <oc-button variant="outline" leadingIcon="solution" [loading]="activeSaveState() === 'saving'" (click)="saveActiveDomain()">Enregistrer</oc-button> }
-    <oc-button variant="outline" leadingIcon="file-text" [disabled]="true">Aperçu PDF</oc-button>
-    <oc-button trailingIcon="right" [disabled]="!store.canFinish() || store.finished()" (click)="requestFinish()">Terminer la consultation</oc-button>
-  </footer>
-</main>
+</app-consultation-workspace-view>
 
 <oc-sheet [open]="mrsDrawerOpen()" title="Dossier médical" [description]="patient.name + ' · accès protégé'" side="right" width="28rem" [hasFooter]="true" (dismissed)="mrsDrawerOpen.set(false)">
   <div class="mrs-drawer">

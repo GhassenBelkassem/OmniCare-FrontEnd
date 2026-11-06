@@ -1,50 +1,58 @@
-<section class="patient-detail" aria-describedby="patient-detail-demo-note">
-  <p id="patient-detail-demo-note" class="oc-sr-only">{{ demoNotice }}</p>
+<section
+  class="patient-detail"
+  [attr.aria-describedby]="model().notice ? 'patient-detail-demo-note' : null"
+>
+  @if (model().notice; as notice) {
+    <p id="patient-detail-demo-note" class="oc-sr-only">{{ notice }}</p>
+  }
 
-  @if (patient(); as selectedPatient) {
+  @if (model().patient; as selectedPatient) {
     <nav class="patient-breadcrumb" aria-label="Fil d’Ariane">
-      <a routerLink="/doctor/patients">
+      <a [href]="model().directoryHref" (click)="navigate('NAVIGATE_DIRECTORY', $event)">
         <oc-icon name="chevron-left" />
         Mes patients
       </a>
       <span aria-hidden="true">/</span>
-      <span aria-current="page">{{ fullName(selectedPatient) }}</span>
+      <span aria-current="page">{{ selectedPatient.fullName }}</span>
     </nav>
 
     <header class="patient-heading">
       <span class="demo-patient-avatar demo-patient-avatar--large" aria-hidden="true">
-        {{ initials(selectedPatient) }}
+        {{ selectedPatient.initials }}
       </span>
       <div class="patient-heading__copy">
-        <h1>{{ fullName(selectedPatient) }}</h1>
+        <h1>{{ selectedPatient.fullName }}</h1>
       </div>
       <div class="patient-heading__actions">
         <a
           class="primary-link"
-          routerLink="/doctor/calendar"
-          [queryParams]="{ patientId: selectedPatient.id }"
+          [href]="model().scheduleHref"
+          (click)="navigate('SCHEDULE', $event)"
         >
           <oc-icon name="calendar" />
           Planifier un rendez-vous
         </a>
-        <oc-button variant="secondary" leadingIcon="file-text" (click)="setTab('documents')">
+        <oc-button variant="secondary" leadingIcon="file-text" (click)="selectTab('documents')">
           Documents protégés
         </oc-button>
       </div>
       <div class="patient-meta" aria-label="Informations administratives principales">
         <span
-          ><oc-icon name="calendar" />{{ age(selectedPatient) }} ans (né le
-          {{ formatShortDate(selectedPatient.dateOfBirth) }})</span
-        >
-        <span><oc-icon name="staff" />{{ sexLabel(selectedPatient) }}</span>
-        <span><oc-icon name="requests" />ID : {{ selectedPatient.insuranceNumber }}</span>
-        <span><oc-icon name="building" />Source : {{ sourceLabel(selectedPatient.source) }}</span>
+          ><oc-icon name="calendar" />
+          @if (selectedPatient.age !== null) {
+            {{ selectedPatient.age }} ans (né le {{ selectedPatient.dateOfBirthLabel }})
+          } @else {
+            Date de naissance non renseignée
+          }
+        </span>
+        <span><oc-icon name="staff" />{{ selectedPatient.sexLabel }}</span>
         <span
-          class="patient-meta__linkage patient-meta__linkage--{{
-            selectedPatient.linkage.toLocaleLowerCase()
-          }}"
+          ><oc-icon name="requests" />ID :
+          {{ selectedPatient.administrativeId ?? 'Non disponible' }}</span
         >
-          <oc-icon name="coverage" />{{ linkageLabel(selectedPatient.linkage) }}
+        <span><oc-icon name="building" />Source : {{ selectedPatient.sourceLabel }}</span>
+        <span class="patient-meta__linkage patient-meta__linkage--{{ selectedPatient.linkage }}">
+          <oc-icon name="coverage" />{{ selectedPatient.linkageLabel }}
         </span>
       </div>
     </header>
@@ -52,9 +60,9 @@
     <oc-tabs
       class="patient-tabs"
       label="Sections du dossier patient"
-      [tabs]="tabs"
-      [selected]="activeTab()"
-      (selectedChange)="setTab($event)"
+      [tabs]="model().tabs"
+      [selected]="model().activeTab"
+      (selectedChange)="selectTab($event)"
     />
 
     <div class="patient-detail__layout">
@@ -68,17 +76,25 @@
             <div>
               <dt><oc-icon name="calendar" />Date de naissance</dt>
               <dd>
-                {{ formatShortDate(selectedPatient.dateOfBirth) }} ({{ age(selectedPatient) }} ans)
+                @if (selectedPatient.age !== null) {
+                  {{ selectedPatient.dateOfBirthLabel }} ({{ selectedPatient.age }} ans)
+                } @else {
+                  Non renseignée
+                }
               </dd>
             </div>
             <div>
               <dt><oc-icon name="staff" />Genre</dt>
-              <dd>{{ sexLabel(selectedPatient) }}</dd>
+              <dd>{{ selectedPatient.sexLabel }}</dd>
             </div>
             <div>
               <dt><oc-icon name="phone" />Téléphone</dt>
               <dd>
-                <a [href]="'tel:' + selectedPatient.phone">{{ selectedPatient.phone }}</a>
+                @if (selectedPatient.phone !== 'Non renseigné') {
+                  <a [href]="'tel:' + selectedPatient.phone">{{ selectedPatient.phone }}</a>
+                } @else {
+                  Non renseigné
+                }
               </dd>
             </div>
             <div>
@@ -97,15 +113,15 @@
             </div>
             <div>
               <dt><oc-icon name="coverage" />Liaison OmniCare</dt>
-              <dd>{{ linkageLabel(selectedPatient.linkage) }}</dd>
+              <dd>{{ selectedPatient.linkageLabel }}</dd>
             </div>
             <div>
               <dt><oc-icon name="requests" />N° assurance</dt>
-              <dd>{{ selectedPatient.insuranceNumber }}</dd>
+              <dd>{{ selectedPatient.insuranceNumber ?? 'Non disponible' }}</dd>
             </div>
             <div>
               <dt><oc-icon name="building" />Source</dt>
-              <dd>{{ sourceLabel(selectedPatient.source) }}</dd>
+              <dd>{{ selectedPatient.sourceLabel }}</dd>
             </div>
           </dl>
         </section>
@@ -114,12 +130,12 @@
           <header class="detail-card__header">
             <span><oc-icon name="calendar" /></span>
             <h2 id="recent-appointments-title">Derniers rendez-vous</h2>
-            <button type="button" class="detail-card__link" (click)="setTab('consultations')">
+            <button type="button" class="detail-card__link" (click)="selectTab('consultations')">
               Voir tous <oc-icon name="chevron-right" />
             </button>
           </header>
           <ol class="recent-appointments">
-            @for (appointment of appointments().slice(0, 3); track appointment.id) {
+            @for (appointment of model().appointments.slice(0, 3); track appointment.id) {
               <li>
                 <time class="appointment-date" [attr.datetime]="appointment.date">
                   <strong>{{ formatDay(appointment.date) }}</strong>
@@ -144,8 +160,8 @@
         </section>
       </aside>
 
-      <main class="patient-detail__main" role="tabpanel" [attr.aria-label]="activeTab()">
-        @switch (activeTab()) {
+      <main class="patient-detail__main" role="tabpanel" [attr.aria-label]="model().activeTab">
+        @switch (model().activeTab) {
           @case ('overview') {
             <section class="protected-record" aria-labelledby="protected-record-title">
               <div class="protected-illustration" aria-hidden="true">
@@ -210,7 +226,7 @@
                 </div>
               </header>
               <ol class="appointment-history">
-                @for (appointment of appointments(); track appointment.id) {
+                @for (appointment of model().appointments; track appointment.id) {
                   <li>
                     <span class="appointment-history__date">
                       <strong>{{ formatDate(appointment.date) }}</strong>
@@ -275,7 +291,7 @@
                 </div>
               </header>
               <ol class="administrative-timeline">
-                @for (event of timeline(); track event.id) {
+                @for (event of model().timeline; track event.id) {
                   <li>
                     <span class="administrative-timeline__icon"
                       ><oc-icon [name]="event.icon"
@@ -286,6 +302,10 @@
                       <p>{{ event.description }}</p>
                     </div>
                   </li>
+                } @empty {
+                  <li class="administrative-timeline__empty">
+                    Aucun événement administratif disponible.
+                  </li>
                 }
               </ol>
             </section>
@@ -294,11 +314,47 @@
       </main>
     </div>
   } @else {
-    <section class="patient-not-found">
-      <span><oc-icon name="staff" /></span>
-      <h1>Patient introuvable</h1>
-      <p>Aucune fiche de démonstration ne correspond à l’identifiant demandé.</p>
-      <a routerLink="/doctor/patients">Retour à la liste des patients</a>
-    </section>
+    @switch (model().state) {
+      @case ('loading') {
+        <section class="patient-state patient-state--loading" role="status" aria-live="polite">
+          <span class="patient-state__spinner" aria-hidden="true"></span>
+          <h1>Chargement du patient…</h1>
+          <p>{{ model().stateDescription }}</p>
+        </section>
+      }
+      @case ('not-found') {
+        <section class="patient-not-found">
+          <span><oc-icon name="staff" /></span>
+          <h1>Patient introuvable</h1>
+          <p>{{ model().stateDescription }}</p>
+          <a [href]="model().directoryHref" (click)="navigate('NAVIGATE_DIRECTORY', $event)"
+            >Retour à la liste des patients</a
+          >
+        </section>
+      }
+      @case ('forbidden') {
+        <section class="patient-not-found" role="alert">
+          <span><oc-icon name="coverage" /></span>
+          <h1>Accès non autorisé</h1>
+          <p>{{ model().stateDescription }}</p>
+          <a [href]="model().directoryHref" (click)="navigate('NAVIGATE_DIRECTORY', $event)"
+            >Retour à la liste des patients</a
+          >
+        </section>
+      }
+      @case ('error') {
+        <section class="patient-not-found" role="alert">
+          <span><oc-icon name="warning" /></span>
+          <h1>Impossible de charger le patient</h1>
+          <p>{{ model().stateDescription }}</p>
+          <oc-button variant="primary" (click)="action.emit({ kind: 'RETRY' })"
+            >Réessayer</oc-button
+          >
+          <a [href]="model().directoryHref" (click)="navigate('NAVIGATE_DIRECTORY', $event)"
+            >Retour à la liste des patients</a
+          >
+        </section>
+      }
+    }
   }
 </section>

@@ -109,11 +109,12 @@ describe('PatientsPage', () => {
 
   it('reloads with the selected filter when the segmented control changes', () => {
     const component = create();
-    http
-      .expectOne((candidate) => candidate.url === '/api/v1/patients')
-      .flush(pageResponse([]));
+    http.expectOne((candidate) => candidate.url === '/api/v1/patients').flush(pageResponse([]));
 
-    component.componentInstance.onSegmentChange('EXTERNAL');
+    component.componentInstance.handleViewAction({
+      kind: 'SELECT_CATEGORY',
+      value: 'EXTERNAL',
+    });
     const request = http.expectOne(
       (candidate) =>
         candidate.url === '/api/v1/patients' &&
@@ -126,9 +127,7 @@ describe('PatientsPage', () => {
 
   it('debounces the search field into a server query', async () => {
     const component = create();
-    http
-      .expectOne((candidate) => candidate.url === '/api/v1/patients')
-      .flush(pageResponse([]));
+    http.expectOne((candidate) => candidate.url === '/api/v1/patients').flush(pageResponse([]));
 
     const root: HTMLElement = component.nativeElement;
     const search = root.querySelector<HTMLInputElement>('input[type="search"]');
@@ -157,9 +156,9 @@ describe('PatientsPage', () => {
 
     component.detectChanges();
     expect(component.componentInstance.loadState()).toBe('error');
-    expect(component.nativeElement.textContent).toContain('Impossible de charger vos patients.');
+    expect(component.nativeElement.textContent).toContain('Impossible de charger les patients');
 
-    component.componentInstance.onRetry();
+    component.componentInstance.handleViewAction({ kind: 'RETRY' });
     const retryRequest = http.expectOne((candidate) => candidate.url === '/api/v1/patients');
     retryRequest.flush(pageResponse([patientDto()]));
     expect(component.componentInstance.loadState()).toBe('ready');
@@ -167,11 +166,9 @@ describe('PatientsPage', () => {
 
   it('opens the add-patient dialog and reloads after creation', () => {
     const component = create();
-    http
-      .expectOne((candidate) => candidate.url === '/api/v1/patients')
-      .flush(pageResponse([]));
+    http.expectOne((candidate) => candidate.url === '/api/v1/patients').flush(pageResponse([]));
 
-    component.componentInstance.onAddPatient();
+    component.componentInstance.handleViewAction({ kind: 'ADD_PATIENT' });
     expect(component.componentInstance.addDialogOpen()).toBe(true);
 
     component.componentInstance.onPatientCreated(
@@ -179,11 +176,11 @@ describe('PatientsPage', () => {
     );
     expect(component.componentInstance.lastCreated()?.id).toBe('patient-9');
 
-    http
-      .expectOne((candidate) => candidate.url === '/api/v1/patients')
-      .flush(pageResponse([]));
+    http.expectOne((candidate) => candidate.url === '/api/v1/patients').flush(pageResponse([]));
     component.detectChanges();
-    expect(component.nativeElement.textContent).toContain('Patient créé');
+    expect(component.nativeElement.textContent).toContain(
+      'Ahmed Ben Salah a été ajouté. Une correspondance OmniCare est possible.',
+    );
     expect(component.componentInstance.totalElements()).toBe(0);
   });
 });

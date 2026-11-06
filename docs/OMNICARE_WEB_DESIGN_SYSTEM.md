@@ -38,7 +38,7 @@ P1 adds the focused production `OcDialog` abstraction under `shared/ui/dialog`. 
 
 P1-FIX adds vendor-neutral `OcButton`, `OcField`, `OcSelect`, and `OcTextarea` contracts under `shared/ui`. `OcButton` uses Brain's pinned button directive internally and preserves the established `primary`, `secondary`, `quiet`, and `destructive` API (`quiet` aliases `ghost`), while adding `outline`, `ghost`, `link`, `large`, full-width, and accessible icon-only support. `OcSelect` composes Brain's pinned select and popover directives into a focused static single-select CVA; `OcTextarea` is a focused CVA; and `OcField` provides deterministic label/hint/error identifiers for projected controls. Feature code imports only these `Oc*` components. No Helm source was copied for these controls: their structure follows the pinned Brain directive contracts, and their visual layer uses existing OmniCare semantic tokens.
 
-P2 establishes the white clinic workspace treatment through the existing semantic token authority: white application and surface tokens, neutral separators, OmniCare-green focus and active states, and a coordination-violet semantic token. `OcIcon` is the vendor-neutral, inline outline-icon boundary used by the clinic shell; it is tree-shaken by explicit names and supports decorative or labelled meaningful use plus semantic intent. `OcSheet` is the vendor-neutral controlled sheet boundary backed by pinned Spartan Brain sheet directives. It owns CDK overlay placement, scroll containment, focus restoration, Escape/backdrop policy, and an optional action footer; feature code sees no Brain import. The clinic shell uses `OcSheet` for mobile navigation, while My Tasks uses a read-only right-side task preview at tablet and desktop widths and preserves the canonical detail route on mobile and for all mutations.
+P2 establishes the white clinic workspace treatment through the existing semantic token authority: white application and surface tokens, neutral separators, high-contrast neutral focus states, OmniCare-green active accents, and a coordination-violet semantic token. `OcIcon` is the vendor-neutral, inline outline-icon boundary used by the clinic shell; it is tree-shaken by explicit names and supports decorative or labelled meaningful use plus semantic intent. `OcSheet` is the vendor-neutral controlled sheet boundary backed by pinned Spartan Brain sheet directives. It owns CDK overlay placement, scroll containment, focus restoration, Escape/backdrop policy, and an optional action footer; feature code sees no Brain import. The clinic shell uses `OcSheet` for mobile navigation, while My Tasks uses a read-only right-side task preview at tablet and desktop widths and preserves the canonical detail route on mobile and for all mutations.
 
 P2.1 defines the startup lifecycle for this browser-session application. `app.routes.server.ts` marks all routes as `RenderMode.Client`: the existing opaque session and refresh token exist only in browser `sessionStorage`, so rendering any route at build time would otherwise produce an anonymous Login tree for an authenticated URL. The root `App` therefore renders only a neutral white boot surface while `AuthTokenStore` is `unknown`. Browser startup invokes `AuthBootstrapService` through `provideAppInitializer`; it restores a structurally valid stored session, validates it once with the existing refresh endpoint, and settles the store as `authenticated` or `anonymous`. Blocking initial navigation then lets guards decide only after this resolution. `authenticatedGuard` and role guards return `UrlTree` redirects after resolution, while the Login route's `anonymousOnlyGuard` redirects authenticated users before its component is constructed. No token, role, clinic context, or capability is sent through SSR or transfer state.
 
@@ -67,17 +67,11 @@ Global SCSS is organized under `src/styles`:
 
 Components consume `--oc-` semantic variables. Primitive color values stay in approved settings or vendor files.
 
-### Provisional brand values
+### Brand and action values
 
-No official OmniCare logo, font, palette or design-reference image was present in this project. `_brand-source.scss` therefore marks these provisional values with a TODO:
+OmniCare's approved primary action color is `#1FBF9A`. Primary actions use this exact background with the dark text token because white text does not meet WCAG AA contrast. Hover feedback keeps the same green and strengthens the neutral border/shadow instead of introducing another green shade. Destructive and neutral actions retain their semantic red and neutral treatments.
 
-- Primary: `#1FBF9A`
-- Primary hover: `#12594c`
-- Primary active: `#0d473d`
-- Secondary: `#294b63`
-- Accent: `#d8923b`
-
-These values require brand-owner confirmation and must not be presented as final identity assets.
+The legacy `primary-hover` and `primary-active` variables remain temporarily for non-button surfaces created before this decision. They are not approved action colors and must not be used by new button or link states. Secondary `#294b63` and accent `#d8923b` remain provisional pending a broader brand-asset decision.
 
 ### Typography, spacing, radius and elevation
 

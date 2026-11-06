@@ -2,10 +2,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   computed,
   effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
@@ -17,11 +19,9 @@ import { APP_MODE } from '../../core/config/app-mode';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AuthService } from '../../core/auth/auth.service';
 import {
-  OcAvatar,
   OcIcon,
   OcPopover,
   OcSheet,
-  OcSidebar,
   SidebarLabels,
   SidebarNavigationItem,
   SidebarUserProfile,
@@ -34,6 +34,9 @@ import { NotificationItemDto } from './appointment-api.models';
 
 import { UrgentAcceptedStore } from './urgent-accepted.store';
 import { ActiveConsultationStore } from './active-consultation.store';
+import { DoctorSidebar } from './doctor-sidebar';
+import { MeProfessionalProfileResponse } from './settings/professional-profile-api.models';
+import { ProfessionalProfileApiService } from './settings/professional-profile-api.service';
 
 const DOCTOR_SIDEBAR_LABELS: Partial<SidebarLabels> = {
   landmark: 'Navigation principale du médecin',
@@ -50,11 +53,10 @@ const DOCTOR_SIDEBAR_LABELS: Partial<SidebarLabels> = {
   imports: [
     RouterOutlet,
     NzIconModule,
-    OcAvatar,
     OcIcon,
     OcPopover,
     OcSheet,
-    OcSidebar,
+    DoctorSidebar,
     PatientLookupDialog,
   ],
   templateUrl: './doctor-shell.html',
@@ -73,11 +75,13 @@ export class DoctorShell {
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly tokens = inject(AuthTokenStore);
+  private readonly profileApi = inject(ProfessionalProfileApiService);
   readonly activeConsultation = inject(ActiveConsultationStore);
 
   readonly sidebarCollapsed = signal(false);
   readonly mobileNavigationOpen = signal(false);
   readonly lookupOpen = signal(false);
+  readonly lookupTrigger = viewChild<ElementRef<HTMLButtonElement>>('lookupTrigger');
 
   readonly notificationUnread = signal(0);
   readonly notifications = signal<readonly NotificationItemDto[]>([]);
@@ -94,6 +98,7 @@ export class DoctorShell {
   });
 
   readonly activeNav = signal('command');
+  readonly professionalProfile = signal<MeProfessionalProfileResponse | null>(null);
 
   /** Live connection health, shown as a chip in the topbar. */
   readonly expectsRealtimeActivity = signal(false);
@@ -218,11 +223,19 @@ export class DoctorShell {
       ),
   );
 
-  readonly sidebarProfile = computed<SidebarUserProfile>(() =>
-    this.isSecretary()
-      ? { initials: 'SC', name: 'Secrétaire', context: 'Agenda du cabinet' }
-      : { initials: 'BS', name: 'Dr Ben Salah', context: 'Médecine générale' },
-  );
+  readonly sidebarProfile = computed<SidebarUserProfile>(() => {
+    if (this.isSecretary()) {
+      return { initials: 'SC', name: 'Secrétaire', context: 'Agenda du cabinet' };
+    }
+    const profile = this.professionalProfile();
+    const name = professionalDisplayName(profile);
+    return {
+      initials: professionalInitials(profile, name),
+      name,
+      context: profile?.specialty?.trim() || 'Espace médecin',
+    };
+  });
+  readonly topbarInitials = computed(() => initialsFromDisplayName(this.sidebarProfile().name));
 
   constructor() {
     this.syncActiveNavigation(this.router.url);
@@ -233,6 +246,7 @@ export class DoctorShell {
       )
       .subscribe((event) => this.syncActiveNavigation(event.urlAfterRedirects));
     if (!this.isSecretary()) {
+      this.loadProfessionalProfile();
       this.acceptedStore.purgeLegacyCache();
       this.refreshUnreadCount();
       this.realtime.notificationEvents$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
@@ -248,6 +262,16 @@ export class DoctorShell {
         if (this.notificationPanelOpen()) this.loadNotifications(true);
       });
     }
+  }
+
+  private loadProfessionalProfile(): void {
+    this.profileApi
+      .getProfile()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.professionalProfile.set(profile),
+        error: () => this.professionalProfile.set(null),
+      });
   }
 
   private syncActiveNavigation(url: string): void {
@@ -279,6 +303,7 @@ export class DoctorShell {
 
   closeLookup(): void {
     this.lookupOpen.set(false);
+    globalThis.queueMicrotask(() => this.lookupTrigger()?.nativeElement.focus());
   }
 
   lookupSelected(match: MockPatientMatch): void {
@@ -438,4 +463,41 @@ export function notificationTarget(item: NotificationItemDto): NotificationTarge
 
 function nonEmpty(value: string | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function professionalDisplayName(profile: MeProfessionalProfileResponse | null): string {
+  if (profile === null) return 'Médecin';
+  const displayName = profile.displayName?.trim();
+  if (displayName) return displayName;
+  const legalName = [profile.firstName, profile.lastName]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim())
+    .join(' ');
+  return legalName || 'Médecin';
+}
+
+function professionalInitials(
+  profile: MeProfessionalProfileResponse | null,
+  displayName: string,
+): string {
+  const legalParts = [profile?.firstName, profile?.lastName].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0,
+  );
+  const parts =
+    legalParts.length > 0 ? legalParts : displayName.replace(/^dr\.?\s+/iu, '').split(/\s+/u);
+  const initials = parts
+    .slice(0, 2)
+    .map((part) => part[0] ?? '')
+    .join('')
+    .toLocaleUpperCase('fr-FR');
+  return initials || 'DR';
+}
+
+function initialsFromDisplayName(displayName: string): string {
+  const parts = displayName.trim().split(/\s+/u);
+  const initials =
+    parts.length >= 2
+      ? `${parts[0]?.[0] ?? ''}${parts.at(-1)?.[0] ?? ''}`
+      : (parts[0]?.slice(0, 2) ?? '');
+  return initials.toLocaleUpperCase('fr-FR') || 'DR';
 }

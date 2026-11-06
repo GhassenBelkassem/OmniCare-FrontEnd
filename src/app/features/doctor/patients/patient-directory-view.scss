@@ -136,8 +136,8 @@
 }
 
 .directory-segments button.directory-segments__button--active {
-  background: var(--oc-color-surface-card);
-  color: var(--oc-color-brand-primary-active);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
   box-shadow: var(--oc-shadow-card);
 }
 
@@ -357,22 +357,22 @@
   font-weight: var(--oc-font-weight-semibold);
 }
 
-.patient-table th:nth-child(2) {
+.patient-table__patient {
   width: 190px;
 }
-.patient-table th:nth-child(3) {
+.patient-table__contact-heading {
   width: 185px;
 }
-.patient-table th:nth-child(4) {
+.patient-table__last {
   width: 132px;
 }
-.patient-table th:nth-child(5) {
+.patient-table__next {
   width: 170px;
 }
-.patient-table th:nth-child(6) {
+.patient-table__linkage {
   width: 176px;
 }
-.patient-table th:nth-child(7) {
+.patient-table__source {
   width: 106px;
 }
 
@@ -550,8 +550,8 @@
 }
 
 .patient-table__action a:hover {
-  background: var(--oc-color-surface-selected);
-  color: var(--oc-color-brand-primary-active);
+  background: var(--oc-color-surface-hover);
+  color: var(--oc-color-text-primary);
 }
 
 .patient-table__action oc-icon {
@@ -610,9 +610,9 @@
 }
 
 .pagination button.pagination__page--active {
-  border-color: var(--oc-color-brand-primary-active);
-  background: var(--oc-color-brand-primary-active);
-  color: var(--oc-color-text-inverse);
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
 }
 
 .pagination button:disabled {

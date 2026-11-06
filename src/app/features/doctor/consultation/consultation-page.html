@@ -1,171 +1,176 @@
-<oc-page-header
-  [title]="
-    legacyUrgentBlocked
-      ? 'Consultation urgente mobile'
-      : canonicalRoute
-        ? 'Consultation active'
-        : isNew
-          ? 'Nouvelle consultation'
-          : 'Consultation'
-  "
-  [description]="
-    legacyUrgentBlocked
-      ? 'Cette opération n’est pas disponible dans le tableau de bord web.'
-      : canonicalRoute
-        ? 'État opérationnel synchronisé avec Spring'
-        : isNew
-          ? 'Selectionner un patient pour commencer'
-          : (record?.patient?.name ?? '') +
-            ' · ' +
-            (mode === 'active' ? 'Consultation en cours' : 'Consultation passee')
-  "
->
-  <a ocBreadcrumbs routerLink="/doctor">Retour au tableau de bord</a>
-</oc-page-header>
+@if (!canonicalRoute) {
+  <main class="consultation-state" role="status">
+    <span class="consultation-state__icon" aria-hidden="true">!</span>
+    <h1>Consultation non disponible</h1>
+    <p>
+      Cet espace accepte uniquement une consultation canonique identifiée par son UUID. Aucun
+      parcours clinique simulé n’est chargé en production.
+    </p>
+    <oc-button variant="secondary" (click)="back()">Retour au tableau de bord</oc-button>
+  </main>
+} @else if (finish.consultation(); as current) {
+  <app-consultation-workspace-view
+    [model]="viewModel()"
+    (action)="handleWorkspaceAction($event)"
+  >
+    @if (current.status === 'IN_PROGRESS') {
+      @if (urgentIntake(); as intake) {
+        <aside class="urgent-intake" aria-labelledby="urgent-intake-title">
+          <div>
+            <h2 id="urgent-intake-title">Contexte déclaré avant l’arrivée</h2>
+            <p>Information opérationnelle en lecture seule, non copiée dans le dossier médical.</p>
+          </div>
+          <dl>
+            <div>
+              <dt>Zones</dt>
+              <dd>{{ intake.bodyAreaCodes?.join(', ') || 'Non renseignées' }}</dd>
+            </div>
+            <div>
+              <dt>Douleur</dt>
+              <dd>{{ intake.painScore ?? 'Non renseignée' }}/10</dd>
+            </div>
+            @if (intake.shortDescription) {
+              <div>
+                <dt>Description</dt>
+                <dd>{{ intake.shortDescription }}</dd>
+              </div>
+            }
+          </dl>
+        </aside>
+      }
 
-<main class="consultation-workspace">
-  @if (legacyUrgentBlocked) {
-    <div class="consultation-patient-select" role="status">
-      <div class="consultation-patient-select__search">
-        <h2>Utilisez l’application OmniCare Médecin</h2>
+      <section class="consultation-domain" [hidden]="activeSection() !== 'note'">
+        <app-clinical-authoring [consultationId]="consultationId" />
+      </section>
+
+      <section class="consultation-domain" [hidden]="activeSection() !== 'vitals'">
+        <article class="unsupported-panel" aria-labelledby="vitals-title">
+          <span class="unsupported-panel__icon" aria-hidden="true">—</span>
+          <div>
+            <p class="unsupported-panel__eyebrow">Constantes</p>
+            <h2 id="vitals-title">Saisie canonique indisponible</h2>
+            <p>
+              Aucun contrat de production n’autorise actuellement l’enregistrement des constantes
+              depuis cet espace. Aucun formulaire local ou succès simulé n’est proposé.
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <section class="consultation-domain" [hidden]="activeSection() !== 'prescription'">
+        <app-prescription-authoring
+          [consultationId]="consultationId"
+          [consultationStatus]="current.status"
+        />
+      </section>
+
+      <section class="consultation-domain" [hidden]="activeSection() !== 'orders'">
+        <app-clinical-orders [consultationId]="consultationId" />
+      </section>
+
+      <section class="consultation-domain" [hidden]="activeSection() !== 'documents'">
+        <app-official-artifacts [consultationId]="consultationId" />
+      </section>
+
+      <section class="consultation-domain" [hidden]="activeSection() !== 'finalization'">
+        <article class="finalization-panel" aria-labelledby="finalization-title">
+          <header>
+            <p class="finalization-panel__eyebrow">Vérification avant clôture</p>
+            <h2 id="finalization-title">Finalisation</h2>
+            <p>
+              Le serveur contrôle les décisions cliniques, les versions et les éléments à
+              finaliser. Les domaines restent indépendants jusqu’à la clôture.
+            </p>
+          </header>
+          <ul class="finalization-checklist">
+            <li [class.finalization-checklist__item--ready]="!clinical.dirty()">
+              <span aria-hidden="true">{{ clinical.dirty() ? '!' : '✓' }}</span>
+              <div><strong>Note clinique</strong><small>{{ clinical.dirty() ? 'Modifications non enregistrées' : 'Synchronisée' }}</small></div>
+              @if (clinical.dirty()) { <button type="button" (click)="activeSection.set('note')">Ouvrir</button> }
+            </li>
+            <li [class.finalization-checklist__item--ready]="!prescription.dirty()">
+              <span aria-hidden="true">{{ prescription.dirty() ? '!' : '✓' }}</span>
+              <div><strong>Prescription</strong><small>{{ prescription.dirty() ? 'Modifications non enregistrées' : 'État conservé' }}</small></div>
+              @if (prescription.dirty()) { <button type="button" (click)="activeSection.set('prescription')">Ouvrir</button> }
+            </li>
+            <li [class.finalization-checklist__item--ready]="!orders.dirty()">
+              <span aria-hidden="true">{{ orders.dirty() ? '!' : '✓' }}</span>
+              <div><strong>Ordres cliniques</strong><small>{{ orders.dirty() ? 'Brouillon non enregistré' : 'État conservé' }}</small></div>
+              @if (orders.dirty()) { <button type="button" (click)="activeSection.set('orders')">Ouvrir</button> }
+            </li>
+            <li [class.finalization-checklist__item--ready]="!artifacts.dirty()">
+              <span aria-hidden="true">{{ artifacts.dirty() ? '!' : '✓' }}</span>
+              <div><strong>Documents</strong><small>{{ artifacts.dirty() ? 'Brouillon non enregistré' : 'État conservé' }}</small></div>
+              @if (artifacts.dirty()) { <button type="button" (click)="activeSection.set('documents')">Ouvrir</button> }
+            </li>
+          </ul>
+          @if (finish.failure(); as failure) {
+            <div class="finish-alert" role="alert">
+              @if (failure === 'UNSAVED_CLINICAL_CHANGES') {
+                Enregistrez les modifications de la note clinique avant de terminer.
+              } @else if (failure === 'CONSULTATION_NOT_READY_TO_FINISH') {
+                La consultation n’est pas prête. Vérifiez les décisions et les éléments en brouillon.
+              } @else {
+                La finalisation n’a pas abouti. L’état serveur a été réconcilié ; vous pouvez réessayer.
+              }
+            </div>
+          }
+        </article>
+      </section>
+    } @else if (current.status === 'FINALIZING') {
+      <section class="consultation-state consultation-state--embedded" role="status" aria-live="polite">
+        <span class="consultation-state__icon consultation-state__icon--pending" aria-hidden="true">…</span>
+        <h2>Finalisation en cours</h2>
         <p>
-          Les actions liées aux urgences, à l’arrivée et à la consultation urgente sont
-          exclusivement disponibles dans l’application mobile.
+          Les modifications cliniques sont verrouillées. OmniCare peut reprendre les étapes sûres
+          avec les versions et la clé d’idempotence existantes.
+        </p>
+        <oc-button variant="secondary" [disabled]="finish.submitting()" (click)="finish.finish()">
+          Reprendre la finalisation
+        </oc-button>
+      </section>
+    } @else {
+      <section class="consultation-state consultation-state--embedded" role="status">
+        <span class="consultation-state__icon consultation-state__icon--complete" aria-hidden="true">✓</span>
+        <h2>{{ current.status === 'COMPLETED' ? 'Consultation terminée' : 'Consultation interrompue' }}</h2>
+        <p>
+          {{ current.status === 'COMPLETED'
+            ? 'Le rendu des documents officiels peut continuer en arrière-plan.'
+            : 'Aucune modification clinique supplémentaire n’est autorisée dans cet épisode.' }}
         </p>
         <oc-button variant="secondary" (click)="back()">Retour au tableau de bord</oc-button>
-      </div>
-    </div>
-  } @else if (canonicalRoute) {
-    <div class="consultation-patient-select" role="status">
-      <div class="consultation-patient-select__search">
-        @if (activeConsultation.active(); as active) {
-          @if (active.consultationId === consultationId) {
-            <h2>Consultation en cours</h2>
-            <p>Statut : {{ active.status }}</p>
-            <p>Accès médical : {{ active.medicalAccessStatus }}</p>
-          } @else {
-            <h2>Consultation non disponible</h2>
-            <p>La consultation active de ce compte est un autre épisode.</p>
-          }
-        } @else if (activeConsultation.loading()) {
-          <h2>Synchronisation…</h2>
-        } @else {
-          <h2>Aucune consultation active</h2>
-          <p>Le serveur ne signale aucun épisode en cours pour ce médecin.</p>
-        }
-      </div>
-    </div>
-    @if (urgentIntake(); as intake) {
-      <section class="panel" aria-labelledby="urgent-intake-title">
-        <h2 id="urgent-intake-title">Contexte déclaré avant l’arrivée</h2>
-        <p>Zones : {{ intake.bodyAreaCodes?.join(', ') || 'Non renseignées' }}</p>
-        <p>Douleur déclarée : {{ intake.painScore ?? 'Non renseignée' }}/10</p>
-        @if (intake.shortDescription) {
-          <p>Description : {{ intake.shortDescription }}</p>
-        }
-        <p>Contexte opérationnel en lecture seule — non copié dans le dossier médical.</p>
       </section>
     }
-    @if (finish.consultation(); as current) {
-      @if (current.status === 'IN_PROGRESS') {
-        <app-clinical-authoring [consultationId]="consultationId" />
-        <app-prescription-authoring [consultationId]="consultationId" [consultationStatus]="current.status" />
-        <app-clinical-orders [consultationId]="consultationId" />
-        <app-official-artifacts [consultationId]="consultationId" />
-        <app-doctor-medical-workspace [consultation]="current" />
-        <section class="panel" aria-labelledby="finish-consultation-title">
-          <h2 id="finish-consultation-title">Terminer la consultation</h2>
-          <p>Le serveur vérifie le dossier, les ordres, la prescription et les documents finalisés.</p>
-          @if (finish.failure(); as failure) {
-            <p role="alert">
-              @if (failure === 'UNSAVED_CLINICAL_CHANGES') { Enregistrez les modifications cliniques avant de terminer. }
-              @else if (failure === 'CONSULTATION_NOT_READY_TO_FINISH') { La consultation n’est pas prête. Vérifiez les décisions et éléments en brouillon. }
-              @else { La finalisation n’a pas abouti. L’état serveur a été actualisé; vous pouvez réessayer. }
-            </p>
-          }
-          <oc-button variant="primary" [disabled]="finish.submitting()" (click)="finish.finish()">
-            {{ finish.submitting() ? 'Finalisation…' : 'Terminer la consultation' }}
-          </oc-button>
-        </section>
-      } @else if (current.status === 'FINALIZING') {
-        <section class="panel" role="status" aria-live="polite">
-          <h2>Finalisation en cours</h2>
-          <p>Les modifications cliniques sont verrouillées. OmniCare reprend automatiquement les étapes sûres.</p>
-          <oc-button variant="secondary" [disabled]="finish.submitting()" (click)="finish.finish()">Reprendre</oc-button>
-        </section>
-      } @else if (current.status === 'COMPLETED') {
-        <section class="panel" role="status">
-          <h2>Consultation terminée</h2>
-          <p>Le rendu des documents officiels peut continuer en arrière-plan.</p>
-          <oc-button variant="secondary" (click)="back()">Retour au tableau de bord</oc-button>
-        </section>
-      }
-    }
-  } @else if (isNew) {
-    <div class="consultation-patient-select">
-      <div class="consultation-patient-select__search">
-        <h2>Rechercher un patient</h2>
-        <p>Tapez le nom ou le numero de telephone du patient pour demarrer une consultation.</p>
-        <input
-          class="consultation-patient-select__input"
-          type="search"
-          placeholder="Nom ou telephone..."
-          [value]="patientQuery()"
-          (input)="patientQuery.set($any($event.target).value); searchPatients()"
-        />
-      </div>
+  </app-consultation-workspace-view>
 
-      @if (patientResults().length > 0) {
-        <ul class="consultation-patient-select__results">
-          @for (match of patientResults(); track match.id) {
-            <li>
-              <button
-                type="button"
-                class="consultation-patient-select__result"
-                (click)="selectPatient(match)"
-              >
-                <oc-avatar [name]="match.name" size="small" />
-                <div class="consultation-patient-select__result-info">
-                  <strong>{{ match.name }}</strong>
-                  <span>{{ match.phone }}</span>
-                </div>
-              </button>
-            </li>
-          }
-        </ul>
-      } @else if (patientQuery().length >= 2) {
-        <p class="consultation-patient-select__empty">Aucun patient trouve.</p>
-      }
+  <oc-sheet
+    [open]="mrsDrawerOpen()"
+    title="Dossier médical"
+    description="Accès protégé limité à cette consultation"
+    side="right"
+    width="31rem"
+    [hasFooter]="true"
+    (dismissed)="mrsDrawerOpen.set(false)"
+  >
+    <app-doctor-medical-workspace [consultation]="current" />
+    <div ocSheetFooter>
+      <oc-button variant="secondary" (click)="mrsDrawerOpen.set(false)">Fermer</oc-button>
     </div>
-  } @else if (record && consultation) {
-    <app-medical-record-view
-      [record]="record"
-      [mode]="mode"
-      [started]="started()"
-      (start)="started.set(true)"
-    />
-
-    @if (closed()) {
-      <app-close-summary
-        [record]="record"
-        [consultation]="consultation"
-        [draft]="draft()"
-        (bookFollowUp)="bookFollowUp()"
-        (backToDashboard)="back()"
-      />
-    } @else if (mode === 'readonly') {
-      <app-active-consultation-form
-        [readonly]="true"
-        [draft]="draft()"
-        (draftChange)="storeDraft($event)"
-      />
-    } @else if (started()) {
-      <app-active-consultation-form
-        [readonly]="false"
-        [draft]="draft()"
-        (draftChange)="storeDraft($event)"
-        (close)="closeConsultation()"
-      />
-    }
-  }
-</main>
+  </oc-sheet>
+} @else if (finish.failure()) {
+  <main class="consultation-state" role="alert">
+    <span class="consultation-state__icon" aria-hidden="true">!</span>
+    <h1>Consultation indisponible</h1>
+    <p>La consultation n’a pas pu être chargée. Vérifiez l’accès ou réessayez.</p>
+    <div class="consultation-state__actions">
+      <oc-button variant="secondary" (click)="back()">Retour</oc-button>
+      <oc-button (click)="finish.refresh()">Réessayer</oc-button>
+    </div>
+  </main>
+} @else {
+  <main class="consultation-state" role="status" aria-live="polite" aria-busy="true">
+    <span class="consultation-state__icon consultation-state__icon--pending" aria-hidden="true">…</span>
+    <h1>Chargement de la consultation</h1>
+    <p>Synchronisation de l’épisode clinique et de ses autorisations.</p>
+  </main>
+}
