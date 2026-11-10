@@ -59,7 +59,7 @@ export class AdminApiService {
    * instead of creating a second account. Mint a new key only once an attempt has
    * actually succeeded.
    */
-  createDoctor(input: CreateDoctorInput, idempotencyKey = requestKey()): Observable<CreateProfessionalResult> {
+  createDoctor(input: CreateDoctorInput, idempotencyKey: string): Observable<CreateProfessionalResult> {
     return this.http.post<CreateProfessionalResult>(
       `${this.baseUrl}/professionals`,
       {
@@ -124,7 +124,7 @@ export class AdminApiService {
    * failed submission with the same key: the backend replays the original response
    * instead of registering a second clinic.
    */
-  createClinic(input: CreateClinicInput, idempotencyKey = requestKey()): Observable<Clinic> {
+  createClinic(input: CreateClinicInput, idempotencyKey: string): Observable<Clinic> {
     return this.http.post<Clinic>(`${this.baseUrl}/clinics`, input, {
       headers: { 'Idempotency-Key': idempotencyKey },
     });
@@ -134,17 +134,18 @@ export class AdminApiService {
     return this.http.get<readonly ClinicMembership[]>(`${this.baseUrl}/clinics/${clinicId}/memberships`);
   }
 
-  inviteClinicAdmin(clinicId: string, email: string, phone: string | null): Observable<ClinicMembership> {
+  inviteClinicAdmin(
+    clinicId: string,
+    email: string,
+    phone: string | null,
+    idempotencyKey: string,
+  ): Observable<ClinicMembership> {
     return this.http.post<ClinicMembership>(
       `${this.baseUrl}/clinics/${clinicId}/administrators/invitations`,
       { email, phone },
-      { headers: { 'Idempotency-Key': requestKey() } },
+      { headers: { 'Idempotency-Key': idempotencyKey } },
     );
   }
-}
-
-function requestKey(): string {
-  return newIdempotencyKey();
 }
 
 /** Mints a fresh `Idempotency-Key`. Exported so callers that must replay a failed attempt can share one implementation. */

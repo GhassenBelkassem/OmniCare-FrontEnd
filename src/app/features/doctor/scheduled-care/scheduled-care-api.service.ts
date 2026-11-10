@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { RUNTIME_CONFIG } from '../../../core/config/runtime-config';
 import {
@@ -11,6 +11,7 @@ import {
   DoctorHomeSummary,
   DoctorReasonCode,
   DoctorScheduledCareAgenda,
+  DoctorScheduledCareItem,
   ProposeBookingTimeRequest,
 } from './scheduled-care.models';
 
@@ -76,10 +77,13 @@ export class ScheduledCareApiService {
     );
   }
 
-  getAppointment(appointmentId: string): Observable<Appointment> {
-    return this.http.get<Appointment>(
+  getAppointment(
+    appointmentId: string,
+    overview: DoctorScheduledCareItem | null = null,
+  ): Observable<Appointment> {
+    return this.http.get<unknown>(
       `${this.config.apiBaseUrl}/appointments/${encodeURIComponent(appointmentId)}`,
-    );
+    ).pipe(map((response) => normalizeAppointment(response, appointmentId, overview)));
   }
 
   cancelAppointment(
@@ -111,6 +115,114 @@ export class ScheduledCareApiService {
       { params },
     );
   }
+}
+
+interface LegacyAppointmentResponse {
+  readonly id: string;
+  readonly doctorId: string;
+  readonly patientName: string | null;
+  readonly startTime: string;
+  readonly endTime: string;
+  readonly status: Appointment['status'];
+  readonly notes: string | null;
+  readonly quotedPriceTnd: number | null;
+  readonly createdAt: string;
+  readonly subjectType?: string;
+  readonly practicePatientId?: string | null;
+}
+
+function normalizeAppointment(
+  response: unknown,
+  appointmentId: string,
+  overview: DoctorScheduledCareItem | null,
+): Appointment {
+  if (isRichAppointment(response)) return response;
+  if (!isLegacyAppointment(response) || response.id !== appointmentId) {
+    throw new Error('Invalid appointment response');
+  }
+  const matchingOverview = overview?.appointmentId === appointmentId ? overview : null;
+  const durationMinutes = Math.max(
+    0,
+    Math.round((Date.parse(response.endTime) - Date.parse(response.startTime)) / 60_000),
+  );
+  return {
+    appointmentId: response.id,
+    sourceBookingRequestId: matchingOverview?.sourceBookingRequestId ?? null,
+    version: matchingOverview?.version ?? null,
+    status: response.status,
+    doctor: {
+      doctorId: response.doctorId,
+      displayName: matchingOverview?.doctor.displayName ?? 'Médecin',
+      specialty: matchingOverview?.doctor.specialty ?? null,
+    },
+    subject: {
+      subjectType: matchingOverview?.subject.subjectType ?? response.subjectType ?? 'SELF',
+      familyMemberId: null,
+      displayName: matchingOverview?.subject.displayName ?? response.patientName?.trim() ?? 'Patient',
+      relationship: matchingOverview?.subject.relationship ?? null,
+    },
+    cabinet: {
+      practiceLocationId: '',
+      name: matchingOverview?.cabinet.name ?? 'Cabinet non renseigné',
+      address: matchingOverview?.cabinet.address ?? '',
+      city: matchingOverview?.cabinet.city ?? '',
+      governorate: matchingOverview?.cabinet.governorate ?? '',
+      timezone: matchingOverview?.timezone ?? 'Africa/Tunis',
+    },
+    slot: {
+      start: response.startTime,
+      end: response.endTime,
+      timezone: matchingOverview?.timezone ?? 'Africa/Tunis',
+      durationMinutes: Number.isFinite(durationMinutes) ? durationMinutes : 0,
+    },
+    quotedPrice: response.quotedPriceTnd === null
+      ? null
+      : { amount: response.quotedPriceTnd, currency: 'TND', quotedAt: response.createdAt },
+    confirmedAt: response.createdAt,
+    createdAt: response.createdAt,
+    updatedAt: matchingOverview?.updatedAt ?? response.createdAt,
+    cancellation: matchingOverview?.cancellation ?? null,
+    intakeStatus: matchingOverview?.intakeStatus ?? null,
+    availableActions: matchingOverview?.availableActions ?? [],
+    practicePatient: response.practicePatientId
+      ? {
+          practicePatientId: response.practicePatientId,
+          dateOfBirth: null,
+          sex: null,
+          phone: null,
+          email: null,
+          address: null,
+        }
+      : null,
+    consultationReason: response.notes,
+  };
+}
+
+function isRichAppointment(value: unknown): value is Appointment {
+  if (!isObject(value)) return false;
+  return typeof value['appointmentId'] === 'string' &&
+    isObject(value['doctor']) && typeof value['doctor']['displayName'] === 'string' &&
+    isObject(value['subject']) && typeof value['subject']['displayName'] === 'string' &&
+    isObject(value['cabinet']) && typeof value['cabinet']['timezone'] === 'string' &&
+    isObject(value['slot']) && typeof value['slot']['start'] === 'string' &&
+    Array.isArray(value['availableActions']);
+}
+
+function isLegacyAppointment(value: unknown): value is LegacyAppointmentResponse {
+  if (!isObject(value)) return false;
+  return typeof value['id'] === 'string' &&
+    typeof value['doctorId'] === 'string' &&
+    typeof value['startTime'] === 'string' &&
+    typeof value['endTime'] === 'string' &&
+    typeof value['status'] === 'string' &&
+    typeof value['createdAt'] === 'string' &&
+    (value['patientName'] === null || typeof value['patientName'] === 'string') &&
+    (value['notes'] === null || typeof value['notes'] === 'string') &&
+    (value['quotedPriceTnd'] === null || typeof value['quotedPriceTnd'] === 'number');
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function idempotencyHeaders(key: string): HttpHeaders {

@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { RUNTIME_CONFIG } from '../../../core/config/runtime-config';
 import { ScheduledCareApiService } from './scheduled-care-api.service';
+import type { Appointment } from './scheduled-care.models';
 
 describe('ScheduledCareApiService', () => {
   let api: ScheduledCareApiService;
@@ -43,7 +44,122 @@ describe('ScheduledCareApiService', () => {
     expect(request.request.url).not.toContain('appointment-9');
     expect(appointment.request.url).not.toContain('request-1');
     request.flush({});
-    appointment.flush({});
+    appointment.flush({
+      appointmentId: 'appointment-9',
+      sourceBookingRequestId: 'request-1',
+      version: 1,
+      status: 'CONFIRMED',
+      doctor: { doctorId: 'doctor-1', displayName: 'Dr Test', specialty: null },
+      subject: { subjectType: 'SELF', familyMemberId: null, displayName: 'Patient', relationship: null },
+      cabinet: {
+        practiceLocationId: 'cabinet-1', name: 'Cabinet', address: '', city: '',
+        governorate: '', timezone: 'Africa/Tunis',
+      },
+      slot: {
+        start: '2026-11-09T09:20:00Z', end: '2026-11-09T09:40:00Z',
+        timezone: 'Africa/Tunis', durationMinutes: 20,
+      },
+      quotedPrice: null,
+      confirmedAt: '2026-11-09T01:38:01Z',
+      createdAt: '2026-11-09T01:38:01Z',
+      updatedAt: '2026-11-09T01:38:01Z',
+      cancellation: null,
+      intakeStatus: null,
+      availableActions: [],
+    });
+  });
+
+  it('normalizes a direct Practice Patient appointment with its authoritative agenda overview', () => {
+    let result: Appointment | undefined;
+    api.getAppointment('91af3821-24cb-4e0f-8ab8-f6f49b4be009', {
+      resourceType: 'APPOINTMENT',
+      requestId: null,
+      appointmentId: '91af3821-24cb-4e0f-8ab8-f6f49b4be009',
+      sourceBookingRequestId: null,
+      version: 0,
+      status: 'CONFIRMED',
+      doctor: { displayName: 'Dr Certification', specialty: 'Médecine générale' },
+      subject: {
+        subjectType: 'PRACTICE_PATIENT',
+        displayName: 'Phase3 Certification',
+        relationship: 'PRACTICE_PATIENT',
+      },
+      cabinet: {
+        name: 'Cabinet Tunis', address: '1 rue Test', city: 'Tunis',
+        governorate: 'Tunis', timezone: 'Africa/Tunis',
+      },
+      start: '2026-11-09T09:20:00Z',
+      end: '2026-11-09T09:40:00Z',
+      timezone: 'Africa/Tunis',
+      responseDeadline: null,
+      cancellation: null,
+      intakeStatus: null,
+      availableActions: ['CANCEL_APPOINTMENT'],
+      sortAt: '2026-11-09T09:20:00Z',
+      updatedAt: '2026-11-09T01:38:01.167300Z',
+    }).subscribe((appointment) => { result = appointment; });
+
+    const request = http.expectOne(
+      '/api/v1/appointments/91af3821-24cb-4e0f-8ab8-f6f49b4be009',
+    );
+    request.flush({
+      id: '91af3821-24cb-4e0f-8ab8-f6f49b4be009',
+      doctorId: 'a7783496-d568-4dd6-a496-00551256f34f',
+      patientId: null,
+      patientName: 'Phase3 Certification',
+      startTime: '2026-11-09T09:20:00Z',
+      endTime: '2026-11-09T09:40:00Z',
+      status: 'CONFIRMED',
+      source: 'PRACTICE_PATIENT',
+      notes: null,
+      quotedPriceTnd: 100,
+      startedAt: null,
+      completedAt: null,
+      createdAt: '2026-11-09T01:38:01.167300Z',
+      subjectType: 'PRACTICE_PATIENT',
+      practicePatientId: '46fef143-78d8-4ad4-9241-19cce9170ed4',
+    });
+
+    expect(result).toMatchObject({
+      appointmentId: '91af3821-24cb-4e0f-8ab8-f6f49b4be009',
+      sourceBookingRequestId: null,
+      version: 0,
+      status: 'CONFIRMED',
+      doctor: {
+        doctorId: 'a7783496-d568-4dd6-a496-00551256f34f',
+        displayName: 'Dr Certification',
+      },
+      subject: { subjectType: 'PRACTICE_PATIENT', displayName: 'Phase3 Certification' },
+      cabinet: { name: 'Cabinet Tunis', timezone: 'Africa/Tunis' },
+      slot: { start: '2026-11-09T09:20:00Z', durationMinutes: 20 },
+      quotedPrice: { amount: 100, currency: 'TND' },
+      practicePatient: {
+        practicePatientId: '46fef143-78d8-4ad4-9241-19cce9170ed4',
+      },
+    });
+  });
+
+  it('keeps a flat appointment read-only when no authoritative version is available', () => {
+    let version: number | null | undefined;
+    api.getAppointment('appointment-legacy').subscribe((appointment) => {
+      version = appointment.version;
+    });
+    http.expectOne('/api/v1/appointments/appointment-legacy').flush({
+      id: 'appointment-legacy',
+      doctorId: 'doctor-1',
+      patientId: null,
+      patientName: 'Patient externe',
+      startTime: '2026-11-09T09:20:00Z',
+      endTime: '2026-11-09T09:40:00Z',
+      status: 'CONFIRMED',
+      source: 'PRACTICE_PATIENT',
+      notes: null,
+      quotedPriceTnd: null,
+      createdAt: '2026-11-09T01:38:01Z',
+      subjectType: 'PRACTICE_PATIENT',
+      practicePatientId: 'practice-1',
+    });
+    expect(version).toBeNull();
   });
 
   it('sends accept version and idempotency key', () => {

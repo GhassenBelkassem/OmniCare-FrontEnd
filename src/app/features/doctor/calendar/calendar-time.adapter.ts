@@ -226,3 +226,113 @@ function hasValidPause(
     rule.pauseEnd < rule.endTime
   );
 }
+
+/** Visible time-grid range: earliest opening − 1 h to latest closing + 1 h (within the day). */
+export function paddedSlotBounds(
+  rules: readonly AvailabilityRuleDto[],
+  exceptions: readonly AvailabilityExceptionDto[] = [],
+): { readonly min: string; readonly max: string } {
+  const windows = [
+    ...rules.filter((rule) => rule.active).map((rule) => [rule.startTime, rule.endTime]),
+    ...exceptions
+      .filter((exception) => exception.type === 'EXTRA')
+      .map((exception) => [exception.startTime, exception.endTime]),
+  ]
+    .map(([start, end]) => [minutesOfDay(start), minutesOfDay(end)])
+    .filter((pair): pair is [number, number] => pair[0] !== null && pair[1] !== null);
+  if (windows.length === 0) return { min: '08:00:00', max: '18:00:00' };
+  const earliest = Math.min(...windows.map(([start]) => start));
+  const latest = Math.max(...windows.map(([, end]) => end));
+  return {
+    min: minutesToClock(Math.max(0, Math.floor((earliest - 60) / 60) * 60)),
+    max: minutesToClock(Math.min(24 * 60, Math.ceil((latest + 60) / 60) * 60)),
+  };
+}
+
+/** Consultation slot length from the doctor's active rules (shortest), default 20 min. */
+export function consultationSlotMinutes(rules: readonly AvailabilityRuleDto[]): number {
+  const durations = rules
+    .filter((rule) => rule.active && rule.slotDurationMinutes > 0)
+    .map((rule) => rule.slotDurationMinutes);
+  return durations.length === 0 ? 20 : Math.min(...durations);
+}
+
+export function minutesToDuration(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}:00`;
+}
+
+/**
+ * True when the local wall-clock instant falls inside the doctor's working hours for that
+ * date: weekly rules (pauses excluded), minus BLOCK exceptions, plus EXTRA openings.
+ */
+export function isWorkingTime(
+  instant: Date,
+  rules: readonly AvailabilityRuleDto[],
+  exceptions: readonly AvailabilityExceptionDto[],
+): boolean {
+  const dateKey = toLocalDateOnly(instant);
+  const minute = instant.getHours() * 60 + instant.getMinutes();
+  const inside = (start: string, end: string): boolean => {
+    const from = minutesOfDay(start);
+    const to = minutesOfDay(end);
+    return from !== null && to !== null && minute >= from && minute < to;
+  };
+  const sameDay = exceptions.filter((exception) => exception.exceptionDate === dateKey);
+  if (sameDay.some((exception) => exception.type === 'BLOCK' && inside(exception.startTime, exception.endTime))) {
+    return false;
+  }
+  if (sameDay.some((exception) => exception.type === 'EXTRA' && inside(exception.startTime, exception.endTime))) {
+    return true;
+  }
+  const weekday = instant.getDay();
+  return projectBusinessHours(rules).some(
+    (segment) => segment.daysOfWeek.includes(weekday) && inside(segment.startTime, segment.endTime),
+  );
+}
+
+const DAY = new Intl.DateTimeFormat('fr-FR', { day: 'numeric' });
+const MONTH_SHORT = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
+const YEAR = new Intl.DateTimeFormat('fr-FR', { year: 'numeric' });
+
+/** French period title: « 9 – 15 nov. 2026 », « novembre 2026 », « lundi 9 novembre 2026 ». */
+export function calendarPeriodTitle(
+  mode: 'day' | 'week' | 'month',
+  start: Date,
+  endExclusive: Date,
+): string {
+  if (mode === 'day') {
+    return capitalizeFirst(
+      new Intl.DateTimeFormat('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(start),
+    );
+  }
+  if (mode === 'month') {
+    // The month grid starts in the previous month; title the month in the middle.
+    const middle = new Date((start.getTime() + endExclusive.getTime()) / 2);
+    return capitalizeFirst(
+      new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(middle),
+    );
+  }
+  const end = new Date(endExclusive.getTime() - 1);
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const sameMonth = sameYear && start.getMonth() === end.getMonth();
+  if (sameMonth) {
+    return `${DAY.format(start)} – ${DAY.format(end)} ${MONTH_SHORT.format(end)} ${YEAR.format(end)}`;
+  }
+  if (sameYear) {
+    return `${DAY.format(start)} ${MONTH_SHORT.format(start)} – ${DAY.format(end)} ${MONTH_SHORT.format(end)} ${YEAR.format(end)}`;
+  }
+  return `${DAY.format(start)} ${MONTH_SHORT.format(start)} ${YEAR.format(start)} – ${DAY.format(end)} ${MONTH_SHORT.format(end)} ${YEAR.format(end)}`;
+}
+
+function minutesToClock(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}:00`;
+}
+
+function capitalizeFirst(value: string): string {
+  return value.charAt(0).toLocaleUpperCase('fr-FR') + value.slice(1);
+}

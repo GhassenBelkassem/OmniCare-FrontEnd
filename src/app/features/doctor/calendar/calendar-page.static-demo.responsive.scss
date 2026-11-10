@@ -48,7 +48,6 @@
     height: auto;
   }
 }
-
 @media (max-width: 767px) {
   .doctor-calendar-demo__toolbar {
     grid-template-areas:
@@ -99,11 +98,5 @@
     width: 100vw;
     max-width: none;
     border-radius: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .doctor-calendar-demo__calendar .demo-calendar-appointment {
-    transition: none;
   }
 }

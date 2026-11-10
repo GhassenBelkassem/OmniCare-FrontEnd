@@ -56,6 +56,85 @@
   gap: var(--oc-space-4);
 }
 
+.clinical-authoring__primary {
+  display: grid;
+  gap: var(--oc-space-4);
+}
+
+.decision-block {
+  display: grid;
+  gap: var(--oc-space-3);
+  margin: 0;
+  padding: var(--oc-space-4);
+  border: 1px solid var(--oc-color-border-subtle);
+  border-radius: var(--oc-radius-md);
+}
+
+.decision-block legend {
+  padding-inline: var(--oc-space-1);
+  font-size: 13px;
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.choice-row,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+}
+
+.choice-row button,
+.action-row button {
+  min-height: 40px;
+  padding-inline: var(--oc-space-4);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.choice-row button:hover,
+.choice-row button:focus-visible,
+.action-row button:hover,
+.action-row button:focus-visible,
+.choice-row .choice-row__selected {
+  border-color: var(--oc-color-brand-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--oc-color-brand-primary) 14%, transparent);
+}
+
+.choice-row .choice-row__selected {
+  background: var(--oc-color-success-surface);
+}
+
+.choice-row__legacy {
+  align-self: center;
+  color: var(--oc-color-warning);
+  font-size: 12px;
+}
+
+.clinical-authoring__date {
+  max-width: 280px;
+}
+
+.advanced-details {
+  border-block: 1px solid var(--oc-color-border-subtle);
+  padding-block: var(--oc-space-3);
+}
+
+.advanced-details summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.advanced-details[open] summary {
+  margin-block-end: var(--oc-space-4);
+}
+
 .field {
   display: grid;
   min-width: 0;

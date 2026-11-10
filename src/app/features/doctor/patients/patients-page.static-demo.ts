@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { PracticePatientDto } from '../practice-patient-api.models';
-import { AddPatientDialog } from './add-patient-dialog';
+import { NzModalModule } from 'ng-zorro-antd/modal';
+
+import { PracticePatientForm } from './practice-patient-form';
 import { PatientDirectoryView } from './patient-directory-view';
 import type {
   PatientDirectoryAction,
@@ -57,7 +59,7 @@ function compareNullableDates(left: string | null, right: string | null): number
 
 @Component({
   selector: 'app-patients-page',
-  imports: [PatientDirectoryView, AddPatientDialog],
+  imports: [PatientDirectoryView, NzModalModule, PracticePatientForm],
   templateUrl: './patients-page.html',
   styleUrl: './patients-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -528,6 +530,9 @@ export class PatientsPage {
         : null,
       linkage: patient.linkage.toLocaleLowerCase('fr-FR') as PatientDirectoryRow['linkage'],
       linkageLabel: this.linkageLabel(patient.linkage),
+      duplicateWarning: false,
+      mrsReadiness: 'ready',
+      mrsReadinessLabel: 'MRS prêt',
       source: patient.source.toLocaleLowerCase('fr-FR') as PatientDirectoryRow['source'],
       sourceLabel: this.sourceLabel(patient.source),
     };

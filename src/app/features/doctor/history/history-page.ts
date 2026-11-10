@@ -48,6 +48,17 @@ import type { CompletedConsultationListItem } from '../completed-consultation.mo
             </li>
           }
         </ul>
+        @if (hasNext()) {
+          <div class="history-page__more">
+            <oc-button
+              variant="secondary"
+              size="small"
+              [loading]="loadingMore()"
+              [disabled]="loadingMore()"
+              (click)="loadMore()"
+            >Afficher plus</oc-button>
+          </div>
+        }
       }
     </section>
   `,
@@ -78,6 +89,7 @@ import type { CompletedConsultationListItem } from '../completed-consultation.mo
       margin: 0;
       list-style: none;
     }
+    .history-page__more { display: flex; justify-content: center; }
     .history-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(180px, auto) auto;
@@ -108,7 +120,10 @@ export class HistoryPage {
   private readonly api = inject(ActiveConsultationApiService);
   readonly consultations = signal<readonly CompletedConsultationListItem[]>([]);
   readonly loading = signal(false);
+  readonly loadingMore = signal(false);
   readonly error = signal(false);
+  readonly hasNext = signal(false);
+  private readonly currentPage = signal(0);
 
   constructor() {
     this.load();
@@ -117,10 +132,29 @@ export class HistoryPage {
   load(): void {
     this.loading.set(true);
     this.error.set(false);
-    this.api.listCompleted().pipe(finalize(() => this.loading.set(false))).subscribe({
-      next: (values) => this.consultations.set(values),
+    this.api.listCompleted(0, 50).pipe(finalize(() => this.loading.set(false))).subscribe({
+      next: (result) => {
+        this.consultations.set(result.items);
+        this.currentPage.set(result.page);
+        this.hasNext.set(result.hasNext);
+      },
       error: () => this.error.set(true),
     });
+  }
+
+  loadMore(): void {
+    if (this.loadingMore() || !this.hasNext()) return;
+    this.loadingMore.set(true);
+    this.api.listCompleted(this.currentPage() + 1, 50)
+      .pipe(finalize(() => this.loadingMore.set(false)))
+      .subscribe({
+        next: (result) => {
+          this.consultations.update((current) => [...current, ...result.items]);
+          this.currentPage.set(result.page);
+          this.hasNext.set(result.hasNext);
+        },
+        error: () => this.error.set(true),
+      });
   }
 
   sourceLabel(source: CompletedConsultationListItem['sourceType']): string {

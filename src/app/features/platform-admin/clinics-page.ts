@@ -23,6 +23,7 @@ export class ClinicsPage {
    * only after a confirmed success.
    */
   private attemptIdempotencyKey = '';
+  private attemptFingerprint = '';
 
   readonly page = signal<ClinicPage | null>(null);
   readonly loading = signal(true);
@@ -84,25 +85,26 @@ export class ClinicsPage {
     this.submitting.set(true);
     this.errorMessage.set(null);
     this.successMessage.set(null);
-    if (!this.attemptIdempotencyKey) {
-      this.attemptIdempotencyKey = newIdempotencyKey();
-    }
     const value = this.form.getRawValue();
+    const input = {
+      name: value.name.trim(),
+      contactEmail: value.contactEmail.trim(),
+      contactPhone: value.contactPhone.trim(),
+      governorate: value.governorate.trim(),
+      address: value.address.trim(),
+      inpdpNumber: value.inpdpNumber.trim(),
+    };
+    const fingerprint = JSON.stringify(input);
+    if (!this.attemptIdempotencyKey || fingerprint !== this.attemptFingerprint) {
+      this.attemptIdempotencyKey = newIdempotencyKey();
+      this.attemptFingerprint = fingerprint;
+    }
     this.api
-      .createClinic(
-        {
-          name: value.name.trim(),
-          contactEmail: value.contactEmail.trim(),
-          contactPhone: value.contactPhone.trim(),
-          governorate: value.governorate.trim(),
-          address: value.address.trim(),
-          inpdpNumber: value.inpdpNumber.trim(),
-        },
-        this.attemptIdempotencyKey,
-      )
+      .createClinic(input, this.attemptIdempotencyKey)
       .subscribe({
         next: () => {
           this.attemptIdempotencyKey = '';
+          this.attemptFingerprint = '';
           this.successMessage.set('Clinic created. You can now invite its administrator.');
           this.submitting.set(false);
           this.createOpen.set(false);

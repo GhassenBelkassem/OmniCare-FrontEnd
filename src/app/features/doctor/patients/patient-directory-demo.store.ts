@@ -19,7 +19,7 @@ export class PatientDirectoryDemoStore {
       lastName: patient.lastName,
       dateOfBirth: patient.dateOfBirth ?? '1990-01-01',
       sex: patient.sex ?? 'autre',
-      phone: patient.phone,
+      phone: patient.phone ?? 'Non renseigné',
       email: patient.email,
       address: patient.address,
       insuranceNumber: `DEMO-${this.addedPatients().length + 1}`,

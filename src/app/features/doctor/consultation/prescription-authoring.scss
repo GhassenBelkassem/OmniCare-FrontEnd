@@ -12,6 +12,28 @@
   flex-wrap: wrap;
 }
 
+.prescription__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+}
+
+.prescription__quick button {
+  min-height: 36px;
+  padding-inline: var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.prescription__quick .prescription__quick-selected {
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-success-surface);
+}
+
 .prescription__header {
   min-height: 54px;
   padding-block-end: var(--oc-space-4);

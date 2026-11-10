@@ -19,6 +19,15 @@ export interface CompletedConsultationListItem {
   readonly completedAt: string;
 }
 
+export interface CompletedConsultationPage {
+  readonly items: readonly CompletedConsultationListItem[];
+  readonly page: number;
+  readonly pageSize: number;
+  readonly totalCount: number;
+  readonly totalPages: number;
+  readonly hasNext: boolean;
+}
+
 export interface CompletedArtifactMetadata {
   readonly artifactId: string;
   readonly artifactType: ArtifactType;

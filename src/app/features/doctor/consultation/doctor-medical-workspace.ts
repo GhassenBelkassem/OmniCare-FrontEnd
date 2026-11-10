@@ -2,13 +2,19 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  computed,
   effect,
   inject,
   input,
 } from '@angular/core';
 
 import { OcButton } from '../../../shared/ui';
-import type { ActiveConsultation } from '../active-consultation.models';
+import {
+  canReadMedicalContext,
+  isExternalOwner,
+  type ActiveConsultation,
+  type MedicalAccessStatus,
+} from '../active-consultation.models';
 import type { ConsultationSummary, CurrentMedication } from '../medical-record.models';
 import { MedicalRecordStore } from '../medical-record.store';
 
@@ -22,12 +28,18 @@ import { MedicalRecordStore } from '../medical-record.store';
 export class DoctorMedicalWorkspace {
   readonly consultation = input.required<ActiveConsultation>();
   readonly store = inject(MedicalRecordStore);
+  /** The doctor owns this external patient's record: no access step, no access message. */
+  readonly externalOwner = computed(() => isExternalOwner(this.consultation()));
+  /** ACTIVE whenever the context may be read; otherwise the consultation's grant state. */
+  readonly accessState = computed<MedicalAccessStatus>(() =>
+    canReadMedicalContext(this.consultation()) ? 'ACTIVE' : this.consultation().medicalAccessStatus,
+  );
 
   constructor() {
     const destroyRef = inject(DestroyRef);
     effect(() => {
       const consultation = this.consultation();
-      if (consultation.medicalAccessStatus === 'ACTIVE') {
+      if (canReadMedicalContext(consultation)) {
         this.store.attach(consultation.consultationId);
       } else {
         this.store.clear();

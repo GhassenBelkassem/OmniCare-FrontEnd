@@ -1,15 +1,9 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  DestroyRef,
-  Injectable,
-  PLATFORM_ID,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
+import { DestroyRef, Injectable, PLATFORM_ID, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { AuthTokenStore } from '../../../core/auth/auth-token.store';
+import { SensitiveStateRegistry } from '../../../core/auth/sensitive-state.registry';
 import { RealtimeService } from '../../../core/realtime/realtime.service';
 import { ScheduledCareApiService } from './scheduled-care-api.service';
 import {
@@ -24,6 +18,7 @@ import type {
   BookingRequest,
   DoctorReasonCode,
   DoctorHomeSummary,
+  DoctorScheduledCareItem,
 } from './scheduled-care.models';
 
 type CommandKind = 'accept' | 'propose' | 'decline' | 'cancel-appointment';
@@ -35,10 +30,12 @@ export class ScheduledCareFacade {
   private readonly tokens = inject(AuthTokenStore);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly sensitiveState = inject(SensitiveStateRegistry);
   private readonly commandKeys = new Map<string, string>();
   private homeGeneration = 0;
   private requestGeneration = 0;
   private appointmentGeneration = 0;
+  private activeAppointmentOverview: DoctorScheduledCareItem | null = null;
 
   readonly home = signal<DoctorHomeSummary | null>(null);
   readonly homeLoading = signal(false);
@@ -65,6 +62,7 @@ export class ScheduledCareFacade {
   readonly projectionInvalidationEpoch = signal(0);
 
   constructor() {
+    this.sensitiveState.register(() => this.clearSensitiveState());
     this.realtime.scheduledCareEvents$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => {
@@ -97,8 +95,34 @@ export class ScheduledCareFacade {
         if (document.visibilityState === 'visible') this.resyncVisibleState();
       };
       document.addEventListener('visibilitychange', onVisibility);
-      this.destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', onVisibility));
+      this.destroyRef.onDestroy(() =>
+        document.removeEventListener('visibilitychange', onVisibility),
+      );
     }
+  }
+
+  clearSensitiveState(): void {
+    this.homeGeneration++;
+    this.requestGeneration++;
+    this.appointmentGeneration++;
+    this.commandKeys.clear();
+    this.home.set(null);
+    this.homeLoading.set(false);
+    this.homeError.set(null);
+    this.activeRequest.set(null);
+    this.requestLoading.set(false);
+    this.requestError.set(null);
+    this.activeAppointment.set(null);
+    this.activeAppointmentOverview = null;
+    this.appointmentLoading.set(false);
+    this.appointmentError.set(null);
+    this.commandLoading.set(false);
+    this.commandError.set(null);
+    this.commandOutcomeUnknown.set(false);
+    this.availability.set([]);
+    this.availabilityLoading.set(false);
+    this.availabilityError.set(null);
+    this.projectionInvalidationEpoch.set(0);
   }
 
   loadHome(silent = false): void {
@@ -138,8 +162,12 @@ export class ScheduledCareFacade {
     this.availabilityError.set(null);
   }
 
-  openAppointment(appointmentId: string): void {
+  openAppointment(
+    appointmentId: string,
+    overview: DoctorScheduledCareItem | null = null,
+  ): void {
     this.activeAppointment.set(null);
+    this.activeAppointmentOverview = overview?.appointmentId === appointmentId ? overview : null;
     this.appointmentError.set(null);
     this.commandError.set(null);
     this.commandOutcomeUnknown.set(false);
@@ -149,6 +177,7 @@ export class ScheduledCareFacade {
 
   closeAppointment(): void {
     this.activeAppointment.set(null);
+    this.activeAppointmentOverview = null;
     this.appointmentError.set(null);
   }
 
@@ -212,7 +241,11 @@ export class ScheduledCareFacade {
 
   proposeTime(slot: AvailabilitySlot): void {
     const request = this.activeRequest();
-    if (!request || !request.availableActions.includes('PROPOSE_NEW_TIME') || this.commandLoading()) {
+    if (
+      !request ||
+      !request.availableActions.includes('PROPOSE_NEW_TIME') ||
+      this.commandLoading()
+    ) {
       return;
     }
     const identity = this.commandIdentity(
@@ -247,7 +280,11 @@ export class ScheduledCareFacade {
 
   declineRequest(reasonCode: DoctorReasonCode): void {
     const request = this.activeRequest();
-    if (!request || !request.availableActions.includes('DECLINE_REQUEST') || this.commandLoading()) {
+    if (
+      !request ||
+      !request.availableActions.includes('DECLINE_REQUEST') ||
+      this.commandLoading()
+    ) {
       return;
     }
     const identity = this.commandIdentity(
@@ -275,6 +312,7 @@ export class ScheduledCareFacade {
     const appointment = this.activeAppointment();
     if (
       !appointment ||
+      appointment.version === null ||
       !appointment.availableActions.includes('CANCEL_APPOINTMENT') ||
       this.commandLoading()
     ) {
@@ -363,8 +401,11 @@ export class ScheduledCareFacade {
           this.requestError.set(null);
           if (
             uncertainIdentity !== null &&
-            !request.availableActions.some((action) =>
-              action === 'ACCEPT_REQUEST' || action === 'PROPOSE_NEW_TIME' || action === 'DECLINE_REQUEST',
+            !request.availableActions.some(
+              (action) =>
+                action === 'ACCEPT_REQUEST' ||
+                action === 'PROPOSE_NEW_TIME' ||
+                action === 'DECLINE_REQUEST',
             )
           ) {
             this.commandKeys.delete(uncertainIdentity);
@@ -385,10 +426,7 @@ export class ScheduledCareFacade {
       });
   }
 
-  private refreshActiveAppointment(
-    silent: boolean,
-    uncertainIdentity: string | null = null,
-  ): void {
+  private refreshActiveAppointment(silent: boolean, uncertainIdentity: string | null = null): void {
     const id = this.activeAppointment()?.appointmentId;
     if (id) this.loadAppointment(id, silent, uncertainIdentity);
   }
@@ -401,7 +439,12 @@ export class ScheduledCareFacade {
     const generation = ++this.appointmentGeneration;
     if (!silent) this.appointmentLoading.set(true);
     this.api
-      .getAppointment(appointmentId)
+      .getAppointment(
+        appointmentId,
+        this.activeAppointmentOverview?.appointmentId === appointmentId
+          ? this.activeAppointmentOverview
+          : null,
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (appointment) => {
@@ -450,8 +493,8 @@ export class ScheduledCareFacade {
   private idempotencyKey(identity: string): string {
     const existing = this.commandKeys.get(identity);
     if (existing) return existing;
-    const created = globalThis.crypto?.randomUUID?.() ??
-      `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const created =
+      globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     this.commandKeys.set(identity, created);
     return created;
   }

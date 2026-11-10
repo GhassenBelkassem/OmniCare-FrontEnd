@@ -2,7 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { NzModalModule } from 'ng-zorro-antd/modal';
 
 import { OcAvatar, OcButton, OcStatusBadge } from '../../../shared/ui';
-import type { AvailabilitySlot, DoctorReasonCode } from './scheduled-care.models';
+import type {
+  AvailabilitySlot,
+  BookingRequestStatus,
+  DoctorReasonCode,
+} from './scheduled-care.models';
 import { ScheduledCareFacade } from './scheduled-care.facade';
 import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-time';
 
@@ -255,7 +259,7 @@ export class BookingRequestDetailPanel {
   }
 }
 
-function requestStatusLabel(status: string | undefined): string {
+function requestStatusLabel(status: BookingRequestStatus | undefined): string {
   switch (status) {
     case 'PENDING_DOCTOR': return 'Réponse attendue';
     case 'PENDING_PATIENT_TIME_CONFIRMATION': return 'Réponse patient attendue';

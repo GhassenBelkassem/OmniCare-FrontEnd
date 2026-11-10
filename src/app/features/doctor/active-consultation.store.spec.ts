@@ -207,7 +207,9 @@ describe('ActiveConsultationStore', () => {
       kind: 'ACTIVE_CONFLICT',
       consultation: other,
     });
-    expect(store.startError()).toBe('Une consultation est déjà en cours.');
+    expect(store.startError()).toBe(
+      'Une autre consultation est déjà en cours. Le rendez-vous sélectionné n’a pas été démarré.',
+    );
   });
 
   it('starts and recovers only the exact Urgent CABINET commitment', async () => {

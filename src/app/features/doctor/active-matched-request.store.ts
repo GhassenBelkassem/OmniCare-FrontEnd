@@ -1,4 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+
+import { SensitiveStateRegistry } from '../../core/auth/sensitive-state.registry';
 
 /**
  * Tracks urgent requests this doctor is currently MATCHED to (the patient
@@ -8,10 +10,15 @@ import { Injectable, computed, signal } from '@angular/core';
  */
 @Injectable({ providedIn: 'root' })
 export class ActiveMatchedRequestStore {
+  private readonly sensitiveState = inject(SensitiveStateRegistry);
   private readonly _requestIds = signal<ReadonlySet<string>>(new Set<string>());
 
   readonly requestIds = this._requestIds.asReadonly();
   readonly hasActive = computed(() => this._requestIds().size > 0);
+
+  constructor() {
+    this.sensitiveState.register(() => this.reset([]));
+  }
 
   markMatched(requestId: string): void {
     this._requestIds.update((current) => {

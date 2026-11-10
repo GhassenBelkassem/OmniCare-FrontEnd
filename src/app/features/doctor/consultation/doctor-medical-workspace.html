@@ -2,12 +2,18 @@
   <div class="medical-workspace__header">
     <div>
       <h2 id="medical-workspace-title">Dossier médical</h2>
-      <p>Historique MRS autorisé · lecture seule</p>
+      @if (externalOwner()) {
+        <p>Dossier de votre patient · lecture seule</p>
+      } @else {
+        <p>Historique MRS autorisé · lecture seule</p>
+      }
     </div>
-    <span class="medical-workspace__access">Accès historique {{ consultation().medicalAccessStatus }}</span>
+    @if (!externalOwner()) {
+      <span class="medical-workspace__access">Accès historique {{ consultation().medicalAccessStatus }}</span>
+    }
   </div>
 
-  @switch (consultation().medicalAccessStatus) {
+  @switch (accessState()) {
     @case ('NONE') {
       <div class="medical-workspace__state" role="status">
         <h3>Partage du dossier requis</h3>
@@ -41,7 +47,7 @@
         <div class="medical-workspace__state" role="alert">
           <h3>
             @switch (failure) {
-              @case ('CLINICAL_ACCESS_REQUIRED') { Partage du dossier requis }
+              @case ('CLINICAL_ACCESS_REQUIRED') { {{ externalOwner() ? 'Dossier temporairement indisponible' : 'Partage du dossier requis' }} }
               @case ('CLINICAL_ACCESS_EXPIRED') { Accès expiré }
               @case ('CLINICAL_ACCESS_REVOKED') { Accès révoqué }
               @default { Dossier temporairement indisponible }
@@ -88,7 +94,7 @@
           @if (sectionState('CONSULTATION_SUMMARIES') === 'NOT_SHARED') {
             <p class="medical-workspace__muted">Section non partagée.</p>
           } @else if (workspace.consultationSummaries.items.length === 0) {
-            <p class="medical-workspace__muted">Aucune consultation partageable.</p>
+            <p class="medical-workspace__muted">{{ externalOwner() ? 'Aucune consultation antérieure.' : 'Aucune consultation partageable.' }}</p>
           } @else {
             <div class="medical-workspace__history">
               @for (summary of workspace.consultationSummaries.items; track summary.consultationId) {
@@ -108,7 +114,7 @@
 
         <section class="medical-workspace__section" aria-labelledby="documents-title">
           <h3 id="documents-title">Documents</h3>
-          <p class="medical-workspace__muted">Consultation sécurisée des documents prévue au jalon P5-17.</p>
+          <p class="medical-workspace__muted">Les documents ne sont pas affichés dans cet espace.</p>
         </section>
       }
     }

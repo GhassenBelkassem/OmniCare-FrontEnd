@@ -14,7 +14,7 @@ import { ClinicalRecordStore } from './clinical-record.store';
 const C123 = '11111111-1111-4111-8111-111111111111';
 const V3: ClinicalRecordResponse = {
   clinicalRecordVersion: 3,
-  schemaVersion: 2,
+  schemaVersion: 3,
   clinicalRecord: {
     chiefComplaint: 'reason',
     history: { presentIllness: null, relevantMedicalHistory: null, relevantDentalHistory: null },
@@ -79,6 +79,24 @@ describe('ClinicalRecordStore', () => {
     }));
   });
 
+  it('accepts a LOCAL free-text conclusion without an invented code or assessment', async () => {
+    store.setDraft({
+      ...store.draft(),
+      diagnoses: [{ system: 'LOCAL', code: '', label: 'Free-text conclusion', status: 'CONFIRMED' }],
+      assessment: null,
+      medicationDecision: 'NO_MEDICATION',
+      followUp: { required: false, recommendedAt: null, decision: 'NO_FOLLOW_UP' },
+    });
+    save.mockReturnValue(of({ ...V3, clinicalRecordVersion: 4, clinicalRecord: store.draft() }));
+
+    await store.save();
+
+    expect(save).toHaveBeenCalledWith(C123, 3, expect.objectContaining({
+      assessment: null,
+      diagnoses: [{ system: 'LOCAL', code: '', label: 'Free-text conclusion', status: 'CONFIRMED' }],
+    }), expect.any(String));
+  });
+
   it('retains safe backend field errors for the clinical authoring UI', async () => {
     store.setDraft({ ...store.draft(), assessment: 'draft' });
     save.mockReturnValue(throwError(() => new HttpErrorResponse({
@@ -95,6 +113,27 @@ describe('ClinicalRecordStore', () => {
       clinicalRecord: 'One or more clinical record fields are invalid.',
     });
     expect(store.draft().assessment).toBe('draft');
+  });
+
+  it('blocks an MRS-invalid clinical contract locally and keeps the draft', async () => {
+    store.setDraft({
+      ...store.draft(),
+      clinicalFindings: [{ type: 'invalid type', description: 'finding' }],
+      diagnoses: [{ system: 'FREE_TEXT', code: 'bad code', label: 'label', status: 'PROVISIONAL' }],
+      followUp: { required: true, recommendedAt: null, decision: 'FOLLOW_UP_IN_PERIOD' },
+    });
+
+    await store.save();
+
+    expect(save).not.toHaveBeenCalled();
+    expect(store.failure()).toBe('VALIDATION_ERROR');
+    expect(store.fieldErrors()).toEqual(expect.objectContaining({
+      'clinicalRecord.clinicalFindings.0.type': expect.any(String),
+      'clinicalRecord.diagnoses.0.system': expect.any(String),
+      'clinicalRecord.diagnoses.0.code': expect.any(String),
+      'clinicalRecord.followUp.recommendedAt': expect.any(String),
+    }));
+    expect(store.draft().clinicalFindings[0]?.type).toBe('invalid type');
   });
 
   it('retries an ambiguous transport failure with the same key and keeps the draft', async () => {

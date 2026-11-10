@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import { RUNTIME_CONFIG } from '../../core/config/runtime-config';
 import {
@@ -11,7 +11,20 @@ import {
 import type {
   CompletedConsultationDetail,
   CompletedConsultationListItem,
+  CompletedConsultationPage,
 } from './completed-consultation.models';
+
+export interface FinishReadiness {
+  readonly ready: boolean;
+  readonly clinicalRecordSaved: boolean;
+  readonly diagnosisReady: boolean;
+  readonly medicationDecisionReady: boolean;
+  readonly followUpReady: boolean;
+  readonly prescriptionReady: boolean;
+  readonly ordersReady: boolean;
+  readonly artifactsReady: boolean;
+  readonly missing: readonly string[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class ActiveConsultationApiService {
@@ -56,10 +69,11 @@ export class ActiveConsultationApiService {
     return this.http.get<ActiveConsultation>(`${this.config.apiBaseUrl}/doctor/consultations/${consultationId}`);
   }
 
-  listCompleted(): Observable<readonly CompletedConsultationListItem[]> {
+  listCompleted(page = 0, size = 50): Observable<CompletedConsultationPage> {
     return this.http.get<readonly CompletedConsultationListItem[]>(
       `${this.config.apiBaseUrl}/doctor/consultations/completed`,
-    );
+      { params: { page, size }, observe: 'response' },
+    ).pipe(map((response) => this.toCompletedPage(response, page, size)));
   }
 
   getCompleted(consultationId: string): Observable<CompletedConsultationDetail> {
@@ -75,5 +89,43 @@ export class ActiveConsultationApiService {
       { expectedConsultationVersion, expectedClinicalRecordVersion },
       { headers: { 'Idempotency-Key': idempotencyKey } },
     );
+  }
+
+  finishReadiness(consultationId: string, expectedClinicalRecordVersion: number): Observable<FinishReadiness> {
+    return this.http.get<FinishReadiness>(
+      `${this.config.apiBaseUrl}/doctor/consultations/${consultationId}/finish-readiness`,
+      { params: { expectedClinicalRecordVersion } },
+    );
+  }
+
+
+  private toCompletedPage(
+    response: HttpResponse<readonly CompletedConsultationListItem[]>,
+    requestedPage: number,
+    requestedSize: number,
+  ): CompletedConsultationPage {
+    const items = response.body ?? [];
+    const page = this.headerInteger(response, 'X-Page') ?? requestedPage;
+    const pageSize = this.headerInteger(response, 'X-Page-Size') ?? requestedSize;
+    const totalCount = this.headerInteger(response, 'X-Total-Count') ?? items.length;
+    const totalPages = this.headerInteger(response, 'X-Total-Pages')
+      ?? (totalCount === 0 ? 0 : Math.ceil(totalCount / pageSize));
+    return {
+      items,
+      page,
+      pageSize,
+      totalCount,
+      totalPages,
+      hasNext: response.headers.get('X-Has-Next') === 'true',
+    };
+  }
+
+  private headerInteger(
+    response: HttpResponse<readonly CompletedConsultationListItem[]>,
+    name: string,
+  ): number | null {
+    const value = response.headers.get(name);
+    if (value === null || !/^\d+$/.test(value)) return null;
+    return Number.parseInt(value, 10);
   }
 }

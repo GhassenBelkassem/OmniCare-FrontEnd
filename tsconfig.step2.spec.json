@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "include": [
+    "src/test-setup.ts",
+    "src/polyfills/global.ts",
+    "src/app/core/auth/auth-token.store.spec.ts",
+    "src/app/core/auth/auth-bootstrap.service.spec.ts",
+    "src/app/core/auth/auth.service.spec.ts",
+    "src/app/core/auth/auth.interceptor.spec.ts",
+    "src/app/core/auth/auth.guards.spec.ts",
+    "src/app/core/auth/session-termination.service.spec.ts",
+    "src/app/core/realtime/realtime.service.spec.ts",
+    "src/app/features/login/login-page.spec.ts"
+  ]
+}

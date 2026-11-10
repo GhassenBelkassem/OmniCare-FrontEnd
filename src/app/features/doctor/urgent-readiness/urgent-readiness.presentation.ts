@@ -44,7 +44,7 @@ export function presentUrgentOperation(
         statusLabel: 'Au cabinet · active',
         title: 'Engagement urgent au cabinet en cours',
         description:
-          'Cette projection ne permet aucune acceptation, arrivée, clôture ou transmission clinique.',
+          'Cet affichage ne permet aucune acceptation, arrivée, clôture ou transmission clinique.',
         icon: 'building',
         intent: 'success',
         showRetry: false,
@@ -68,7 +68,7 @@ export function presentUrgentOperation(
         statusLabel: 'Position ancienne',
         title: 'Fraîcheur de localisation insuffisante',
         description:
-          'La projection signale une position périmée sans afficher de coordonnées. La correction reste une action mobile.',
+          'Votre position signalée est périmée ; aucune coordonnée n’est affichée. La correction reste une action mobile.',
         icon: 'location',
         intent: 'critical',
         showRetry: false,

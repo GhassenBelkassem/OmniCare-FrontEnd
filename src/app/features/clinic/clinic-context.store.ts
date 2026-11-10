@@ -3,7 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import { SensitiveStateRegistry } from '../../core/auth/sensitive-state.registry';
+import { SessionTerminationService } from '../../core/auth/session-termination.service';
 import {
   ClinicAccessError,
   ClinicAccessFamily,
@@ -33,7 +34,8 @@ export interface ClinicInitializeOptions {
 export class ClinicContextStore {
   private readonly api = inject(ClinicApiService);
   private readonly router = inject(Router);
-  private readonly tokens = inject(AuthTokenStore);
+  private readonly sensitiveState = inject(SensitiveStateRegistry);
+  private readonly termination = inject(SessionTerminationService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   private readonly accessFamilyState = signal<ClinicAccessFamily | null>(null);
@@ -65,6 +67,10 @@ export class ClinicContextStore {
   /** Monotonic sequence so a late response from an older clinic never wins. */
   private requestSequence = 0;
   private resolving = false;
+
+  constructor() {
+    this.sensitiveState.register(() => this.clear());
+  }
 
   initialize(options: ClinicInitializeOptions = {}): void {
     const route = options.route ?? true;
@@ -164,11 +170,7 @@ export class ClinicContextStore {
     });
   }
 
-  private applyMemberships(
-    response: MeClinicsResponse,
-    sequence: number,
-    route: boolean,
-  ): void {
+  private applyMemberships(response: MeClinicsResponse, sequence: number, route: boolean): void {
     if (sequence !== this.requestSequence) return;
     this.activeMembershipsState.set(response.activeMemberships ?? []);
     this.unavailableMembershipsState.set(response.unavailableMemberships ?? []);
@@ -272,9 +274,7 @@ export class ClinicContextStore {
     this.loadingState.set(false);
 
     if (error instanceof HttpErrorResponse && error.status === 401) {
-      this.tokens.clear();
-      this.clear();
-      this.navigate('/login');
+      void this.termination.terminate('SESSION_INVALID');
       return;
     }
 

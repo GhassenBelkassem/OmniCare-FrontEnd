@@ -1,13 +1,8 @@
 import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 
-import { landingRedirect } from './core/auth/auth.guards';
-
-const legacyPatientDevelopmentRoute: Routes[number] = {
-  path: 'patient',
-  loadChildren: () =>
-    import('./features/patient/patient.routes').then((routes) => routes.PATIENT_ROUTES),
-};
+import { landingRedirect, passwordChangeRequiredGuard } from './core/auth/auth.guards';
+import { DEVELOPMENT_ROOT_ROUTES, DEVELOPMENT_SHELL_ROUTES } from './development.routes';
 
 function applicationShellRoute(additionalRoutes: Routes = []): Routes[number] {
   return {
@@ -19,6 +14,15 @@ function applicationShellRoute(additionalRoutes: Routes = []): Routes[number] {
         path: 'login',
         loadChildren: () =>
           import('./features/login/login.routes').then((routes) => routes.LOGIN_ROUTES),
+      },
+      {
+        path: 'password-change',
+        canActivate: [passwordChangeRequiredGuard],
+        loadComponent: () =>
+          import('./features/login/password-change-page').then(
+            (component) => component.PasswordChangePage,
+          ),
+        title: 'Change password | OmniCare',
       },
       {
         path: 'first-login',
@@ -60,21 +64,8 @@ function applicationShellRoute(additionalRoutes: Routes = []): Routes[number] {
 const productionRoutes: Routes = [applicationShellRoute()];
 
 export function createAppRoutes(includeDevelopmentRoutes: boolean): Routes {
-  const developmentRoutes: Routes = includeDevelopmentRoutes
-    ? [
-        {
-          path: 'design-system',
-          loadComponent: () =>
-            import('./features/design-system/design-system').then(
-              (component) => component.DesignSystemShowcase,
-            ),
-          title: 'OmniCare Design System',
-        },
-      ]
-    : [];
-
   if (includeDevelopmentRoutes) {
-    return [...developmentRoutes, applicationShellRoute([legacyPatientDevelopmentRoute])];
+    return [...DEVELOPMENT_ROOT_ROUTES, applicationShellRoute(DEVELOPMENT_SHELL_ROUTES)];
   }
   return productionRoutes;
 }

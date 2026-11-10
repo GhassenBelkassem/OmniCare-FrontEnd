@@ -3,6 +3,7 @@ import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angul
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import { httpErrorCode } from '../../core/http/app-http-error';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import type { ScheduledCareEvent } from '../../core/realtime/live-event.models';
 import { ClinicalRecordStore } from './clinical-record.store';
@@ -70,5 +71,5 @@ export class PrescriptionStore {
 }
 function fingerprint(value: PrescriptionContent): string { return JSON.stringify(value); }
 function operationKey(prefix: string): string { return `${prefix}:${globalThis.crypto.randomUUID()}`; }
-function code(error: unknown): string { if (error instanceof HttpErrorResponse && error.error !== null && typeof error.error === 'object') { const body = error.error as { code?: unknown; errorCode?: unknown }; const value = body.errorCode ?? body.code; if (typeof value === 'string' && value.length <= 80) return value; } return 'MRS_UNAVAILABLE'; }
+function code(error: unknown): string { return httpErrorCode(error) ?? 'MRS_UNAVAILABLE'; }
 function ambiguous(error: unknown): boolean { return error instanceof HttpErrorResponse && (error.status === 0 || error.status >= 500); }

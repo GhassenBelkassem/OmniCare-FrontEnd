@@ -17,7 +17,9 @@ export interface DoctorMedicalRecordWorkspace {
   };
   readonly access: {
     readonly state: 'ACTIVE';
-    readonly expiresAt: string;
+    /** EXTERNAL_OWNER (custody, no expiry) or OMNICARE_GRANTED (patient grant). */
+    readonly mode?: 'EXTERNAL_OWNER' | 'OMNICARE_GRANTED' | null;
+    readonly expiresAt: string | null;
     readonly sections: Readonly<Record<MedicalRecordSection, MedicalRecordSectionState>>;
   };
   readonly essentialInformation: EssentialInformation | null;

@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { AvailabilityExceptionDto, AvailabilityRuleDto } from '../appointment-api.models';
 import {
   addEstimatedMinutesToInstant,
+  calendarPeriodTitle,
+  consultationSlotMinutes,
   exceptionWallClockDateTime,
+  isWorkingTime,
+  minutesToDuration,
+  paddedSlotBounds,
   fullyBlockedDateKeys,
   preserveAppointmentInstant,
   preserveWallClockTime,
@@ -140,5 +145,49 @@ describe('business hours projection', () => {
       { daysOfWeek: [1], startTime: '09:00', endTime: '17:00' },
       { daysOfWeek: [5], startTime: '10:00', endTime: '17:00' },
     ]);
+  });
+});
+
+describe('calendar time helpers (Phase 3)', () => {
+  const rule = (day: 'MONDAY' | 'TUESDAY', start: string, end: string) => ({
+    dayOfWeek: day,
+    active: true,
+    startTime: start,
+    endTime: end,
+    pauseStart: '12:00',
+    pauseEnd: '13:00',
+    slotDurationMinutes: 20,
+  });
+
+  it('titles a week in French with spaced range', () => {
+    expect(calendarPeriodTitle('week', new Date(2026, 10, 9), new Date(2026, 10, 16))).toBe(
+      '9 – 15 nov. 2026',
+    );
+    expect(calendarPeriodTitle('week', new Date(2026, 10, 30), new Date(2026, 11, 7))).toBe(
+      '30 nov. – 6 déc. 2026',
+    );
+  });
+
+  it('pads the visible grid by one hour and uses the rule slot length', () => {
+    const rules = [rule('MONDAY', '08:30', '17:00'), rule('TUESDAY', '09:00', '18:00')];
+    expect(paddedSlotBounds(rules)).toEqual({ min: '07:00:00', max: '19:00:00' });
+    expect(consultationSlotMinutes(rules)).toBe(20);
+    expect(minutesToDuration(20)).toBe('00:20:00');
+  });
+
+  it('treats pauses, BLOCK exceptions and closed days as non-working', () => {
+    const rules = [rule('MONDAY', '08:00', '17:00')];
+    const monday = (hours: number) => new Date(2026, 10, 9, hours, 0);
+    expect(isWorkingTime(monday(9), rules, [])).toBe(true);
+    expect(isWorkingTime(monday(12), rules, [])).toBe(false);
+    expect(isWorkingTime(monday(18), rules, [])).toBe(false);
+    expect(isWorkingTime(new Date(2026, 10, 10, 9), rules, [])).toBe(false);
+    const block = {
+      id: 'b', exceptionDate: '2026-11-09', type: 'BLOCK' as const,
+      startTime: '08:00', endTime: '10:00', reason: null,
+    };
+    expect(isWorkingTime(monday(9), rules, [block])).toBe(false);
+    const extra = { ...block, id: 'e', type: 'EXTRA' as const, startTime: '18:00', endTime: '19:00' };
+    expect(isWorkingTime(monday(18), rules, [extra])).toBe(true);
   });
 });

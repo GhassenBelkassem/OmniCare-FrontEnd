@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 
 import { AppointmentApiService } from '../appointment-api.service';
 import { ActiveConsultationStore } from '../active-consultation.store';
+import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
 import type {
   DoctorHomeSummary,
@@ -13,9 +14,12 @@ import type {
 import { CommandCenterPage } from './command-center-page';
 import { UrgentCabinetClinicalStore } from '../urgent-cabinet-clinical.store';
 
+const FUTURE = '2099-10-12T08:00:00Z';
+
 function item(
   resourceType: 'BOOKING_REQUEST' | 'APPOINTMENT',
   id: string,
+  overrides: Partial<DoctorScheduledCareItem> = {},
 ): DoctorScheduledCareItem {
   return {
     resourceType,
@@ -43,6 +47,18 @@ function item(
       resourceType === 'BOOKING_REQUEST' ? ['ACCEPT_REQUEST'] : ['CANCEL_APPOINTMENT'],
     sortAt: '2026-10-12T08:00:00Z',
     updatedAt: '2026-10-08T08:00:00Z',
+    ...overrides,
+  };
+}
+
+function agendaApi(items: readonly DoctorScheduledCareItem[] = []) {
+  return {
+    provide: ScheduledCareApiService,
+    useValue: {
+      getDoctorScheduledCare: vi.fn(() =>
+        of({ generatedAt: '', from: '', to: '', items }),
+      ),
+    },
   };
 }
 
@@ -52,7 +68,7 @@ describe('CommandCenterPage scheduled-care authority', () => {
       generatedAt: '2026-10-08T08:00:00Z',
       pendingRequestCount: 7,
       nextPendingRequest: item('BOOKING_REQUEST', 'request-1'),
-      nextConfirmedAppointment: item('APPOINTMENT', 'appointment-9'),
+      nextConfirmedAppointment: item('APPOINTMENT', 'appointment-9', { start: FUTURE, end: FUTURE }),
     };
     const care = {
       home: signal<DoctorHomeSummary | null>(summary),
@@ -73,6 +89,7 @@ describe('CommandCenterPage scheduled-care authority', () => {
           },
         },
         { provide: ScheduledCareFacade, useValue: care },
+        agendaApi(),
         { provide: ActiveConsultationStore, useValue: { refresh: vi.fn() } },
         {
           provide: UrgentCabinetClinicalStore,
@@ -123,6 +140,7 @@ describe('CommandCenterPage scheduled-care authority', () => {
             listRules: vi.fn(() => of([])),
           },
         },
+        agendaApi(),
         {
           provide: ScheduledCareFacade,
           useValue: {
@@ -160,5 +178,139 @@ describe('CommandCenterPage scheduled-care authority', () => {
     ]);
     expect(navigate).not.toHaveBeenCalledWith(['/doctor', 'consultation', 'appointment-9']);
     expect(navigate).not.toHaveBeenCalledWith(['/doctor', 'consultation', 'new']);
+  });
+
+  function setup(options: {
+    readonly next?: DoctorScheduledCareItem | null;
+    readonly active?: Record<string, unknown> | null;
+    readonly agenda?: readonly DoctorScheduledCareItem[];
+  }) {
+    TestBed.configureTestingModule({
+      providers: [
+        CommandCenterPage,
+        { provide: Router, useValue: { navigate: vi.fn(), navigateByUrl: vi.fn() } },
+        {
+          provide: AppointmentApiService,
+          useValue: {
+            todayStats: vi.fn(() => of({ consultations: 0, upcoming: 0, finished: 0 })),
+            listAppointments: vi.fn(() => of([])),
+            listRules: vi.fn(() => of([])),
+          },
+        },
+        agendaApi(options.agenda ?? []),
+        {
+          provide: ScheduledCareFacade,
+          useValue: {
+            home: signal<DoctorHomeSummary | null>({
+              generatedAt: '',
+              pendingRequestCount: 0,
+              nextPendingRequest: null,
+              nextConfirmedAppointment: options.next ?? null,
+            }),
+            homeLoading: signal(false),
+            homeError: signal<string | null>(null),
+            loadHome: vi.fn(),
+          },
+        },
+        {
+          provide: ActiveConsultationStore,
+          useValue: {
+            refresh: vi.fn(),
+            active: signal(options.active ?? null),
+            loading: signal(false),
+            error: signal(null),
+            starting: signal(false),
+            startError: signal(null),
+          },
+        },
+        {
+          provide: UrgentCabinetClinicalStore,
+          useValue: {
+            refresh: vi.fn(),
+            actionable: signal(null),
+            waiting: signal(null),
+            loading: signal(false),
+            error: signal(null),
+          },
+        },
+      ],
+    });
+    return TestBed.inject(CommandCenterPage);
+  }
+
+  it('never shows a past CONFIRMED appointment as « Prochain rendez-vous »', () => {
+    const page = setup({
+      next: item('APPOINTMENT', 'stale', { start: '2026-10-29T09:00:00Z', end: '2026-10-29T09:20:00Z' }),
+    });
+    expect(page.nextScheduledAppointment()).toBeNull();
+    expect(page.viewModel().nextAppointment).toBeNull();
+  });
+
+  it('hides the unset room line instead of truncating a placeholder', () => {
+    const page = setup({ next: item('APPOINTMENT', 'next', { start: FUTURE, end: FUTURE }) });
+    expect(page.viewModel().nextAppointment?.room).toBeNull();
+  });
+
+  it('shows today’s consultation with patient name and start time, never its identifier', () => {
+    const startedAt = new Date();
+    startedAt.setHours(9, 5, 0, 0);
+    const consultationId = '15c2aa5d-789b-40bd-bc4a-fefb5cd8dfde';
+    const page = setup({
+      active: {
+        consultationId,
+        sourceType: 'SCHEDULED_APPOINTMENT',
+        sourceId: 'apt-today',
+        status: 'IN_PROGRESS',
+        medicalAccessStatus: 'ACTIVE',
+        version: 1,
+        startedAt: startedAt.toISOString(),
+      },
+      agenda: [
+        item('APPOINTMENT', 'apt-today', {
+          status: 'IN_PROGRESS',
+          subject: { subjectType: 'SELF', displayName: 'Nour Mechergui', relationship: null },
+        }),
+      ],
+    });
+    const clinical = page.viewModel().clinical;
+    expect(clinical?.title).toBe('Consultation en cours');
+    expect(clinical?.patient).toBe('Nour Mechergui');
+    expect(clinical?.meta).toBe('Démarrée à 09:05');
+    expect(clinical?.reason).toBe('Informations patient disponibles dans la consultation.');
+    expect(JSON.stringify(clinical)).not.toContain('Épisode');
+    expect(page.viewModel().toClose).toEqual([]);
+  });
+
+  it('lists older open consultations under « À clôturer » instead of the current card', () => {
+    const page = setup({
+      active: {
+        consultationId: 'consultation-old',
+        sourceType: 'SCHEDULED_APPOINTMENT',
+        sourceId: 'apt-nov5',
+        status: 'IN_PROGRESS',
+        medicalAccessStatus: 'ACTIVE',
+        version: 1,
+        startedAt: '2026-11-05T09:20:00Z',
+      },
+      agenda: [
+        item('APPOINTMENT', 'apt-nov5', {
+          status: 'IN_PROGRESS',
+          start: '2026-11-05T09:20:00Z',
+          subject: { subjectType: 'SELF', displayName: 'Amel Ben Ali', relationship: null },
+        }),
+        item('APPOINTMENT', 'apt-oct28', {
+          status: 'IN_PROGRESS',
+          start: '2026-10-28T08:00:00Z',
+          subject: { subjectType: 'SELF', displayName: 'Sami Trabelsi', relationship: null },
+        }),
+      ],
+    });
+    const model = page.viewModel();
+    expect(model.clinical?.title).not.toBe('Consultation en cours');
+    expect(model.toClose.map((row) => row.patient)).toEqual(['Amel Ben Ali', 'Sami Trabelsi']);
+    expect(model.toClose[0]?.resumeAction?.kind).toBe('CONTINUE_CONSULTATION');
+    expect(model.toClose[0]?.closeAction?.kind).toBe('CLOSE_CONSULTATION');
+    expect(model.toClose[1]?.resumeAction).toBeNull();
+    expect(model.toClose[1]?.note).toContain('Aucune consultation ouverte');
   });
 });

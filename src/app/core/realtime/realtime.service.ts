@@ -14,6 +14,7 @@ import { Subject } from 'rxjs';
 import { Client, type IMessage, type StompConfig } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { AuthTokenStore } from '../auth/auth-token.store';
+import { SensitiveStateRegistry } from '../auth/sensitive-state.registry';
 import { APP_MODE } from '../config/app-mode';
 import { RUNTIME_CONFIG } from '../config/runtime-config';
 import {
@@ -77,9 +78,8 @@ const APPOINTMENT_EVENT_NAMES: ReadonlySet<string> = new Set<string>([
  * Backend contract (verified):
  * - endpoint `{apiBaseUrl}/ws`, SockJS transport;
  * - CONNECT native header exactly `Authorization: Bearer <token>`;
- * - an invalid token does NOT fail the CONNECT - the connection succeeds with
- *   no principal, so user queues silently receive nothing. Consumers must use
- *   `health()` to surface a degraded state instead of trusting silence.
+ * - invalid, revoked, suspended, or role-stale sessions are rejected during
+ *   CONNECT by the backend channel interceptor;
  * - auth is evaluated once at CONNECT: when the access token changes we
  *   reconnect with the fresh token.
  */
@@ -90,6 +90,7 @@ export class RealtimeService {
   private readonly tokens = inject(AuthTokenStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly clientFactory = inject(REALTIME_CLIENT_FACTORY);
+  private readonly sensitiveState = inject(SensitiveStateRegistry);
 
   private client: Client | null = null;
   private readonly urgentSubject = new Subject<UrgentLiveEvent>();
@@ -112,6 +113,7 @@ export class RealtimeService {
   readonly notificationEvents$ = this.notificationSubject.asObservable();
 
   constructor() {
+    this.sensitiveState.register(() => this.terminateSession(), 'CONNECTION');
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
@@ -171,6 +173,12 @@ export class RealtimeService {
       }
       return Date.now() - reference > STALE_AFTER_MS ? 'stale' : 'live';
     });
+  }
+
+  terminateSession(): void {
+    this.scheduledEventIds.clear();
+    this.lastEventAt.set(null);
+    this.stopClient();
   }
 
   private startClient(token: string | null): void {

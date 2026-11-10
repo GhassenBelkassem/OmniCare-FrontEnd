@@ -24,7 +24,7 @@ describe('OcPageHeader', () => {
     const group = root.querySelector<HTMLElement>('.oc-page-header__actions');
     const button = group?.querySelector<HTMLButtonElement>('button');
     expect(group?.getAttribute('role')).toBe('group');
-    expect(group?.getAttribute('aria-label')).toBe('Page actions');
+    expect(group?.getAttribute('aria-label')).toBe('Actions de la page');
     expect(button?.textContent).toContain('Enregistrer');
   });
 });

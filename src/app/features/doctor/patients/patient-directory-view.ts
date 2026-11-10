@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import { OcButton, OcDataTableShell, OcEmptyState, OcIcon } from '../../../shared/ui';
+import { OcButton, OcDataTableShell, OcEmptyState, OcIcon, OcPageHeader } from '../../../shared/ui';
 import type {
   PatientDirectoryAction,
   PatientDirectoryRow,
@@ -11,7 +11,7 @@ import type {
 
 @Component({
   selector: 'app-patient-directory-view',
-  imports: [NzIconModule, OcButton, OcDataTableShell, OcEmptyState, OcIcon],
+  imports: [NzIconModule, OcButton, OcDataTableShell, OcEmptyState, OcIcon, OcPageHeader],
   templateUrl: './patient-directory-view.html',
   styleUrl: './patient-directory-view.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

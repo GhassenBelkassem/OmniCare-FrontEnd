@@ -38,11 +38,18 @@ describe('authentication guards', () => {
 
   it('waits for resolved authentication before allowing a protected route', async () => {
     let resolve!: () => void;
-    whenResolved = () => new Promise<void>((done) => { resolve = done; });
-    const result = TestBed.runInInjectionContext(() => authenticatedGuard({} as never, {} as never));
+    whenResolved = () =>
+      new Promise<void>((done) => {
+        resolve = done;
+      });
+    const result = TestBed.runInInjectionContext(() =>
+      authenticatedGuard({} as never, {} as never),
+    );
 
     let settled = false;
-    void (result as Promise<unknown>).then(() => { settled = true; });
+    void (result as Promise<unknown>).then(() => {
+      settled = true;
+    });
     await Promise.resolve();
     expect(settled).toBe(false);
 
@@ -52,9 +59,22 @@ describe('authentication guards', () => {
   });
 
   it('returns a UrlTree once for an anonymous protected-route request', async () => {
-    const result = await TestBed.runInInjectionContext(() => authenticatedGuard({} as never, {} as never));
+    const result = await TestBed.runInInjectionContext(() =>
+      authenticatedGuard({} as never, {} as never),
+    );
     expect(result).toBeInstanceOf(UrlTree);
     expect((result as UrlTree).toString()).toBe('/login');
+  });
+
+  it('blocks a forced-password session from the normal workspace', async () => {
+    tokens.setSession({
+      ...session(),
+      user: { id: 'doctor-1', role: 'DOCTOR', mustChangePassword: true },
+    });
+    const result = await TestBed.runInInjectionContext(() =>
+      authenticatedGuard({} as never, {} as never),
+    );
+    expect((result as UrlTree).toString()).toBe('/password-change');
   });
 
   it('redirects an anonymous protected-route request once to Login without a loop', async () => {
@@ -79,7 +99,9 @@ describe('authentication guards', () => {
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Clinic destination');
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Visible login content');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+      'Visible login content',
+    );
   });
 });
 
@@ -139,8 +161,11 @@ describe('roleGuard', () => {
 
 function session(): LoginSession {
   return {
-    accessToken: 'access', tokenType: 'Bearer', expiresAt: '2999-08-05T12:10:00Z',
-    refreshToken: 'refresh', refreshExpiresAt: '2999-08-06T00:00:00Z',
+    accessToken: 'access',
+    tokenType: 'Bearer',
+    expiresAt: '2999-08-05T12:10:00Z',
+    refreshToken: 'refresh',
+    refreshExpiresAt: '2999-08-06T00:00:00Z',
     user: { id: 'clinic-user', role: 'CLINIC_ADMIN', mustChangePassword: false },
   };
 }

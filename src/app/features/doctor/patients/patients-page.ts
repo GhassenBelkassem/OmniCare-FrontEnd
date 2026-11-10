@@ -17,7 +17,11 @@ import type {
   PracticePatientFilterDto,
   PracticePatientSourceDto,
 } from '../practice-patient-api.models';
-import { AddPatientDialog } from './add-patient-dialog';
+import { NzModalModule } from 'ng-zorro-antd/modal';
+
+import { PracticePatientForm } from './practice-patient-form';
+import { PatientLookupDialog } from '../patient-lookup-dialog';
+import { PatientAddMethodDialog } from './patient-add-method-dialog';
 import { PatientDirectoryView } from './patient-directory-view';
 import type {
   PatientDirectoryAction,
@@ -26,6 +30,7 @@ import type {
   PatientDirectorySource,
   PatientDirectoryViewModel,
 } from './patient-directory-view.models';
+import { patientAgeLabel } from '../../../shared/ui/patient-age';
 
 const PATIENTS_PAGE_SIZE = 20;
 type PatientsLoadState = 'loading' | 'ready' | 'error';
@@ -42,8 +47,8 @@ const SOURCE_LABELS: Record<
 @Component({
   selector: 'app-patients-page',
   host: { class: 'patients-page--production' },
-  imports: [PatientDirectoryView, AddPatientDialog],
-  templateUrl: './patients-page.html',
+  imports: [PatientDirectoryView, NzModalModule, PracticePatientForm, PatientLookupDialog, PatientAddMethodDialog],
+  templateUrl: './patients-page.production.html',
   styleUrl: './patients-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -62,6 +67,8 @@ export class PatientsPage {
   readonly totalElements = signal(0);
   readonly loadState = signal<PatientsLoadState>('loading');
   readonly addDialogOpen = signal(false);
+  readonly addMethodDialogOpen = signal(false);
+  readonly omniCareLookupOpen = signal(false);
   readonly lastCreated = signal<PracticePatientDto | null>(null);
 
   readonly viewModel = computed<PatientDirectoryViewModel>(() => {
@@ -118,7 +125,7 @@ export class PatientsPage {
   handleViewAction(action: PatientDirectoryAction): void {
     switch (action.kind) {
       case 'ADD_PATIENT':
-        this.addDialogOpen.set(true);
+        this.addMethodDialogOpen.set(true);
         return;
       case 'DISMISS_CREATED':
         this.lastCreated.set(null);
@@ -157,6 +164,21 @@ export class PatientsPage {
     this.lastCreated.set(patient);
     this.pageIndex.set(1);
     this.loadPatients();
+  }
+
+  chooseExternalPatient(): void {
+    this.addMethodDialogOpen.set(false);
+    this.addDialogOpen.set(true);
+  }
+
+  chooseOmniCarePatient(): void {
+    this.addMethodDialogOpen.set(false);
+    this.omniCareLookupOpen.set(true);
+  }
+
+  onOmniCarePatientSelected(patient: PracticePatientDto): void {
+    this.omniCareLookupOpen.set(false);
+    void this.router.navigate(['/doctor', 'patient', patient.id]);
   }
 
   onDuplicateConfirmed(existingPatientId: string): void {
@@ -223,16 +245,22 @@ function productionPatientRow(patient: PracticePatientDto): PatientDirectoryRow 
     displayName: name,
     accessibleName: `${patient.firstName} ${patient.lastName}`,
     secondaryLabel: patientSecondaryLabel(patient),
-    phone: patient.phone,
+    phone: patient.phone?.trim() || 'Téléphone non renseigné',
     emailLabel: patient.email?.trim() || 'Email non renseigné',
-    lastConsultation: null,
-    nextAppointment: null,
+    lastConsultation: directoryDate(patient.lastConsultationAt),
+    nextAppointment: directoryDate(patient.nextAppointmentAt, true),
     linkage,
-    linkageLabel: {
-      linked: 'Lié à OmniCare',
-      possible: 'Correspondance possible',
-      unlinked: 'Non lié',
-    }[linkage],
+    linkageLabel: externalStatusLabel(patient),
+    duplicateWarning: patient.possibleDuplicate,
+    mrsReadiness: patient.mrsReadiness.toLocaleLowerCase(
+      'fr-FR',
+    ) as PatientDirectoryRow['mrsReadiness'],
+    mrsReadinessLabel: {
+      PREPARING: 'MRS en préparation',
+      RETRYING: 'MRS en reprise',
+      READY: 'MRS prêt',
+      ACTION_REQUIRED: 'Action MRS requise',
+    }[patient.mrsReadiness],
     source: source.key,
     sourceLabel: source.label,
   };
@@ -245,23 +273,41 @@ function productionLinkage(patient: PracticePatientDto): PatientDirectoryLinkage
 
 function patientSecondaryLabel(patient: PracticePatientDto): string {
   const sex = patient.sex === 'F' ? 'Femme' : patient.sex === 'M' ? 'Homme' : 'Autre';
-  const age = ageFromDateOfBirth(patient.dateOfBirth);
-  return age === null ? `Âge non renseigné · ${sex}` : `${age} ans · ${sex}`;
+  const age =
+    patient.approximateAgeYears !== null
+      ? `environ ${patient.approximateAgeYears} an${patient.approximateAgeYears > 1 ? 's' : ''}`
+      : patientAgeLabel(patient.dateOfBirth);
+  return age === null ? `Âge non renseigné · ${sex}` : `${age} · ${sex}`;
 }
 
-function ageFromDateOfBirth(value: string | null): number | null {
-  if (!value) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const now = new Date();
-  let age = now.getFullYear() - year;
-  if (now.getMonth() + 1 < month || (now.getMonth() + 1 === month && now.getDate() < day)) {
-    age -= 1;
+function externalStatusLabel(patient: PracticePatientDto): string {
+  if (patient.linkedOmniCareUserId || patient.externalPatientStatus === 'CLAIMED') {
+    return 'Lié à OmniCare';
   }
-  return age >= 0 && age <= 130 ? age : null;
+  if (patient.externalPatientStatus === 'CLAIM_PENDING') return 'Réclamation en cours';
+  return patient.possibleOmniCareMatch ? 'Correspondance possible' : 'Externe non lié';
+}
+
+function directoryDate(value: string | null, includeTime = false) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return {
+    dateTime: value,
+    dateLabel: new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date),
+    ...(includeTime
+      ? {
+          timeLabel: new Intl.DateTimeFormat('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(date),
+        }
+      : {}),
+  };
 }
 
 function createdMessage(patient: PracticePatientDto | null): string | null {

@@ -1,12 +1,9 @@
 import { ChangeDetectionStrategy, Component, input, model, output } from '@angular/core';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 
-import { OcButton } from '../button/oc-button';
-import { OcIconButton } from '../icon-button/oc-icon-button';
-
 @Component({
   selector: 'oc-detail-panel',
-  imports: [NzDrawerModule, OcButton, OcIconButton],
+  imports: [NzDrawerModule],
   template: `
     <nz-drawer
       [nzVisible]="open()"

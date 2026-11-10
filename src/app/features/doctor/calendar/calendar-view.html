@@ -3,40 +3,34 @@
   [class.doctor-calendar-demo--panel-open]="model().panelOpen"
   [class.doctor-calendar-demo--day]="model().viewMode === 'day'"
 >
-  <header class="doctor-calendar-demo__toolbar">
-    <div class="doctor-calendar-demo__period">
-      <div>
-        <h1 aria-live="polite">{{ model().visibleTitle || 'Calendrier' }}</h1>
-        @if (model().visibleSubtitle) {
-          <p>{{ model().visibleSubtitle }}</p>
-        }
-      </div>
-      @if (model().weekNumber) {
-        <span class="doctor-calendar-demo__week">{{ model().weekNumber }}</span>
-      }
-    </div>
+  <oc-page-header [title]="model().visibleTitle || 'Calendrier'" [subtitle]="model().visibleSubtitle">
+    @if (model().quickBookingEnabled) {
+      <oc-button ocPrimaryAction variant="primary" size="small" leadingIcon="plus" (click)="action.emit({ kind: 'NEW_APPOINTMENT' })">Nouveau rendez-vous</oc-button>
+    }
+    <oc-button ocSecondaryActions variant="secondary" size="small" leadingIcon="clock-circle" (click)="action.emit({ kind: 'CONFIGURE_SCHEDULE' })">Modifier les horaires</oc-button>
+    <oc-button ocSecondaryActions variant="secondary" size="small" leadingIcon="plus" (click)="action.emit({ kind: 'ADD_EXCEPTION' })">Exception</oc-button>
+  </oc-page-header>
 
-    <div class="doctor-calendar-demo__navigation" aria-label="Navigation du calendrier">
-      @if (model().realtimeDeferred) {
-        <span class="doctor-calendar-demo__sync-warning" role="status">Synchronisation différée</span>
-      }
+  <div class="doctor-calendar__toolbar">
+    <div class="doctor-calendar__navigation" aria-label="Navigation du calendrier">
       <oc-button variant="secondary" size="small" leadingIcon="left" [iconOnly]="true" ariaLabel="Période précédente" (click)="action.emit({ kind: 'PREVIOUS' })" />
       <oc-button variant="secondary" size="small" (click)="action.emit({ kind: 'TODAY' })">Aujourd'hui</oc-button>
       <oc-button variant="secondary" size="small" leadingIcon="right" [iconOnly]="true" ariaLabel="Période suivante" (click)="action.emit({ kind: 'NEXT' })" />
+      @if (model().realtimeDeferred) {
+        <nz-tag class="doctor-calendar-demo__sync-warning" nzColor="warning" role="status">
+          Mise à jour en temps réel indisponible — actualisation automatique
+        </nz-tag>
+      }
     </div>
 
-    <oc-segmented-control
-      label="Mode d'affichage du calendrier"
-      [options]="viewOptions"
-      [selected]="model().viewMode"
-      (selectedChange)="action.emit({ kind: 'SET_VIEW', value: $any($event) })"
+    <nz-segmented
+      class="doctor-calendar-demo__views"
+      aria-label="Mode d'affichage du calendrier"
+      [nzOptions]="viewOptions"
+      [ngModel]="model().viewMode"
+      (ngModelChange)="action.emit({ kind: 'SET_VIEW', value: $any($event) })"
     />
-
-    <div class="doctor-calendar-demo__actions" aria-label="Actions du calendrier">
-      <oc-button variant="secondary" size="small" leadingIcon="clock-circle" (click)="action.emit({ kind: 'CONFIGURE_SCHEDULE' })">Modifier les horaires</oc-button>
-      <oc-button variant="primary" size="small" leadingIcon="plus" (click)="action.emit({ kind: 'ADD_EXCEPTION' })">Exception</oc-button>
-    </div>
-  </header>
+  </div>
 
   @if (model().loading) {
     <div class="doctor-calendar-demo__state doctor-calendar-demo__state--loading" role="status" aria-live="polite">Chargement des rendez-vous…</div>
@@ -53,6 +47,9 @@
   @if (model().noSchedule) {
     <div class="doctor-calendar-demo__state doctor-calendar-demo__state--empty" role="status"><span>Aucun horaire habituel configuré.</span><oc-button variant="primary" size="small" (click)="action.emit({ kind: 'CONFIGURE_SCHEDULE' })">Configurer mes horaires</oc-button></div>
   }
+  @if (model().slotHint; as hint) {
+    <p class="doctor-calendar-demo__state doctor-calendar-demo__state--hint" role="status" aria-live="polite">{{ hint }}</p>
+  }
   @if (model().mutationError; as error) {
     <p class="doctor-calendar-demo__state doctor-calendar-demo__state--error" role="alert">{{ error }}</p>
   }
@@ -68,16 +65,54 @@
       }
       <div #calendarHost class="doctor-calendar-demo__calendar-host" [attr.aria-busy]="model().ariaBusy">
         <full-calendar #calendar [options]="presentation().options" [events]="presentation().events">
+          <ng-template #dayHeaderContent let-arg>
+            @if (arg.view.type === 'dayGridMonth') {
+              <span class="oc-day-header__weekday">{{ arg.weekdayText || arg.text }}</span>
+            } @else {
+              <span class="oc-day-header">
+                <span class="oc-day-header__weekday">{{ arg.weekdayText }}</span>
+                <span class="oc-day-header__date" [class.oc-day-header__date--today]="arg.isToday">{{ arg.dayNumberText }}</span>
+              </span>
+            }
+          </ng-template>
           <ng-template #eventContent let-info>
             @if (isAppointment(info)) {
-              <div class="demo-event" [attr.aria-label]="appointmentAccessibleLabel(info)">
+              @let meta = appointmentMeta(info);
+              <div
+                class="oc-event"
+                [class.oc-event--month]="info.view.type === 'dayGridMonth'"
+                [class.oc-event--short]="info.isShort"
+                [class.oc-event--muted]="meta.muted"
+                [class.oc-event--struck]="meta.struck"
+                [class.oc-event--selected]="isSelectedAppointment(info)"
+                [style.--oc-event-color]="meta.statusColor"
+                [style.--oc-event-tint]="meta.statusTint"
+                [style.--oc-event-text]="meta.statusText"
+                [attr.aria-label]="appointmentAccessibleLabel(info)"
+                nz-tooltip
+                [nzTooltipTitle]="eventTooltip"
+                [nzTooltipTitleContext]="{ $implicit: meta }"
+                nzTooltipPlacement="top"
+                [nzTooltipMouseEnterDelay]="0.3"
+              >
                 @if (info.view.type === 'dayGridMonth') {
-                  <span class="demo-event__time">{{ eventStartTime(info) }}</span>
-                  <span class="demo-event__month-copy"><strong>{{ appointmentMonthLabel(info) }}</strong><small>{{ appointmentLabel(info) }}</small></span>
-                } @else if (info.view.type === 'timeGridWeek') {
-                  <span class="demo-event__week-time">{{ eventTimeRange(info) }}</span><strong>{{ appointmentLabel(info) }}</strong><small>{{ appointmentSecondaryLabel(info) }}</small>
+                  <span class="oc-event__dot" aria-hidden="true"></span>
+                  <span class="oc-event__time">{{ eventStartTime(info) }}</span>
+                  <strong class="oc-event__name">{{ meta.patientLabel }}</strong>
                 } @else {
-                  <span class="demo-event__day-time">{{ eventTimeRange(info) }}</span><span class="demo-event__patient-icon" aria-hidden="true"><nz-icon nzType="user" /></span><span class="demo-event__day-copy"><strong>{{ appointmentLabel(info) }}</strong><small>{{ appointmentSecondaryLabel(info) }}</small></span><nz-icon class="demo-event__status-icon" [nzType]="$any(metadata(info)).statusIcon ?? 'check-circle'" aria-hidden="true" />
+                  <span class="oc-event__line">
+                    <span class="oc-event__time">{{ eventStartTime(info) }}</span>
+                    @if (meta.unclosed) {
+                      <nz-icon class="oc-event__warning" nzType="warning" aria-hidden="true" />
+                    }
+                    <strong class="oc-event__name">{{ meta.patientLabel }}</strong>
+                  </span>
+                  @if (!info.isShort) {
+                    <span class="oc-event__type">
+                      @if (meta.typeIcon) { <nz-icon [nzType]="meta.typeIcon" aria-hidden="true" /> }
+                      {{ meta.typeLabel }}
+                    </span>
+                  }
                 }
               </div>
             } @else if (isState(info)) {
@@ -87,6 +122,14 @@
             }
           </ng-template>
         </full-calendar>
+        <ng-template #eventTooltip let-meta>
+          <span class="oc-event-tooltip">
+            <strong>{{ meta.patientLabel }}</strong>
+            <span>{{ meta.timeRangeLabel }}</span>
+            <span>{{ meta.unclosed ? 'Consultation non clôturée' : meta.statusLabel }}</span>
+            <span>{{ meta.cabinetLabel }}</span>
+          </span>
+        </ng-template>
       </div>
     </main>
     <ng-content select="[calendarDetail]" />

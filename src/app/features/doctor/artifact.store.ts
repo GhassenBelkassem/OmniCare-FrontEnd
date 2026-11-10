@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import { httpErrorCode } from '../../core/http/app-http-error';
 import type { ScheduledCareEvent } from '../../core/realtime/live-event.models';
 import { ArtifactApiService } from './artifact-api.service';
 import type { ArtifactResponse, ArtifactType, CertificateDefinition } from './artifact.models';
@@ -29,5 +30,5 @@ export class ArtifactStore {
  private upsert(value:ArtifactResponse):void{this.artifacts.update(items=>[...items.filter(v=>v.artifactId!==value.artifactId),value]);}
  private invalidate(event:ScheduledCareEvent):void{if(event.resourceType!=='ARTIFACT')return;if(this.dirty()){this.newerVersionAvailable.set(true);return;}void this.refresh();}
 }
-function key(prefix:string):string{return `${prefix}:${globalThis.crypto.randomUUID()}`;} function code(error:unknown):string{if(error instanceof HttpErrorResponse&&typeof error.error==='object'&&error.error!==null){const body=error.error as {errorCode?:unknown;code?:unknown};const value=body.errorCode??body.code;if(typeof value==='string')return value;}return 'MRS_UNAVAILABLE';}
+function key(prefix:string):string{return `${prefix}:${globalThis.crypto.randomUUID()}`;} function code(error:unknown):string{return httpErrorCode(error)??'MRS_UNAVAILABLE';}
 function ambiguous(error:unknown):boolean{return error instanceof HttpErrorResponse&&(error.status===0||error.status>=500);}

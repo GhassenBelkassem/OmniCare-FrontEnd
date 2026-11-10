@@ -21,15 +21,17 @@
       @for (item of store.draft().medications; track item.itemId) {
         <fieldset class="prescription__item" [disabled]="readOnly(current)"><legend>Médicament {{ $index + 1 }}</legend>
           <div class="prescription__grid">
-            <label class="field"><span>Nom</span><input maxlength="200" [ngModel]="item.name" (ngModelChange)="update(item.itemId, 'name', $event)" /></label>
+            <label class="field"><span>Médicament</span><input #medicationName maxlength="200" autocomplete="off" placeholder="Rechercher ou saisir…" [ngModel]="item.name" (ngModelChange)="update(item.itemId, 'name', $event)" /></label>
             <label class="field"><span>Code médicament (optionnel)</span><input maxlength="64" [ngModel]="item.medicationCode" (ngModelChange)="update(item.itemId, 'medicationCode', $event)" /></label>
             <label class="field"><span>Dosage</span><input type="number" min="0.01" [ngModel]="item.dose.amount" (ngModelChange)="updateDose(item.itemId, 'amount', $event)" /></label>
             <label class="field"><span>Unité</span><input maxlength="64" [ngModel]="item.dose.unit" (ngModelChange)="updateDose(item.itemId, 'unit', $event)" /></label>
             <label class="field"><span>Dosage/force</span><input maxlength="120" [ngModel]="item.strength" (ngModelChange)="update(item.itemId, 'strength', $event)" /></label>
             <label class="field"><span>Voie</span><input maxlength="64" [ngModel]="item.route" (ngModelChange)="update(item.itemId, 'route', $event)" /></label>
             <label class="field"><span>Prises par jour</span><input type="number" min="1" max="100" [ngModel]="item.frequency.timesPerDay" (ngModelChange)="updateFrequencyTimes(item.itemId, $event)" /></label>
+            <div class="field field--wide"><span>Fréquence rapide</span><div class="prescription__quick">@for (times of [1, 2, 3]; track times) { <button type="button" [class.prescription__quick-selected]="item.frequency.timesPerDay === times" (click)="chooseFrequency(item.itemId, times)">{{ times }}x/jour</button> }</div></div>
             <label class="field"><span>Fréquence libre</span><input maxlength="160" [ngModel]="item.frequency.text" (ngModelChange)="updateFrequencyText(item.itemId, $event)" /></label>
             <label class="field"><span>Durée</span><input type="number" min="1" max="3650" [ngModel]="item.duration?.value" (ngModelChange)="updateDurationValue(item.itemId, $event)" /></label>
+            <div class="field field--wide"><span>Durée rapide</span><div class="prescription__quick">@for (days of [3, 5, 7, 10]; track days) { <button type="button" [class.prescription__quick-selected]="item.duration?.unit === 'DAY' && item.duration?.value === days" (click)="chooseDuration(item.itemId, days)">{{ days }} jours</button> }</div></div>
             <label class="field"><span>Unité de durée</span><select [disabled]="item.duration === null" [ngModel]="item.duration?.unit ?? 'DAY'" (ngModelChange)="updateDurationUnit(item.itemId, $event)"><option value="DAY">Jour</option><option value="WEEK">Semaine</option><option value="MONTH">Mois</option></select></label>
             <label class="field"><span>Quantité</span><input type="number" min="1" [ngModel]="item.quantity" (ngModelChange)="updateQuantity(item.itemId, $event)" /></label>
             <label class="field field--wide"><span>Instructions</span><textarea maxlength="1000" [ngModel]="item.instructions" (ngModelChange)="update(item.itemId, 'instructions', $event)"></textarea></label>

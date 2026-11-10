@@ -21,18 +21,23 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   CalendarOptions,
+  DateClickInfo,
   DatesSetInfo,
   EventClickInfo,
   EventDisplayInfo,
 } from '@fullcalendar/angular';
 import dayGridPlugin from '@fullcalendar/angular/daygrid';
+import interactionPlugin from '@fullcalendar/angular/interaction';
 import themePlugin from '@fullcalendar/angular/themes/monarch';
 import timeGridPlugin from '@fullcalendar/angular/timegrid';
 import frLocale from 'fullcalendar/locales/fr';
+import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { interval } from 'rxjs';
 import { RealtimeService } from '../../../core/realtime/realtime.service';
 import { OcButton } from '../../../shared/ui/button/oc-button';
+import { OcDateField } from '../../../shared/ui/date-field/oc-date-field';
 import { OcTimeField } from '../../../shared/ui/time-field/oc-time-field';
 import type {
   AvailabilityExceptionDto,
@@ -47,6 +52,7 @@ import {
 import { ScheduledAppointmentDetailPanel } from '../scheduled-care/scheduled-appointment-detail-panel';
 import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
+import type { PracticePatientAppointmentDto } from '../practice-patient-api.models';
 import type { DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.models';
 import {
   AppointmentEventMetadata,
@@ -55,6 +61,7 @@ import {
   projectExceptionEvents,
 } from './calendar-event.adapter';
 import { CalendarView } from './calendar-view';
+import { QuickBookingDrawer } from './quick-booking-drawer';
 import type {
   CalendarPresentationInput,
   CalendarViewAction,
@@ -63,7 +70,12 @@ import type {
 } from './calendar-view.models';
 import {
   CalendarVisibleRange,
+  calendarPeriodTitle,
+  consultationSlotMinutes,
   fullyBlockedDateKeys,
+  isWorkingTime,
+  minutesToDuration,
+  paddedSlotBounds,
   formatCalendarTime,
   formatCalendarTimeRange,
   projectBusinessHours,
@@ -92,11 +104,15 @@ function exceptionWindowValidator(control: AbstractControl): ValidationErrors | 
   selector: 'oc-calendar-page',
   imports: [
     ReactiveFormsModule,
+    NzInputModule,
     NzModalModule,
+    NzRadioModule,
     OcButton,
+    OcDateField,
     OcTimeField,
     ScheduledAppointmentDetailPanel,
     CalendarView,
+    QuickBookingDrawer,
   ],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
@@ -120,8 +136,13 @@ export class CalendarPage {
   private rangeLoadGeneration = 0;
   private rulesLoadAttempted = false;
 
-  readonly viewMode = signal<CalendarViewMode>('month');
+  readonly viewMode = signal<CalendarViewMode>('week');
+  /** Start time preselected in the booking drawer when opened from an empty slot. */
+  readonly quickBookingStart = signal<string | null>(null);
+  readonly slotHint = signal<string | null>(null);
+  private slotHintTimer: ReturnType<typeof setTimeout> | null = null;
   readonly visibleTitle = signal('');
+  readonly selectedAppointmentId = signal<string | null>(null);
   readonly appointments = signal<readonly DoctorScheduledCareItem[]>([]);
   readonly rules = signal<readonly AvailabilityRuleDto[]>([]);
   readonly exceptions = signal<readonly AvailabilityExceptionDto[]>([]);
@@ -134,6 +155,7 @@ export class CalendarPage {
   readonly exceptionsLoading = signal(false);
   readonly exceptionsError = signal<string | null>(null);
   readonly mutationError = signal<string | null>(null);
+  readonly quickBookingOpen = signal(false);
   readonly deletingException = signal(false);
   readonly exceptionFormOpen = signal(false);
   readonly exceptionSaving = signal(false);
@@ -146,19 +168,9 @@ export class CalendarPage {
   readonly noSchedule = computed(
     () => this.rulesLoaded() && !this.rulesError() && this.businessHours().length === 0,
   );
-  readonly calendarSlotBounds = computed(() => {
-    const activeRules = this.rules().filter((rule) => rule.active);
-    if (activeRules.length === 0) return { min: '08:00:00', max: '18:00:00' };
-    const earliest = activeRules.reduce(
-      (value, rule) => (rule.startTime < value ? rule.startTime : value),
-      activeRules[0]?.startTime ?? '08:00',
-    );
-    const latest = activeRules.reduce(
-      (value, rule) => (rule.endTime > value ? rule.endTime : value),
-      activeRules[0]?.endTime ?? '18:00',
-    );
-    return { min: withSeconds(earliest), max: withSeconds(latest) };
-  });
+  /** Earliest opening − 1 h to latest closing + 1 h. */
+  readonly calendarSlotBounds = computed(() => paddedSlotBounds(this.rules(), this.exceptions()));
+  readonly slotDuration = computed(() => minutesToDuration(consultationSlotMinutes(this.rules())));
   readonly workingHoursLabel = computed(() => {
     const bounds = this.calendarSlotBounds();
     return `${bounds.min.slice(0, 5)} – ${bounds.max.slice(0, 5)}`;
@@ -191,14 +203,17 @@ export class CalendarPage {
     visibleTitle: this.visibleTitle(),
     visibleSubtitle: '',
     weekNumber: '',
+    selectedAppointmentId: this.selectedAppointmentId(),
     panelOpen: false,
     loading: this.loading(),
     loadError: this.loadError(),
     rulesError: this.rulesError(),
     exceptionsError: this.exceptionsError(),
     mutationError: this.mutationError(),
+    slotHint: this.slotHint(),
     noSchedule: this.noSchedule(),
-    realtimeDeferred: this.realtimeHealth() !== 'live',
+    // 'stale' only means no event arrived recently; the socket is still up.
+    realtimeDeferred: this.realtimeHealth() === 'down',
     ariaBusy: this.loading() || this.exceptionsLoading() || this.rulesLoading(),
     daySummary:
       this.viewMode() === 'day'
@@ -213,6 +228,7 @@ export class CalendarPage {
         : null,
     notice:
       "Les horaires affichent les valeurs enregistrées telles quelles. Une ouverture exceptionnelle ne garantit pas à elle seule la génération de créneaux réservables.",
+    quickBookingEnabled: true,
   }));
 
   readonly presentation = computed<CalendarPresentationInput>(() => ({
@@ -223,24 +239,29 @@ export class CalendarPage {
   readonly calendarOptions = computed<CalendarOptions>(() => {
     const fullyBlockedDates = this.fullyBlockedDates();
     return {
-      plugins: [themePlugin, dayGridPlugin, timeGridPlugin],
-      initialView: 'dayGridMonth',
+      plugins: [themePlugin, dayGridPlugin, timeGridPlugin, interactionPlugin],
+      initialView: 'timeGridWeek',
       locale: frLocale,
       firstDay: 1,
       headerToolbar: false,
-      height: this.viewMode() === 'month' ? 798 : this.viewMode() === 'day' ? 638 : 714,
+      height: this.viewMode() === 'month' ? 798 : 760,
       expandRows: true,
       allDaySlot: false,
       slotMinTime: this.calendarSlotBounds().min,
       slotMaxTime: this.calendarSlotBounds().max,
       scrollTime: this.calendarSlotBounds().min,
       scrollTimeReset: false,
-      slotDuration: this.viewMode() === 'day' ? '01:00:00' : '00:30:00',
+      slotDuration: this.slotDuration(),
       slotLabelInterval: '01:00:00',
-      slotMinHeight: this.viewMode() === 'day' ? 54 : 30,
-      eventMinHeight: this.viewMode() === 'month' ? 28 : this.viewMode() === 'day' ? 36 : 44,
+      slotMinHeight: 28,
+      eventMinHeight: this.viewMode() === 'month' ? 22 : 26,
+      eventShortHeight: 40,
       dayMaxEvents: 3,
+      moreLinkText: (count) => `+${count}`,
+      moreLinkClass: 'demo-calendar-more-link',
       nowIndicator: true,
+      nowIndicatorLineClass: 'demo-calendar-now-line',
+      nowIndicatorDotClass: 'demo-calendar-now-dot',
       navLinks: false,
       editable: false,
       selectable: false,
@@ -264,14 +285,14 @@ export class CalendarPage {
       dayCellClass: (info) =>
         [
           'demo-calendar-day-cell',
-          info.isToday ? 'demo-calendar-day-cell--selected' : '',
+          info.isToday ? 'demo-calendar-day-cell--today' : '',
           info.isOther ? 'demo-calendar-day-cell--other' : '',
           fullyBlockedDates.has(toLocalDateOnly(info.date)) ? 'demo-calendar-day-cell--exception' : '',
         ]
           .filter(Boolean)
           .join(' '),
       dayLaneClass: (info) =>
-        `demo-calendar-day-lane${info.isToday ? ' demo-calendar-day-lane--selected' : ''}${fullyBlockedDates.has(toLocalDateOnly(info.date)) ? ' demo-calendar-day-lane--exception' : ''}`,
+        `demo-calendar-day-lane${info.isToday ? ' demo-calendar-day-lane--today' : ''}${fullyBlockedDates.has(toLocalDateOnly(info.date)) ? ' demo-calendar-day-lane--exception' : ''}`,
       slotLaneClass: (info) =>
         `demo-calendar-slot ${
           info.isMajor ? 'demo-calendar-slot--major' : 'demo-calendar-slot--minor'
@@ -283,6 +304,7 @@ export class CalendarPage {
       backgroundEventClass: 'omnicare-fc-background-event',
       datesSet: (info) => this.onDatesSet(info),
       eventClick: (info) => this.onEventClick(info),
+      dateClick: (info) => this.onDateClick(info),
     };
   });
 
@@ -306,17 +328,21 @@ export class CalendarPage {
 
   setViewMode(value: string): void {
     if (this.isCalendarViewMode(value)) {
+      this.selectedAppointmentId.set(null);
       this.viewMode.set(value);
       this.calendarView().changeView(value);
     }
   }
   previous(): void {
+    this.selectedAppointmentId.set(null);
     this.calendarView().previous();
   }
   goToday(): void {
+    this.selectedAppointmentId.set(null);
     this.calendarView().today();
   }
   next(): void {
+    this.selectedAppointmentId.set(null);
     this.calendarView().next();
   }
 
@@ -328,25 +354,71 @@ export class CalendarPage {
       case 'NEXT': this.next(); break;
       case 'CONFIGURE_SCHEDULE': this.configureSchedule(); break;
       case 'ADD_EXCEPTION': this.openExceptionForm(); break;
+      case 'NEW_APPOINTMENT':
+        this.quickBookingStart.set(null);
+        this.quickBookingOpen.set(true);
+        break;
       case 'RETRY_RULES': this.retryRules(); break;
       case 'RETRY_APPOINTMENTS':
       case 'RETRY_EXCEPTIONS': this.retryLoad(); break;
     }
   }
 
+  onQuickBookingCreated(appointment: PracticePatientAppointmentDto): void {
+    this.quickBookingOpen.set(false);
+    this.mutationError.set(null);
+    const range = this.visibleRange();
+    if (range !== null) this.loadVisibleRange(range, true, true);
+    this.selectedAppointmentId.set(appointment.id);
+    this.appointmentPanel().openWith(appointment.id);
+  }
+
   onDatesSet(info: DatesSetInfo): void {
-    this.updateVisibleTitle(info.view.title, info.view.type);
+    this.updateVisibleTitle(info.view.title, info.view.type, info.start, info.end);
     const range = toCalendarVisibleRange(info.start, info.end);
     this.visibleRange.set(range);
     this.loadRules();
     this.loadVisibleRange(range);
   }
 
+  /**
+   * Empty-slot click in day/week view: open the booking drawer on that start time.
+   * Past or non-working slots are ignored with a short French hint.
+   */
+  onDateClick(info: DateClickInfo): void {
+    if (info.view.type === 'dayGridMonth' || info.allDay) return;
+    const start = info.date;
+    if (start.getTime() < Date.now()) {
+      this.showSlotHint('Ce créneau est déjà passé.');
+      return;
+    }
+    if (!isWorkingTime(start, this.rules(), this.exceptions())) {
+      this.showSlotHint('Ce créneau est en dehors de vos horaires de consultation.');
+      return;
+    }
+    this.slotHint.set(null);
+    this.quickBookingStart.set(start.toISOString());
+    this.quickBookingOpen.set(true);
+  }
+
+  private showSlotHint(message: string): void {
+    this.slotHint.set(message);
+    if (this.slotHintTimer !== null) clearTimeout(this.slotHintTimer);
+    this.slotHintTimer = setTimeout(() => this.slotHint.set(null), 4_000);
+    this.destroyRef.onDestroy(() => {
+      if (this.slotHintTimer !== null) clearTimeout(this.slotHintTimer);
+    });
+  }
+
   onEventClick(info: EventClickInfo): void {
     const metadata = info.event.extendedProps as Partial<CalendarEventMetadata>;
     if (metadata.kind === 'appointment' && typeof metadata.appointmentId === 'string') {
       this.mutationError.set(null);
-      this.appointmentPanel().openWith(metadata.appointmentId);
+      this.selectedAppointmentId.set(metadata.appointmentId);
+      const appointment = this.appointments().find(
+        (candidate) => candidate.appointmentId === metadata.appointmentId,
+      );
+      this.appointmentPanel().openWith(appointment ?? metadata.appointmentId);
       return;
     }
     if (metadata.kind === 'exception-annotation' && typeof metadata.exceptionId === 'string') {
@@ -466,6 +538,12 @@ export class CalendarPage {
       });
   }
 
+  /** `yyyy-MM-dd` → « jj/mm/aaaa ». */
+  frenchDate(value: string): string {
+    const [year, month, day] = value.split('-');
+    return year && month && day ? `${day}/${month}/${year}` : value;
+  }
+
   eventMetadata(info: EventDisplayInfo): CalendarEventMetadata {
     return info.event.extendedProps as CalendarEventMetadata;
   }
@@ -475,8 +553,6 @@ export class CalendarPage {
 
     if (metadata.kind === 'appointment') {
       classes.push('demo-calendar-appointment');
-      if (metadata.status === 'IN_PROGRESS') classes.push('demo-calendar-appointment--follow-up');
-      if (metadata.status === 'COMPLETED') classes.push('demo-calendar-appointment--control');
     } else if (metadata.exceptionType === 'BLOCK') {
       classes.push('demo-calendar-state', 'demo-calendar-state--unavailable');
     } else {
@@ -593,10 +669,14 @@ export class CalendarPage {
       });
   }
 
-  private updateVisibleTitle(title: string, calendarView: string): void {
+  private updateVisibleTitle(title: string, calendarView: string, start?: Date, end?: Date): void {
+    if (this.isFullCalendarView(calendarView)) {
+      const mode = MODE_BY_CALENDAR_VIEW[calendarView];
+      this.viewMode.set(mode);
+      this.visibleTitle.set(start && end ? calendarPeriodTitle(mode, start, end) : title);
+      return;
+    }
     this.visibleTitle.set(title);
-    if (this.isFullCalendarView(calendarView))
-      this.viewMode.set(MODE_BY_CALENDAR_VIEW[calendarView]);
   }
   private isCalendarViewMode(value: string): value is CalendarViewMode {
     return value === 'day' || value === 'week' || value === 'month';
@@ -611,7 +691,4 @@ function byAppointmentStart(left: DoctorScheduledCareItem, right: DoctorSchedule
 }
 function minutesToTime(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-}
-function withSeconds(value: string): string {
-  return /^\d{2}:\d{2}$/.test(value) ? `${value}:00` : value;
 }

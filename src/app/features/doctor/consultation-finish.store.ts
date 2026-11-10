@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { ActiveConsultationApiService } from './active-consultation-api.service';
+import { ActiveConsultationApiService, type FinishReadiness } from './active-consultation-api.service';
 import type { ActiveConsultation } from './active-consultation.models';
 import { ClinicalRecordStore } from './clinical-record.store';
 import { ActiveConsultationStore } from './active-consultation.store';
@@ -18,6 +18,8 @@ export class ConsultationFinishStore {
   private expectedClinicalRecordVersion: number | null = null;
   readonly consultation = signal<ActiveConsultation | null>(null);
   readonly submitting = signal(false);
+  readonly reviewing = signal(false);
+  readonly readiness = signal<FinishReadiness | null>(null);
   readonly failure = signal<string | null>(null);
 
   async attach(consultationId: string): Promise<void> {
@@ -55,6 +57,29 @@ export class ConsultationFinishStore {
       if (!ambiguous(error)) this.clearOperation();
       await this.refresh();
     } finally { this.submitting.set(false); }
+  }
+
+  async review(): Promise<void> {
+    const consultation = this.consultation();
+    const clinical = this.clinical.authoritative();
+    if (consultation === null || clinical === null || this.reviewing()) return;
+    if (this.clinical.dirty()) {
+      this.failure.set('UNSAVED_CLINICAL_CHANGES');
+      this.readiness.set(null);
+      return;
+    }
+    this.reviewing.set(true);
+    this.failure.set(null);
+    try {
+      this.readiness.set(await firstValueFrom(this.api.finishReadiness(
+        consultation.consultationId, clinical.clinicalRecordVersion,
+      )));
+    } catch (error: unknown) {
+      this.failure.set(errorCode(error));
+      this.readiness.set(null);
+    } finally {
+      this.reviewing.set(false);
+    }
   }
 
   private clearOperation(): void {

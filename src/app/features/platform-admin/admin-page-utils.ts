@@ -1,6 +1,5 @@
-import { HttpErrorResponse } from '@angular/common/http';
-
-import { ApiErrorBody, DashboardRole } from '../../core/auth/auth.models';
+import { DashboardRole } from '../../core/auth/auth.models';
+import { normalizeHttpError } from '../../core/http/app-http-error';
 import { AccountStatus, ManagedProfessionalRole } from './admin-api.models';
 import { OcStatus } from '../../shared/ui';
 
@@ -14,10 +13,7 @@ const PROFESSIONAL_ROLE_LABELS: Readonly<Record<ManagedProfessionalRole, string>
 };
 
 export function apiMessage(error: unknown): string {
-  if (error instanceof HttpErrorResponse) {
-    return (error.error as ApiErrorBody | null)?.message ?? 'The request could not be completed.';
-  }
-  return error instanceof Error ? error.message : 'The request could not be completed.';
+  return normalizeHttpError(error).message;
 }
 
 export function statusTone(status: AccountStatus | 'ENDED'): OcStatus {
@@ -70,17 +66,15 @@ const CLINIC_FIELD_LABELS: Readonly<Record<string, string>> = {
 };
 
 export function createClinicErrorMessage(error: unknown): string {
-  if (!(error instanceof HttpErrorResponse)) return apiMessage(error);
-
-  const body = error.error as ApiErrorBody | null;
-  if (body?.code === 'DUPLICATE_CLINIC_INPDP') {
+  const failure = normalizeHttpError(error);
+  if (failure.code === 'DUPLICATE_CLINIC_INPDP') {
     return 'This INPDP number is already registered to another clinic. Check the number for a typo.';
   }
-  if (body?.code === 'IDEMPOTENCY_KEY_REUSED') {
+  if (failure.code === 'IDEMPOTENCY_KEY_REUSED') {
     return 'This submission was already used for a different clinic. Close the form and start again.';
   }
-  if (body?.code === 'VALIDATION_ERROR') {
-    const entries = Object.entries(body.fieldErrors ?? {});
+  if (failure.code === 'VALIDATION_ERROR') {
+    const entries = Object.entries(failure.fieldErrors);
     if (entries.length > 0) {
       return entries
         .map(([field, message]) => `${CLINIC_FIELD_LABELS[field] ?? field}: ${message}`)

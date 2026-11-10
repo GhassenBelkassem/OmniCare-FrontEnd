@@ -1,7 +1,11 @@
 import { InjectionToken } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import type { UrgentOfferStatusDto, UrgentVisitPreferenceDto } from '../appointment-api.models';
+import type {
+  UrgentOfferStatusDto,
+  UrgentRequestStatusDto,
+  UrgentVisitPreferenceDto,
+} from '../appointment-api.models';
 
 export type UrgentQueueTab = 'pending' | 'active' | 'history';
 export type UrgentLocationFilter = 'all' | 'home' | 'cabinet';
@@ -10,7 +14,7 @@ export interface UrgentRequestQueueItem {
   readonly offerId: string;
   readonly requestId: string;
   readonly status: UrgentOfferStatusDto;
-  readonly requestStatus: string;
+  readonly requestStatus: UrgentRequestStatusDto;
   readonly sentAt: string;
   readonly respondedAt: string | null;
   readonly visitPreference: UrgentVisitPreferenceDto | null;

@@ -1,38 +1,76 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 
-import { AuthenticatedUser, LoginSession, isDashboardRole } from './auth.models';
+import { AuthenticatedUser, LoginSession, PhoneOtpChallenge, isLoginSessionPayload } from './auth.models';
 
 export const AUTH_SESSION_STORAGE_KEY = 'omnicare.dashboard.session';
-export type AuthState = 'unknown' | 'authenticated' | 'anonymous';
+export type AuthState =
+  'BOOTSTRAPPING' | 'ANONYMOUS' | 'OTP_REQUIRED' | 'PASSWORD_CHANGE_REQUIRED' | 'AUTHENTICATED';
 
 @Injectable({ providedIn: 'root' })
 export class AuthTokenStore {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly accessTokenState = signal<string | null>(null);
   private readonly refreshTokenState = signal<string | null>(null);
+  private readonly expiresAtState = signal<string | null>(null);
+  private readonly refreshExpiresAtState = signal<string | null>(null);
   private readonly userState = signal<AuthenticatedUser | null>(null);
-  private readonly state = signal<AuthState>('unknown');
+  private readonly otpChallengeState = signal<PhoneOtpChallenge | null>(null);
+  private readonly state = signal<AuthState>('BOOTSTRAPPING');
 
   readonly accessToken = this.accessTokenState.asReadonly();
   readonly refreshToken = this.refreshTokenState.asReadonly();
   readonly user = this.userState.asReadonly();
+  readonly otpChallenge = this.otpChallengeState.asReadonly();
   readonly authState = this.state.asReadonly();
   readonly authenticated = computed(
-    () => this.state() === 'authenticated' && this.accessTokenState() !== null && this.userState() !== null,
+    () =>
+      this.state() === 'AUTHENTICATED' &&
+      this.accessTokenState() !== null &&
+      this.userState() !== null,
+  );
+  readonly hasSession = computed(
+    () =>
+      this.accessTokenState() !== null &&
+      this.refreshTokenState() !== null &&
+      this.userState() !== null,
   );
 
   setSession(session: LoginSession): void {
     this.applySession(session);
-    this.state.set('authenticated');
+    this.otpChallengeState.set(null);
+    this.state.set(session.user.mustChangePassword ? 'PASSWORD_CHANGE_REQUIRED' : 'AUTHENTICATED');
     this.writeStoredSession(session);
+  }
+
+  requirePhoneOtp(challenge: PhoneOtpChallenge): void {
+    this.accessTokenState.set(null);
+    this.refreshTokenState.set(null);
+    this.expiresAtState.set(null);
+    this.refreshExpiresAtState.set(null);
+    this.userState.set(null);
+    this.otpChallengeState.set(challenge);
+    this.state.set('OTP_REQUIRED');
+    this.removeStoredSession();
+  }
+
+  markPasswordChanged(): void {
+    const user = this.userState();
+    if (user === null || !this.hasSession()) return;
+    const updatedUser = { ...user, mustChangePassword: false };
+    this.userState.set(updatedUser);
+    this.state.set('AUTHENTICATED');
+    this.writeStoredSession(this.currentSession(updatedUser));
   }
 
   clear(): void {
     this.accessTokenState.set(null);
     this.refreshTokenState.set(null);
+    this.expiresAtState.set(null);
+    this.refreshExpiresAtState.set(null);
     this.userState.set(null);
-    this.state.set('anonymous');
+    this.otpChallengeState.set(null);
+    this.state.set('ANONYMOUS');
     this.removeStoredSession();
   }
 
@@ -47,13 +85,29 @@ export class AuthTokenStore {
   resolveAnonymous(): void {
     this.accessTokenState.set(null);
     this.refreshTokenState.set(null);
+    this.expiresAtState.set(null);
+    this.refreshExpiresAtState.set(null);
     this.userState.set(null);
-    this.state.set('anonymous');
+    this.otpChallengeState.set(null);
+    this.state.set('ANONYMOUS');
+  }
+
+  private currentSession(user: AuthenticatedUser): LoginSession {
+    return {
+      accessToken: this.accessTokenState()!,
+      tokenType: 'Bearer',
+      expiresAt: this.expiresAtState()!,
+      refreshToken: this.refreshTokenState()!,
+      refreshExpiresAt: this.refreshExpiresAtState()!,
+      user,
+    };
   }
 
   private applySession(session: LoginSession): void {
     this.accessTokenState.set(session.accessToken);
     this.refreshTokenState.set(session.refreshToken);
+    this.expiresAtState.set(session.expiresAt);
+    this.refreshExpiresAtState.set(session.refreshExpiresAt);
     this.userState.set(session.user);
   }
 
@@ -63,7 +117,7 @@ export class AuthTokenStore {
       const raw = globalThis.sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY);
       if (raw === null) return null;
       const session = JSON.parse(raw) as unknown;
-      if (!isLoginSession(session) || isPast(session.refreshExpiresAt)) {
+      if (!isLoginSessionPayload(session) || isPast(session.refreshExpiresAt)) {
         this.removeStoredSession();
         return null;
       }
@@ -91,27 +145,6 @@ export class AuthTokenStore {
       // Ignored: blocked storage must not break logout.
     }
   }
-}
-
-function isLoginSession(value: unknown): value is LoginSession {
-  if (!isRecord(value)) return false;
-  return typeof value['accessToken'] === 'string'
-    && value['tokenType'] === 'Bearer'
-    && typeof value['expiresAt'] === 'string'
-    && typeof value['refreshToken'] === 'string'
-    && typeof value['refreshExpiresAt'] === 'string'
-    && isAuthenticatedUser(value['user']);
-}
-
-function isAuthenticatedUser(value: unknown): value is AuthenticatedUser {
-  if (!isRecord(value)) return false;
-  return typeof value['id'] === 'string'
-    && isDashboardRole(value['role'])
-    && typeof value['mustChangePassword'] === 'boolean';
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null;
 }
 
 function isPast(value: string): boolean {

@@ -44,7 +44,8 @@ const APPOINTMENTS: readonly CommandCenterAppointmentViewModel[] = [
     initials: 'SM',
     reason: 'Consultation de suivi',
     state: 'completed',
-    status: 'Terminée',
+    statusCode: 'COMPLETED',
+    status: 'Terminé',
     avatarTone: 'mint',
     action: { kind: 'NAVIGATE', href: '/doctor/history' },
   },
@@ -55,7 +56,8 @@ const APPOINTMENTS: readonly CommandCenterAppointmentViewModel[] = [
     initials: 'KH',
     reason: 'Infection ORL',
     state: 'completed',
-    status: 'Terminée',
+    statusCode: 'COMPLETED',
+    status: 'Terminé',
     avatarTone: 'blue',
     action: { kind: 'NAVIGATE', href: '/doctor/history' },
   },
@@ -66,6 +68,7 @@ const APPOINTMENTS: readonly CommandCenterAppointmentViewModel[] = [
     initials: 'AS',
     reason: 'Douleurs abdominales',
     state: 'active',
+    statusCode: 'IN_PROGRESS',
     status: 'En cours',
     avatarTone: 'rose',
     action: {
@@ -80,6 +83,7 @@ const APPOINTMENTS: readonly CommandCenterAppointmentViewModel[] = [
     initials: 'JM',
     reason: 'Contrôle post-opératoire',
     state: 'confirmed',
+    statusCode: 'CONFIRMED',
     status: 'Confirmé',
     avatarTone: 'blue',
     action: {
@@ -94,7 +98,8 @@ const APPOINTMENTS: readonly CommandCenterAppointmentViewModel[] = [
     initials: 'AR',
     reason: 'Suivi diabète',
     state: 'upcoming',
-    status: 'À venir',
+    statusCode: 'CONFIRMED',
+    status: 'Confirmé',
     avatarTone: 'rose',
     action: {
       kind: 'NAVIGATE',
@@ -108,7 +113,8 @@ const APPOINTMENTS: readonly CommandCenterAppointmentViewModel[] = [
     initials: 'ML',
     reason: 'Suivi d’hypertension',
     state: 'upcoming',
-    status: 'À venir',
+    statusCode: 'CONFIRMED',
+    status: 'Confirmé',
     avatarTone: 'mint',
     action: {
       kind: 'NAVIGATE',
@@ -157,6 +163,7 @@ export class CommandCenterPage {
 
   readonly model: CommandCenterViewModel = {
     fixtureNote: 'Données fictives présentées uniquement dans la démonstration statique OmniCare.',
+    toClose: [],
     greeting: 'Bonjour, Dr Ben Salah',
     dateLabel: formatDemoDate('2026-10-29T11:00:00.000Z', true),
     appointmentCount: APPOINTMENTS.length,

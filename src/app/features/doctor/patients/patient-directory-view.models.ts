@@ -16,6 +16,7 @@ export interface PatientDirectoryDateValue {
 
 export type PatientDirectoryLinkage = 'linked' | 'possible' | 'unlinked';
 export type PatientDirectorySource = 'omnicare' | 'manual' | 'imported' | 'walk_in';
+export type PatientDirectoryMrsReadiness = 'preparing' | 'retrying' | 'ready' | 'action_required';
 
 export interface PatientDirectoryRow {
   readonly id: string;
@@ -30,6 +31,9 @@ export interface PatientDirectoryRow {
   readonly nextAppointment: PatientDirectoryDateValue | null;
   readonly linkage: PatientDirectoryLinkage;
   readonly linkageLabel: string;
+  readonly duplicateWarning: boolean;
+  readonly mrsReadiness: PatientDirectoryMrsReadiness;
+  readonly mrsReadinessLabel: string;
   readonly source: PatientDirectorySource;
   readonly sourceLabel: string;
 }

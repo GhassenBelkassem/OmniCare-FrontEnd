@@ -223,7 +223,7 @@ export class SecretaryAgendaPage {
   protected formatTime(value: string): string {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
-    return new Intl.DateTimeFormat('en-GB', {
+    return new Intl.DateTimeFormat('fr-FR', {
       hour: '2-digit',
       minute: '2-digit',
     }).format(parsed);
@@ -232,7 +232,7 @@ export class SecretaryAgendaPage {
   protected formatDay(value: string): string {
     const parsed = new Date(`${value}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return value;
-    return new Intl.DateTimeFormat('en-GB', {
+    return new Intl.DateTimeFormat('fr-FR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
