@@ -18,23 +18,29 @@ const ACTIVE: ActiveConsultation = {
 describe('ConsultationFinishStore', () => {
   let get: ReturnType<typeof vi.fn>;
   let finish: ReturnType<typeof vi.fn>;
+  let finishReadiness: ReturnType<typeof vi.fn>;
   let dirty: ReturnType<typeof vi.fn>;
   let store: ConsultationFinishStore;
-  let clearActive: ReturnType<typeof vi.fn>;
+  let refreshActive: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     get = vi.fn().mockReturnValue(of(ACTIVE));
     finish = vi.fn();
+    finishReadiness = vi.fn().mockReturnValue(of({
+      ready: false, clinicalRecordSaved: true, diagnosisReady: true,
+      medicationDecisionReady: false, followUpReady: true, prescriptionReady: true,
+      ordersReady: true, artifactsReady: true, missing: ['MEDICATION_DECISION'],
+    }));
     dirty = vi.fn().mockReturnValue(false);
-    clearActive = vi.fn();
+    refreshActive = vi.fn().mockResolvedValue(undefined);
     TestBed.configureTestingModule({ providers: [
       ConsultationFinishStore,
-      { provide: ActiveConsultationApiService, useValue: { get, finish } },
+      { provide: ActiveConsultationApiService, useValue: { get, finish, finishReadiness } },
       { provide: ClinicalRecordStore, useValue: {
         dirty,
         authoritative: () => ({ clinicalRecordVersion: 7, schemaVersion: 2, clinicalRecord: {} }),
       } },
-      { provide: ActiveConsultationStore, useValue: { clear: clearActive } },
+      { provide: ActiveConsultationStore, useValue: { refresh: refreshActive } },
     ] });
     store = TestBed.inject(ConsultationFinishStore);
     await store.attach(ID);
@@ -59,7 +65,7 @@ describe('ConsultationFinishStore', () => {
     const second = finish.mock.calls[1];
     expect(second.slice(1)).toEqual(first.slice(1));
     expect(store.consultation()?.status).toBe('COMPLETED');
-    expect(clearActive).toHaveBeenCalledOnce();
+    expect(refreshActive).toHaveBeenCalledOnce();
   });
 
   it('uses only the canonical endpoint response as completion authority', async () => {
@@ -67,5 +73,13 @@ describe('ConsultationFinishStore', () => {
     await store.finish();
     expect(store.consultation()?.status).toBe('FINALIZING');
     expect(finish).toHaveBeenCalledWith(ID, 4, 7, expect.any(String));
+  });
+
+  it('loads only PHI-free readiness metadata before confirmation', async () => {
+    await store.review();
+
+    expect(finishReadiness).toHaveBeenCalledWith(ID, 7);
+    expect(store.readiness()?.missing).toEqual(['MEDICATION_DECISION']);
+    expect(finish).not.toHaveBeenCalled();
   });
 });

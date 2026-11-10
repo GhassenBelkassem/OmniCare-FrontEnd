@@ -14,6 +14,34 @@
     (action)="handleWorkspaceAction($event)"
   >
     @if (current.status === 'IN_PROGRESS') {
+      <aside class="patient-context" aria-labelledby="patient-context-title">
+        <div>
+          <h2 id="patient-context-title">Contexte médical patient</h2>
+          @if (externalOwner()) {
+            <p>Résumé du dossier médical, en lecture seule.</p>
+          } @else {
+            <p>Résumé autorisé en lecture seule. La saisie de la consultation reste disponible sans partage QR.</p>
+          }
+        </div>
+        @if (canReadContext() && medicalRecord.workspace(); as workspace) {
+          <dl>
+            <div><dt>Allergies</dt><dd>{{ workspace.access.sections['ESSENTIAL_INFORMATION'] === 'AUTHORIZED' ? (workspace.essentialInformation?.allergies?.join(', ') || 'Aucune donnée') : 'Non partagé' }}</dd></div>
+            <div><dt>Conditions critiques</dt><dd>{{ workspace.access.sections['ESSENTIAL_INFORMATION'] === 'AUTHORIZED' ? (workspace.essentialInformation?.criticalConditions?.join(', ') || 'Aucune donnée') : 'Non partagé' }}</dd></div>
+            <div><dt>Médicaments actuels</dt><dd>{{ workspace.access.sections['CURRENT_MEDICATIONS'] === 'AUTHORIZED' ? (workspace.currentMedications[0]?.name || workspace.currentMedications[0]?.code || 'Aucune donnée') : 'Non partagé' }}</dd></div>
+            <div><dt>Historique récent</dt><dd>{{ workspace.access.sections['CONSULTATION_SUMMARIES'] === 'AUTHORIZED' ? (workspace.consultationSummaries.items[0]?.chiefComplaint || workspace.consultationSummaries.items[0]?.diagnoses?.[0]?.label || 'Aucune donnée') : 'Non partagé' }}</dd></div>
+          </dl>
+        } @else if (canReadContext()) {
+          @if (medicalRecord.failure()) {
+            <p class="patient-context__state" role="alert">Le dossier médical n’a pas pu être chargé.</p>
+            <button type="button" (click)="medicalRecord.refresh()">Réessayer</button>
+          } @else {
+            <p class="patient-context__state" role="status">{{ externalOwner() ? 'Chargement du dossier médical…' : 'Chargement du contexte autorisé…' }}</p>
+          }
+        } @else {
+          <p class="patient-context__state">Historique non partagé pour ce contexte de soins.</p>
+        }
+        <button type="button" (click)="mrsDrawerOpen.set(true)">{{ externalOwner() ? 'Ouvrir le dossier médical' : 'Ouvrir le dossier autorisé' }}</button>
+      </aside>
       @if (urgentIntake(); as intake) {
         <aside class="urgent-intake" aria-labelledby="urgent-intake-title">
           <div>
@@ -40,7 +68,7 @@
       }
 
       <section class="consultation-domain" [hidden]="activeSection() !== 'note'">
-        <app-clinical-authoring [consultationId]="consultationId" />
+        <app-clinical-authoring [consultationId]="consultationId" (actionRequested)="openAction($event)" />
       </section>
 
       <section class="consultation-domain" [hidden]="activeSection() !== 'vitals'">
@@ -104,6 +132,27 @@
               @if (artifacts.dirty()) { <button type="button" (click)="activeSection.set('documents')">Ouvrir</button> }
             </li>
           </ul>
+          @if (finish.reviewing()) { <p role="status">Vérification de la préparation…</p> }
+          @if (finish.readiness(); as readiness) {
+            <ul class="finish-readiness" aria-label="Préparation à la finalisation">
+              <li [class.finish-readiness__ready]="readiness.diagnosisReady"><strong>Diagnostic</strong><span>{{ readiness.diagnosisReady ? 'Prêt' : 'Requis' }}</span></li>
+              <li [class.finish-readiness__ready]="readiness.medicationDecisionReady"><strong>Médicament</strong><span>{{ readiness.medicationDecisionReady ? 'Prêt' : 'Requis' }}</span></li>
+              <li [class.finish-readiness__ready]="readiness.ordersReady"><strong>Ordres</strong><span>{{ readiness.ordersReady ? 'Prêts' : 'À finaliser' }}</span></li>
+              <li [class.finish-readiness__ready]="readiness.followUpReady"><strong>Suivi</strong><span>{{ readiness.followUpReady ? 'Prêt' : 'Requis' }}</span></li>
+              <li [class.finish-readiness__ready]="readiness.artifactsReady"><strong>Documents</strong><span>{{ readiness.artifactsReady ? 'Prêts' : 'À finaliser' }}</span></li>
+            </ul>
+            @if (!readiness.ready) {
+              <div class="finish-alert" role="alert">
+                @for (missing of readiness.missing; track missing) {
+                  <div class="finish-alert__item">
+                    <p>{{ readinessLabel(missing) }}</p>
+                    <button type="button" (click)="resolveReadiness(missing)">Corriger</button>
+                  </div>
+                }
+              </div>
+            }
+            <div class="finalization-panel__actions"><oc-button variant="secondary" [disabled]="finish.reviewing()" (click)="finish.review()">Actualiser</oc-button><oc-button variant="primary" [disabled]="!readiness.ready || finish.submitting()" [loading]="finish.submitting()" (click)="finish.finish()">Terminer la consultation</oc-button></div>
+          }
           @if (finish.failure(); as failure) {
             <div class="finish-alert" role="alert">
               @if (failure === 'UNSAVED_CLINICAL_CHANGES') {

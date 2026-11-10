@@ -1,0 +1,34 @@
+<app-patient-directory-view [model]="viewModel()" (action)="handleViewAction($event)" />
+
+<app-patient-add-method-dialog
+  [open]="addMethodDialogOpen()"
+  (openChange)="addMethodDialogOpen.set($event)"
+  (findOmniCare)="chooseOmniCarePatient()"
+  (createExternal)="chooseExternalPatient()"
+/>
+
+<app-patient-lookup-dialog
+  [open]="omniCareLookupOpen()"
+  filter="LINKED"
+  title="Rechercher un patient OmniCare"
+  description="Seuls les patients déjà liés et autorisés dans votre pratique sont affichés."
+  (selected)="onOmniCarePatientSelected($event)"
+  (dismissed)="omniCareLookupOpen.set(false)"
+/>
+
+<nz-modal
+  [nzVisible]="addDialogOpen()"
+  nzTitle="Créer un patient externe"
+  [nzFooter]="null"
+  nzWidth="560px"
+  (nzOnCancel)="addDialogOpen.set(false)"
+>
+  <ng-container *nzModalContent>
+    <app-practice-patient-form
+      submitLabel="Créer le patient"
+      (created)="addDialogOpen.set(false); onPatientCreated($event)"
+      (useExisting)="addDialogOpen.set(false); onDuplicateConfirmed($event)"
+      (cancelled)="addDialogOpen.set(false)"
+    />
+  </ng-container>
+</nz-modal>

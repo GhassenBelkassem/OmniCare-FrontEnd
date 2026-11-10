@@ -7,6 +7,7 @@ import {
   UrgentAvailabilityStatusDto,
   UrgentAvailabilityToggleDto,
   UrgentOfferDto,
+  UrgentRequestStatusDto,
 } from './appointment-api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -66,7 +67,7 @@ export class DoctorUrgentApiService {
 
 export interface UrgentRequestSummaryDto {
   readonly id: string;
-  readonly status: string;
+  readonly status: UrgentRequestStatusDto;
   readonly selectedOfferId: string | null;
   readonly matchedAt: string | null;
   readonly arrivedAt: string | null;

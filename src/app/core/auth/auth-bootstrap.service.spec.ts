@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 
 import { AuthService } from './auth.service';
@@ -13,9 +14,7 @@ describe('AuthBootstrapService', () => {
     sessionStorage.clear();
     refreshSession.mockReset();
     TestBed.configureTestingModule({
-      providers: [
-        { provide: AuthService, useValue: { refreshSession } },
-      ],
+      providers: [provideRouter([]), { provide: AuthService, useValue: { refreshSession } }],
     });
   });
 
@@ -26,11 +25,11 @@ describe('AuthBootstrapService', () => {
     refreshSession.mockReturnValue(of(session({ accessToken: 'refreshed-access' })));
     const tokens = TestBed.inject(AuthTokenStore);
 
-    expect(tokens.authState()).toBe('unknown');
+    expect(tokens.authState()).toBe('BOOTSTRAPPING');
     await TestBed.inject(AuthBootstrapService).initialize();
 
     expect(refreshSession).toHaveBeenCalledTimes(1);
-    expect(tokens.authState()).toBe('authenticated');
+    expect(tokens.authState()).toBe('AUTHENTICATED');
     expect(tokens.accessToken()).toBe('refreshed-access');
   });
 
@@ -39,7 +38,7 @@ describe('AuthBootstrapService', () => {
     await TestBed.inject(AuthBootstrapService).initialize();
 
     expect(refreshSession).not.toHaveBeenCalled();
-    expect(tokens.authState()).toBe('anonymous');
+    expect(tokens.authState()).toBe('ANONYMOUS');
   });
 
   it('clears an invalid restored session and settles anonymous without a loop', async () => {
@@ -49,7 +48,7 @@ describe('AuthBootstrapService', () => {
 
     await TestBed.inject(AuthBootstrapService).initialize();
 
-    expect(tokens.authState()).toBe('anonymous');
+    expect(tokens.authState()).toBe('ANONYMOUS');
     expect(sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull();
   });
 
@@ -71,8 +70,11 @@ describe('AuthBootstrapService', () => {
 
 function session(overrides: Partial<LoginSession> = {}): LoginSession {
   return {
-    accessToken: 'stored-access', tokenType: 'Bearer', expiresAt: '2999-08-05T12:10:00Z',
-    refreshToken: 'stored-refresh', refreshExpiresAt: '2999-08-06T00:00:00Z',
+    accessToken: 'stored-access',
+    tokenType: 'Bearer',
+    expiresAt: '2999-08-05T12:10:00Z',
+    refreshToken: 'stored-refresh',
+    refreshExpiresAt: '2999-08-06T00:00:00Z',
     user: { id: 'clinic-user', role: 'CLINIC_ADMIN', mustChangePassword: false },
     ...overrides,
   };

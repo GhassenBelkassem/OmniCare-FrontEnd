@@ -33,16 +33,41 @@
 @import '../../../node_modules/ng-zorro-antd/form/style/index.less';
 @import '../../../node_modules/ng-zorro-antd/time-picker/style/index.less';
 
-@primary-color: #1FBF9A;
-@link-color: #1FBF9A;
-@success-color: #247a52;
-@warning-color: #9a650e;
-@error-color: #b83a3a;
-@border-radius-base: 10px;
+// Mirrors src/styles/tokens.scss. NG-ZORRO's compile-time Less theme cannot read CSS
+// custom properties, so these values are duplicated deliberately; keep them in sync.
+@primary-color: #1FBF9A;          // --oc-primary
+@primary-color-hover: #0F6F73;    // --oc-primary-dark
+@link-color: #0F6F73;             // --oc-primary-dark (AA on white)
+@link-hover-color: #1FBF9A;
+@link-active-color: #0F6F73;
+@info-color: #0F6F73;             // never Ant blue
+@processing-color: #1FBF9A;
+@success-color: #1FBF9A;
+@warning-color: #F59E0B;          // --oc-amber
+@error-color: #EF4444;            // --oc-error
+@highlight-color: #EF4444;
+@font-family: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 @font-size-base: 14px;
-@text-color: #17231f;
-@text-color-secondary: #64766f;
-@border-color-base: #d4dfda;
-@background-color-light: #f2f6f4;
-@component-background: #ffffff;
-@body-background: #e7eeeb;
+@line-height-base: 1.4286;
+@border-radius-base: 10px;        // --oc-radius-md
+@border-radius-sm: 6px;           // --oc-radius-sm
+@height-base: 36px;
+@height-lg: 44px;
+@height-sm: 28px;
+@outline-color: #1FBF9A;          // focus ring
+@outline-width: 2px;
+@outline-fade: 25%;
+@text-color: #34463f;             // --oc-text
+@heading-color: #17231f;          // --oc-text-strong
+@text-color-secondary: #64766f;   // --oc-text-muted
+@border-color-base: #ced4da;      // --oc-grey-300
+@border-color-split: #e2e6ea;     // --oc-border
+@background-color-light: #f8f9fa; // --oc-grey-50
+@component-background: #ffffff;   // --oc-surface
+@body-background: #f4f5f7;        // --oc-bg
+@item-hover-bg: #f1f3f5;          // --oc-grey-100
+@item-active-bg: #e6f8f3;         // --oc-primary-tint
+@select-item-selected-bg: #e6f8f3;
+@picker-basic-cell-hover-with-range-color: #e6f8f3;
+@segmented-selected-bg: #ffffff;
+@tooltip-bg: #17231f;

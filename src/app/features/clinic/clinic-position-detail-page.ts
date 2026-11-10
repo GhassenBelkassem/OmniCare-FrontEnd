@@ -1,3 +1,243 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';import { FormControl,ReactiveFormsModule } from '@angular/forms';import { ActivatedRoute,RouterLink } from '@angular/router';import { OcButton,OcEmptyState,OcPageHeader } from '../../shared/ui';import { CLINIC_PROFESSIONAL_ROLES,ClinicPosition,ClinicPositionAssignment,ClinicStaffMember,ClinicProfessionalRole,hasClinicCapability } from './clinic-api.models';import { ClinicApiService } from './clinic-api.service';import { ClinicContextStore } from './clinic-context.store';
-@Component({selector:'app-clinic-position-detail-page',imports:[RouterLink,ReactiveFormsModule,OcButton,OcEmptyState,OcPageHeader],template:`@if(position();as p){<oc-page-header [title]="p.displayName" description="Position configuration and active occupants"><span ocBreadcrumbs>Clinic workspace / Configuration / Positions / Detail</span></oc-page-header><section class="form"><label>Name<input [formControl]="name" /></label><label>Required role<select [formControl]="role"><option [ngValue]="null">Any eligible role</option>@for(r of roles;track r){<option [ngValue]="r">{{r}}</option>}</select></label>@if(canManage()){<oc-button (click)="update(p)">Save</oc-button><oc-button variant="secondary" (click)="lifecycle(p)">{{p.active?'Deactivate':'Reactivate'}}</oc-button>}</section><section><h2>Active occupants</h2>@if(canAssignments()){<div class="form"><label>Clinic member<select [formControl]="member"><option [ngValue]="null">Select active member</option>@for(s of staff();track s.membershipId){<option [ngValue]="s.membershipId">{{s.displayName??'Clinic team member'}} · {{s.professionalRole}}</option>}</select></label><oc-button [disabled]="member.value===null" (click)="assign(p)">Assign member</oc-button></div>}@if(assignments().length===0){<p>No active team members are assigned to this position.</p>}@else{<ul>@for(a of assignments();track a.id){<li>{{staffName(a.membershipId)}} <small>Assigned {{a.assignedAt}}</small>@if(canAssignments()){<oc-button size="small" variant="quiet" (click)="end(a)">End assignment</oc-button>}</li>}</ul>}</section>@if(message();as m){<p role="status">{{m}}</p>}@if(error();as e){<p role="alert">{{e}}</p>}}@else if(notFound()){<oc-empty-state icon="search" title="Position not found" description="This position is unavailable."/>}`,styles:[`.form{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-block:16px}label{display:grid;gap:4px}input,select{min-height:36px}li{margin-block:8px}`],changeDetection:ChangeDetectionStrategy.OnPush})
-export class ClinicPositionDetailPage{private readonly context=inject(ClinicContextStore);private readonly api=inject(ClinicApiService);private readonly route=inject(ActivatedRoute);readonly position=signal<ClinicPosition|null>(null);readonly assignments=signal<readonly ClinicPositionAssignment[]>([]);readonly staff=signal<readonly ClinicStaffMember[]>([]);readonly notFound=signal(false);readonly name=new FormControl('');readonly role=new FormControl<ClinicProfessionalRole|null>(null);readonly member=new FormControl<string|null>(null);readonly roles=CLINIC_PROFESSIONAL_ROLES;readonly message=signal<string|null>(null);readonly error=signal<string|null>(null);constructor(){this.context.initialize({route:false});effect(()=>this.load());}canManage(){return hasClinicCapability(this.context.bootstrap(),'CLINIC_POSITION_MANAGE');}canAssignments(){return hasClinicCapability(this.context.bootstrap(),'CLINIC_POSITION_ASSIGNMENT_MANAGE');}load(){const c=this.context.selectedClinicId(),id=this.route.snapshot.paramMap.get('positionId');if(!c||!id)return;this.api.getPosition(c,id).subscribe({next:p=>{this.position.set(p);this.name.setValue(p.displayName);this.role.setValue(p.requiredProfessionalRole);this.api.listPositionAssignments(c,{positionId:id,active:true,page:0,pageSize:100}).subscribe({next:x=>this.assignments.set(x.items)});if(hasClinicCapability(this.context.bootstrap(),'CLINIC_STAFF_READ'))this.api.listStaff(c,{status:'ACTIVE',page:0,pageSize:100}).subscribe({next:x=>this.staff.set(x.items)});},error:()=>this.notFound.set(true)});}staffName(id:string){return this.staff().find(x=>x.membershipId===id)?.displayName??'Clinic team member';}update(p:ClinicPosition){const c=this.context.selectedClinicId(),n=this.name.value?.trim();if(!c||!n)return;this.api.updatePosition(c,p.id,{displayName:n,requiredProfessionalRole:this.role.value,expectedVersion:p.version}).subscribe({next:()=>{this.message.set('Position updated.');this.load();},error:()=>{this.error.set('This configuration changed while you were viewing it. The latest information has been loaded.');this.load();}});}lifecycle(p:ClinicPosition){const c=this.context.selectedClinicId();if(!c)return;(p.active?this.api.deactivatePosition(c,p.id,p.version):this.api.reactivatePosition(c,p.id,p.version)).subscribe({next:()=>{this.message.set('Position status updated.');this.load();},error:()=>{this.error.set('This configuration changed while you were viewing it. The latest information has been loaded.');this.load();}});}assign(p:ClinicPosition){const c=this.context.selectedClinicId(),m=this.member.value;if(!c||!m)return;this.api.createPositionAssignment(c,{positionId:p.id,membershipId:m}).subscribe({next:()=>{this.message.set('Member assigned.');this.load();},error:()=>{this.error.set('This assignment is unavailable. The latest information has been loaded.');this.load();}});}end(a:ClinicPositionAssignment){const c=this.context.selectedClinicId();if(!c)return;this.api.endPositionAssignment(c,a.id,a.version).subscribe({next:()=>{this.message.set('Assignment ended.');this.load();},error:()=>{this.error.set('This assignment changed while you were viewing it. The latest information has been loaded.');this.load();}});}}
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { OcButton, OcEmptyState, OcPageHeader } from '../../shared/ui';
+import {
+  CLINIC_PROFESSIONAL_ROLES,
+  ClinicPosition,
+  ClinicPositionAssignment,
+  ClinicStaffMember,
+  ClinicProfessionalRole,
+  hasClinicCapability,
+} from './clinic-api.models';
+import { ClinicApiService } from './clinic-api.service';
+import { ClinicContextStore } from './clinic-context.store';
+@Component({
+  selector: 'app-clinic-position-detail-page',
+  imports: [ReactiveFormsModule, OcButton, OcEmptyState, OcPageHeader],
+  template: `@if (position(); as p) {
+      <oc-page-header
+        [title]="p.displayName"
+        description="Position configuration and active occupants"
+        ><span ocBreadcrumbs
+          >Clinic workspace / Configuration / Positions / Detail</span
+        ></oc-page-header
+      >
+      <section class="form">
+        <label>Name<input [formControl]="name" /></label
+        ><label
+          >Required role<select [formControl]="role">
+            <option [ngValue]="null">Any eligible role</option>
+            @for (r of roles; track r) {
+              <option [ngValue]="r">{{ r }}</option>
+            }
+          </select></label
+        >
+        @if (canManage()) {
+          <oc-button (click)="update(p)">Save</oc-button
+          ><oc-button variant="secondary" (click)="lifecycle(p)">{{
+            p.active ? 'Deactivate' : 'Reactivate'
+          }}</oc-button>
+        }
+      </section>
+      <section>
+        <h2>Active occupants</h2>
+        @if (canAssignments()) {
+          <div class="form">
+            <label
+              >Clinic member<select [formControl]="member">
+                <option [ngValue]="null">Select active member</option>
+                @for (s of staff(); track s.membershipId) {
+                  <option [ngValue]="s.membershipId">
+                    {{ s.displayName ?? 'Clinic team member' }} · {{ s.professionalRole }}
+                  </option>
+                }
+              </select></label
+            ><oc-button [disabled]="member.value === null" (click)="assign(p)"
+              >Assign member</oc-button
+            >
+          </div>
+        }
+        @if (assignments().length === 0) {
+          <p>No active team members are assigned to this position.</p>
+        } @else {
+          <ul>
+            @for (a of assignments(); track a.id) {
+              <li>
+                {{ staffNameByMembership().get(a.membershipId) ?? 'Clinic team member' }}
+                <small>Assigned {{ a.assignedAt }}</small>
+                @if (canAssignments()) {
+                  <oc-button size="small" variant="quiet" (click)="end(a)"
+                    >End assignment</oc-button
+                  >
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+      @if (message(); as m) {
+        <p role="status">{{ m }}</p>
+      }
+      @if (error(); as e) {
+        <p role="alert">{{ e }}</p>
+      }
+    } @else if (notFound()) {
+      <oc-empty-state
+        icon="search"
+        title="Position not found"
+        description="This position is unavailable."
+      />
+    }`,
+  styles: [
+    `
+      .form {
+        display: flex;
+        gap: 12px;
+        align-items: end;
+        flex-wrap: wrap;
+        margin-block: 16px;
+      }
+      label {
+        display: grid;
+        gap: 4px;
+      }
+      input,
+      select {
+        min-height: 36px;
+      }
+      li {
+        margin-block: 8px;
+      }
+    `,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class ClinicPositionDetailPage {
+  private readonly context = inject(ClinicContextStore);
+  private readonly api = inject(ClinicApiService);
+  private readonly route = inject(ActivatedRoute);
+  readonly position = signal<ClinicPosition | null>(null);
+  readonly assignments = signal<readonly ClinicPositionAssignment[]>([]);
+  readonly staff = signal<readonly ClinicStaffMember[]>([]);
+  readonly notFound = signal(false);
+  readonly name = new FormControl('');
+  readonly role = new FormControl<ClinicProfessionalRole | null>(null);
+  readonly member = new FormControl<string | null>(null);
+  readonly roles = CLINIC_PROFESSIONAL_ROLES;
+  readonly message = signal<string | null>(null);
+  readonly error = signal<string | null>(null);
+  readonly canManage = computed(() =>
+    hasClinicCapability(this.context.bootstrap(), 'CLINIC_POSITION_MANAGE'),
+  );
+  readonly canAssignments = computed(() =>
+    hasClinicCapability(this.context.bootstrap(), 'CLINIC_POSITION_ASSIGNMENT_MANAGE'),
+  );
+  readonly staffNameByMembership = computed(
+    () => new Map(this.staff().map((member) => [member.membershipId, member.displayName] as const)),
+  );
+  constructor() {
+    this.context.initialize({ route: false });
+    effect(() => this.load());
+  }
+  load() {
+    const c = this.context.selectedClinicId(),
+      id = this.route.snapshot.paramMap.get('positionId');
+    if (!c || !id) return;
+    this.api.getPosition(c, id).subscribe({
+      next: (p) => {
+        this.position.set(p);
+        this.name.setValue(p.displayName);
+        this.role.setValue(p.requiredProfessionalRole);
+        this.api
+          .listPositionAssignments(c, { positionId: id, active: true, page: 0, pageSize: 100 })
+          .subscribe({ next: (x) => this.assignments.set(x.items) });
+        if (hasClinicCapability(this.context.bootstrap(), 'CLINIC_STAFF_READ'))
+          this.api
+            .listStaff(c, { status: 'ACTIVE', page: 0, pageSize: 100 })
+            .subscribe({ next: (x) => this.staff.set(x.items) });
+      },
+      error: () => this.notFound.set(true),
+    });
+  }
+  update(p: ClinicPosition) {
+    const c = this.context.selectedClinicId(),
+      n = this.name.value?.trim();
+    if (!c || !n) return;
+    this.api
+      .updatePosition(c, p.id, {
+        displayName: n,
+        requiredProfessionalRole: this.role.value,
+        expectedVersion: p.version,
+      })
+      .subscribe({
+        next: () => {
+          this.message.set('Position updated.');
+          this.load();
+        },
+        error: () => {
+          this.error.set(
+            'This configuration changed while you were viewing it. The latest information has been loaded.',
+          );
+          this.load();
+        },
+      });
+  }
+  lifecycle(p: ClinicPosition) {
+    const c = this.context.selectedClinicId();
+    if (!c) return;
+    (p.active
+      ? this.api.deactivatePosition(c, p.id, p.version)
+      : this.api.reactivatePosition(c, p.id, p.version)
+    ).subscribe({
+      next: () => {
+        this.message.set('Position status updated.');
+        this.load();
+      },
+      error: () => {
+        this.error.set(
+          'This configuration changed while you were viewing it. The latest information has been loaded.',
+        );
+        this.load();
+      },
+    });
+  }
+  assign(p: ClinicPosition) {
+    const c = this.context.selectedClinicId(),
+      m = this.member.value;
+    if (!c || !m) return;
+    this.api.createPositionAssignment(c, { positionId: p.id, membershipId: m }).subscribe({
+      next: () => {
+        this.message.set('Member assigned.');
+        this.load();
+      },
+      error: () => {
+        this.error.set('This assignment is unavailable. The latest information has been loaded.');
+        this.load();
+      },
+    });
+  }
+  end(a: ClinicPositionAssignment) {
+    const c = this.context.selectedClinicId();
+    if (!c) return;
+    this.api.endPositionAssignment(c, a.id, a.version).subscribe({
+      next: () => {
+        this.message.set('Assignment ended.');
+        this.load();
+      },
+      error: () => {
+        this.error.set(
+          'This assignment changed while you were viewing it. The latest information has been loaded.',
+        );
+        this.load();
+      },
+    });
+  }
+}

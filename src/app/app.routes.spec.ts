@@ -22,6 +22,7 @@ describe('application routes', () => {
 
     expect(paths).toEqual([
       'login',
+      'password-change',
       'first-login',
       'forbidden',
       'admin',

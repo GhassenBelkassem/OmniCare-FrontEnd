@@ -1,223 +1,185 @@
-import { Component, input, signal } from '@angular/core';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ActiveConsultationStore } from '../active-consultation.store';
+import type { ActiveConsultation, ConsultationStatus } from '../active-consultation.models';
+import { ArtifactStore } from '../artifact.store';
+import { ClinicalOrderStore } from '../clinical-order.store';
+import { ClinicalRecordStore } from '../clinical-record.store';
 import { ConsultationFinishStore } from '../consultation-finish.store';
-import { DoctorMockService, blankDraft } from '../doctor-mock.service';
-import { ClinicalAuthoring } from './clinical-authoring';
-import { ClinicalOrders } from './clinical-orders';
+import { MedicalRecordStore } from '../medical-record.store';
+import { PrescriptionStore } from '../prescription.store';
+import { UrgentCabinetClinicalStore } from '../urgent-cabinet-clinical.store';
 import { ConsultationPage } from './consultation-page';
-import { DoctorMedicalWorkspace } from './doctor-medical-workspace';
-import { OfficialArtifacts } from './official-artifacts';
-import { PrescriptionAuthoring } from './prescription-authoring';
 
-@Component({ selector: 'app-clinical-authoring', template: '' })
-class ClinicalAuthoringProbe { readonly consultationId = input.required<string>(); }
+const ID = '11111111-1111-4111-8111-111111111111';
 
-@Component({ selector: 'app-prescription-authoring', template: '<section data-testid="prescription">Prescription</section>' })
-class PrescriptionAuthoringProbe {
-  readonly consultationId = input.required<string>();
-  readonly consultationStatus = input.required<string>();
-}
-
-@Component({ selector: 'app-clinical-orders', template: '<section data-testid="orders">Ordres cliniques</section>' })
-class ClinicalOrdersProbe { readonly consultationId = input.required<string>(); }
-
-@Component({ selector: 'app-official-artifacts', template: '<section data-testid="artifacts">Documents officiels</section>' })
-class OfficialArtifactsProbe { readonly consultationId = input.required<string>(); }
-
-@Component({ selector: 'app-doctor-medical-workspace', template: '' })
-class DoctorMedicalWorkspaceProbe { readonly consultation = input.required<unknown>(); }
-
-interface FakeParamMap {
-  get(key: string): string | null;
-}
-
-function routeWith(id: string, source: string | null): Partial<ActivatedRoute> {
-  const paramMap: FakeParamMap = { get: (key) => (key === 'id' ? id : null) };
-  const queryParamMap: FakeParamMap = { get: (key) => (key === 'source' ? source : null) };
-  return { snapshot: { paramMap, queryParamMap } as never };
-}
-
-describe('ConsultationPage', () => {
+describe('ConsultationPage production workflow', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     TestBed.resetTestingModule();
   });
 
-  function create(
-    id: string,
-    source: string | null = null,
-  ): { page: ConsultationPage; mock: DoctorMockService } {
-    TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: ActivatedRoute, useValue: routeWith(id, source) }],
-    });
-    const mock = TestBed.inject(DoctorMockService);
-    const fixture = TestBed.createComponent(ConsultationPage);
-    return { page: fixture.componentInstance, mock };
-  }
+  it('attaches only a canonical consultation identifier', () => {
+    const canonical = createPage(ID);
+    expect(canonical.page.canonicalRoute).toBe(true);
+    expect(canonical.finish.attach).toHaveBeenCalledWith(ID);
 
-  it('enters active mode for an open consultation with its past visits', () => {
-    const { page } = create('c-1');
-
-    expect(page.mode).toBe('active');
-    expect(page.record!.patient.name).toBe('Sami Trabelsi');
-    expect(page.record!.pastConsultations.map((item) => item.id)).toEqual(['c-12']);
+    TestBed.resetTestingModule();
+    const legacy = createPage('new');
+    expect(legacy.page.canonicalRoute).toBe(false);
+    expect(legacy.finish.attach).not.toHaveBeenCalled();
   });
 
-  it('enters readonly mode for a closed consultation and seeds its draft', () => {
-    const { page } = create('c-12');
+  it('derives finish eligibility from authoritative state and all dirty/busy domains', () => {
+    const clean = createPage(ID);
+    expect(clean.page.viewModel().canFinish).toBe(true);
 
-    expect(page.mode).toBe('readonly');
-    expect(page.draft().diagnosis).toBe('Rhino-pharyngite aigue');
-    expect(page.draft().vitals.systolicBP).toBe(120);
-    expect(page.draft().prescriptionLines[0]?.drugName).toBe('Paracetamol');
+    clean.clinical.dirty.set(true);
+    expect(clean.page.hasUnsavedChanges()).toBe(true);
+    expect(clean.page.viewModel().canFinish).toBe(false);
+
+    clean.clinical.dirty.set(false);
+    clean.orders.finalizingId.set('order-1');
+    expect(clean.page.viewModel().canFinish).toBe(false);
   });
 
-  it('fails safely without loading a record for a legacy urgent deep link', () => {
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([]),
-        { provide: ActivatedRoute, useValue: routeWith('new', 'urgent') },
-      ],
-    });
-    const mock = TestBed.inject(DoctorMockService);
-    const recordSpy = vi.spyOn(mock, 'recordFor');
-    const page = TestBed.createComponent(ConsultationPage).componentInstance;
+  it.each(['FINALIZING', 'COMPLETED', 'ABORTED'] as const)(
+    'does not expose finish or save in terminal/non-editable status %s',
+    (status) => {
+      const { page } = createPage(ID, status);
 
-    expect(page.legacyUrgentBlocked).toBe(true);
-    expect(page.record).toBeNull();
-    expect(page.consultation).toBeNull();
-    expect(recordSpy).not.toHaveBeenCalled();
+      expect(page.viewModel().canFinish).toBe(false);
+      expect(page.viewModel().canSave).toBe(false);
+    },
+  );
+
+  it('routes save to the active clinical domain without copying domain state', async () => {
+    const { page, prescription } = createPage(ID);
+    prescription.dirty.set(true);
+    page.handleWorkspaceAction({ kind: 'SET_SECTION', section: 'prescription' });
+
+    page.handleWorkspaceAction({ kind: 'SAVE_ACTIVE' });
+    await Promise.resolve();
+
+    expect(prescription.save).toHaveBeenCalledOnce();
   });
 
-  it('isolates a canonical consultation route from mock clinical authority', () => {
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([]),
-        {
-          provide: ActivatedRoute,
-          useValue: routeWith('11111111-1111-4111-8111-111111111111', null),
-        },
-      ],
-    });
-    const mock = TestBed.inject(DoctorMockService);
-    const recordSpy = vi.spyOn(mock, 'recordFor');
-    const consultationSpy = vi.spyOn(mock, 'consultationFor');
+  it('opens the compact readiness review before finishing', async () => {
+    const { page, finish } = createPage(ID);
 
-    const page = TestBed.createComponent(ConsultationPage).componentInstance;
+    page.handleWorkspaceAction({ kind: 'FINISH' });
+    await Promise.resolve();
 
-    expect(page.canonicalRoute).toBe(true);
-    expect(page.record).toBeNull();
-    expect(page.consultation).toBeNull();
-    expect(recordSpy).not.toHaveBeenCalled();
-    expect(consultationSpy).not.toHaveBeenCalled();
+    expect(page.activeSection()).toBe('finalization');
+    expect(finish.review).toHaveBeenCalledOnce();
+    expect(finish.finish).not.toHaveBeenCalled();
   });
 
-  it('keeps prescription, order and artifact sections mounted in the canonical IN_PROGRESS workflow', async () => {
-    const consultation = {
-      consultationId: '11111111-1111-4111-8111-111111111111',
-      sourceType: 'SCHEDULED_APPOINTMENT',
-      sourceId: 'source-1',
-      status: 'IN_PROGRESS',
-      medicalAccessStatus: 'ACTIVE',
-      version: 1,
-      startedAt: '2026-10-27T10:00:00Z',
-    } as const;
-    const finish = {
-      consultation: signal(consultation),
-      submitting: signal(false),
-      failure: signal<string | null>(null),
-      attach: vi.fn(),
-      finish: vi.fn(),
-    };
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([]),
-        { provide: ActivatedRoute, useValue: routeWith(consultation.consultationId, null) },
-        { provide: ActiveConsultationStore, useValue: { active: signal(consultation), loading: signal(false) } },
-      ],
-    });
-    TestBed.overrideComponent(ConsultationPage, {
-      remove: {
-        imports: [ClinicalAuthoring, PrescriptionAuthoring, ClinicalOrders, OfficialArtifacts, DoctorMedicalWorkspace],
-        providers: [ConsultationFinishStore],
-      },
-      add: {
-        imports: [ClinicalAuthoringProbe, PrescriptionAuthoringProbe, ClinicalOrdersProbe, OfficialArtifactsProbe, DoctorMedicalWorkspaceProbe],
-        providers: [{ provide: ConsultationFinishStore, useValue: finish }],
-      },
-    });
-    const fixture = TestBed.createComponent(ConsultationPage);
+  it.each([
+    ['MEDICATION_DECISION', 'note'],
+    ['PRESCRIPTION_NOT_FINALIZED', 'prescription'],
+    ['ORDER_NOT_FINALIZED', 'orders'],
+    ['ARTIFACT_NOT_FINALIZED', 'documents'],
+  ] as const)('routes missing readiness %s to %s', (code, section) => {
+    const { page } = createPage(ID);
 
-    fixture.detectChanges();
-    await fixture.whenStable();
+    page.resolveReadiness(code);
 
-    const workspace = fixture.nativeElement as HTMLElement;
-    const prescription = workspace.querySelector('[data-testid="prescription"]');
-    const orders = workspace.querySelector('[data-testid="orders"]');
-    const artifacts = workspace.querySelector('[data-testid="artifacts"]');
-    expect(prescription).not.toBeNull();
-    expect(orders).not.toBeNull();
-    expect(artifacts).not.toBeNull();
-    expect(prescription!.compareDocumentPosition(orders!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(orders!.compareDocumentPosition(artifacts!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(page.activeSection()).toBe(section);
   });
 
-  it('persists draft edits back to the mock service', () => {
-    const { page, mock } = create('c-1');
-    const draft = blankDraft(mock.consultationFor('c-1'));
+  it('opens the selected canonical order and certificate flows', () => {
+    const { page, orders, artifacts } = createPage(ID);
 
-    page.storeDraft({ ...draft, diagnosis: 'Grippe' });
+    page.openAction('imaging');
+    expect(page.activeSection()).toBe('orders');
+    expect(orders.beginCreate).toHaveBeenCalledWith('IMAGING');
 
-    expect(page.draft().diagnosis).toBe('Grippe');
-    expect(mock.draftFor('c-1')?.diagnosis).toBe('Grippe');
+    page.openAction('sick-leave-certificate');
+    expect(page.activeSection()).toBe('documents');
+    expect(artifacts.begin).toHaveBeenCalledWith('SICK_LEAVE_CERTIFICATE');
   });
 
-  it('closes the consultation from its draft and clears the draft', () => {
-    const { page, mock } = create('c-1');
-    const draft = blankDraft(mock.consultationFor('c-1'));
-    page.storeDraft({ ...draft, diagnosis: 'Grippe' });
-
-    page.closeConsultation();
-
-    expect(page.closed()).toBe(true);
-    expect(mock.consultationFor('c-1').status).toBe('closed');
-    expect(mock.draftFor('c-1')).toBeNull();
-  });
-
-  it('deactivates without prompting when nothing was changed', () => {
-    const { page, mock } = create('c-1');
-    const blank = blankDraft(mock.consultationFor('c-1'));
-    page.storeDraft({ ...blank, diagnosis: '' });
-    const confirmSpy = vi.fn();
-    vi.stubGlobal('window', { confirm: confirmSpy });
+  it('prompts only when a clinical domain has unsaved state', () => {
+    const { page, artifacts } = createPage(ID);
+    const confirm = vi.fn().mockReturnValue(false);
+    vi.stubGlobal('window', { confirm });
 
     expect(page.canDeactivate()).toBe(true);
-    expect(confirmSpy).not.toHaveBeenCalled();
-  });
-
-  it('asks before leaving with unsaved changes', () => {
-    const { page, mock } = create('c-1');
-    const draft = blankDraft(mock.consultationFor('c-1'));
-    page.storeDraft({ ...draft, diagnosis: 'Grippe' });
-    const confirmSpy = vi.fn().mockReturnValue(false);
-    vi.stubGlobal('window', { confirm: confirmSpy });
-
+    artifacts.dirty.set(true);
     expect(page.canDeactivate()).toBe(false);
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-
-    confirmSpy.mockReturnValue(true);
-    expect(page.canDeactivate()).toBe(true);
-  });
-
-  it('never prompts in readonly mode even with draft content', () => {
-    const { page } = create('c-12');
-    const confirmSpy = vi.fn();
-    vi.stubGlobal('window', { confirm: confirmSpy });
-
-    expect(page.canDeactivate()).toBe(true);
-    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(confirm).toHaveBeenCalledOnce();
   });
 });
+
+function createPage(id: string, status: ConsultationStatus = 'IN_PROGRESS') {
+  const consultation: ActiveConsultation = {
+    consultationId: ID,
+    sourceType: 'SCHEDULED_APPOINTMENT',
+    sourceId: 'appointment-1',
+    status,
+    medicalAccessStatus: status === 'COMPLETED' ? 'EXPIRED' : 'ACTIVE',
+    version: 4,
+    startedAt: '2026-11-08T08:00:00Z',
+    completedAt: status === 'COMPLETED' ? '2026-11-08T08:30:00Z' : null,
+  };
+  const domain = () => ({
+    dirty: signal(false),
+    saving: signal(false),
+    failure: signal<string | null>(null),
+    conflict: signal(false),
+    save: vi.fn().mockResolvedValue(undefined),
+  });
+  const clinical = {
+    ...domain(),
+    authoritative: signal({ clinicalRecordVersion: 2, schemaVersion: 1, clinicalRecord: {} }),
+  };
+  const prescription = { ...domain(), finalizing: signal(false) };
+  const orders = {
+    ...domain(),
+    finalizingId: signal<string | null>(null),
+    beginCreate: vi.fn(),
+  };
+  const artifacts = { ...domain(), begin: vi.fn() };
+  const finish = {
+    consultation: signal<ActiveConsultation | null>(consultation),
+    submitting: signal(false),
+    failure: signal<string | null>(null),
+    reviewing: signal(false),
+    readiness: signal(null),
+    attach: vi.fn().mockResolvedValue(undefined),
+    review: vi.fn().mockResolvedValue(undefined),
+    finish: vi.fn().mockResolvedValue(undefined),
+  };
+  const medicalRecord = {
+    workspace: signal(null),
+    loading: signal(false),
+    failure: signal(null),
+    attach: vi.fn(),
+    clear: vi.fn(),
+  };
+
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { paramMap: convertToParamMap({ id }) } },
+      },
+      { provide: ActiveConsultationStore, useValue: { active: signal(consultation) } },
+      { provide: ClinicalRecordStore, useValue: clinical },
+      { provide: PrescriptionStore, useValue: prescription },
+      { provide: ClinicalOrderStore, useValue: orders },
+      { provide: ArtifactStore, useValue: artifacts },
+      { provide: ConsultationFinishStore, useValue: finish },
+      { provide: MedicalRecordStore, useValue: medicalRecord },
+      { provide: UrgentCabinetClinicalStore, useValue: { protectedIntake: signal(null) } },
+    ],
+  });
+
+  const page = TestBed.runInInjectionContext(() => new ConsultationPage());
+  return { page, clinical, prescription, orders, artifacts, finish };
+}

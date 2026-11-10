@@ -36,6 +36,14 @@ export const OC_ICON_NAMES = [
   'image',
   'upload',
   'trash',
+  'mail',
+  'history',
+  'user',
+  'file',
+  'download',
+  'eye',
+  'edit',
+  'lock',
 ] as const;
 
 export type OcIconName = (typeof OC_ICON_NAMES)[number];
@@ -182,6 +190,37 @@ export function isOcIconName(value: string): value is OcIconName {
         }
         @case ('trash') {
           <path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6" />
+        }
+        @case ('mail') {
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <path d="m3 7 9 6 9-6" />
+        }
+        @case ('history') {
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+          <path d="M3 3v5h5M12 7v5l3 3" />
+        }
+        @case ('user') {
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        }
+        @case ('file') {
+          <path d="M14 3H6v18h12V7l-4-4Z" />
+          <path d="M14 3v4h4M9 13h6M9 17h6" />
+        }
+        @case ('download') {
+          <path d="M12 4v12m0 0-5-5m5 5 5-5M4 20h16" />
+        }
+        @case ('eye') {
+          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+          <circle cx="12" cy="12" r="3" />
+        }
+        @case ('edit') {
+          <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
+          <path d="m13 7 4 4" />
+        }
+        @case ('lock') {
+          <rect x="5" y="11" width="14" height="10" rx="2" />
+          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
         }
         @default {
           <rect x="4" y="4" width="16" height="16" rx="3" />

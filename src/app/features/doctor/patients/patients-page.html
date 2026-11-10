@@ -1,8 +1,18 @@
 <app-patient-directory-view [model]="viewModel()" (action)="handleViewAction($event)" />
 
-<app-add-patient-dialog
-  [open]="addDialogOpen()"
-  (openChange)="addDialogOpen.set($event)"
-  (created)="onPatientCreated($event)"
-  (duplicate)="onDuplicateConfirmed($event)"
-/>
+<nz-modal
+  [nzVisible]="addDialogOpen()"
+  nzTitle="Créer un patient externe"
+  [nzFooter]="null"
+  nzWidth="560px"
+  (nzOnCancel)="addDialogOpen.set(false)"
+>
+  <ng-container *nzModalContent>
+    <app-practice-patient-form
+      submitLabel="Créer le patient"
+      (created)="addDialogOpen.set(false); onPatientCreated($event)"
+      (useExisting)="addDialogOpen.set(false); onDuplicateConfirmed($event)"
+      (cancelled)="addDialogOpen.set(false)"
+    />
+  </ng-container>
+</nz-modal>

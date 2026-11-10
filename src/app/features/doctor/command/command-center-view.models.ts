@@ -15,7 +15,9 @@ export type CommandCenterLinkAction =
       readonly appointmentId: string;
       readonly href: string;
     }
-  | { readonly kind: 'CONTINUE_CONSULTATION'; readonly consultationId: string; readonly href: string };
+  | { readonly kind: 'CONTINUE_CONSULTATION'; readonly consultationId: string; readonly href: string }
+  | { readonly kind: 'CLOSE_CONSULTATION'; readonly consultationId: string; readonly href: string }
+  | { readonly kind: 'OPEN_STALE_APPOINTMENT'; readonly appointmentId: string; readonly href: string };
 
 export type CommandCenterCommandAction =
   | { readonly kind: 'START_SCHEDULED'; readonly appointmentId: string }
@@ -34,6 +36,8 @@ export interface CommandCenterAppointmentViewModel {
   readonly initials: string;
   readonly reason: string;
   readonly state: CommandCenterAppointmentState;
+  /** Raw status code, rendered through the shared appointment-status mapping. */
+  readonly statusCode: string;
   readonly status: string;
   readonly avatarTone: CommandCenterAvatarTone;
   readonly action: CommandCenterLinkAction;
@@ -57,7 +61,8 @@ export interface CommandCenterNextAppointmentViewModel {
   readonly date: string;
   readonly timeRange: string;
   readonly location: string;
-  readonly room: string;
+  /** Room is not part of the appointment data yet; the line is hidden when null. */
+  readonly room: string | null;
   readonly avatarTone: CommandCenterAvatarTone;
   readonly detailAction: CommandCenterLinkAction;
   readonly startAction: CommandCenterCommandAction | null;
@@ -76,6 +81,20 @@ export interface CommandCenterClinicalViewModel {
   readonly secondaryLabel: string | null;
   readonly secondaryAction: CommandCenterLinkAction | null;
   readonly statusLabel: string | null;
+}
+
+/** An IN_PROGRESS consultation/appointment from a previous day, still not closed. */
+export interface CommandCenterToCloseViewModel {
+  readonly id: string;
+  readonly patient: string;
+  readonly initials: string;
+  readonly startedLabel: string;
+  /** Present when an open consultation exists: « Reprendre » / « Clôturer ». */
+  readonly resumeAction: CommandCenterLinkAction | null;
+  readonly closeAction: CommandCenterLinkAction | null;
+  /** Appointment still IN_PROGRESS but no open consultation (e.g. interrupted). */
+  readonly detailAction: CommandCenterLinkAction | null;
+  readonly note: string | null;
 }
 
 export interface CommandCenterViewModel {
@@ -97,6 +116,7 @@ export interface CommandCenterViewModel {
   readonly clinical: CommandCenterClinicalViewModel | null;
   readonly clinicalStarting: boolean;
   readonly clinicalStartError: string | null;
+  readonly toClose: readonly CommandCenterToCloseViewModel[];
   readonly availabilityState: 'loading' | 'ready' | 'warning' | 'error';
   readonly availabilityTitle: string;
   readonly availabilityDescription: string;

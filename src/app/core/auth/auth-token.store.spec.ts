@@ -15,7 +15,7 @@ describe('AuthTokenStore', () => {
 
   it('keeps the opaque session in memory and clears it atomically', () => {
     const store = TestBed.inject(AuthTokenStore);
-    expect(store.authState()).toBe('unknown');
+    expect(store.authState()).toBe('BOOTSTRAPPING');
     store.setSession(session());
 
     expect(store.authenticated()).toBe(true);
@@ -36,7 +36,7 @@ describe('AuthTokenStore', () => {
     TestBed.resetTestingModule();
     const hydratedStore = TestBed.inject(AuthTokenStore);
 
-    expect(hydratedStore.authState()).toBe('unknown');
+    expect(hydratedStore.authState()).toBe('BOOTSTRAPPING');
     expect(hydratedStore.restoreStoredSession()).toBe(true);
     expect(hydratedStore.authenticated()).toBe(false);
     expect(hydratedStore.accessToken()).toBe('persisted-access');
@@ -44,10 +44,15 @@ describe('AuthTokenStore', () => {
   });
 
   it('restores clinic staff credentials without resolving the security context prematurely', () => {
-    sessionStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(session({
-      accessToken: 'clinic-staff-access',
-      user: { id: 'clinic-user-1', role: 'CLINIC_ASSISTANT', mustChangePassword: false },
-    })));
+    sessionStorage.setItem(
+      AUTH_SESSION_STORAGE_KEY,
+      JSON.stringify(
+        session({
+          accessToken: 'clinic-staff-access',
+          user: { id: 'clinic-user-1', role: 'CLINIC_ASSISTANT', mustChangePassword: false },
+        }),
+      ),
+    );
 
     const store = TestBed.inject(AuthTokenStore);
 
@@ -58,14 +63,17 @@ describe('AuthTokenStore', () => {
   });
 
   it('drops malformed or refresh-expired stored sessions', () => {
-    sessionStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify({
-      accessToken: 'stale-access',
-      tokenType: 'Bearer',
-      expiresAt: '2999-08-05T12:10:00Z',
-      refreshToken: 'stale-refresh',
-      refreshExpiresAt: '2000-08-06T00:00:00Z',
-      user: { id: 'admin-1', role: 'ADMIN', mustChangePassword: false },
-    }));
+    sessionStorage.setItem(
+      AUTH_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        accessToken: 'stale-access',
+        tokenType: 'Bearer',
+        expiresAt: '2999-08-05T12:10:00Z',
+        refreshToken: 'stale-refresh',
+        refreshExpiresAt: '2000-08-06T00:00:00Z',
+        user: { id: 'admin-1', role: 'ADMIN', mustChangePassword: false },
+      }),
+    );
 
     const store = TestBed.inject(AuthTokenStore);
 

@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "include": [
+    "src/test-setup.ts",
+    "src/polyfills/global.ts",
+    "src/app/core/http/app-http-error.spec.ts",
+    "src/app/core/http/request-correlation.interceptor.spec.ts",
+    "src/app/core/auth/auth.service.spec.ts",
+    "src/app/core/auth/auth.interceptor.spec.ts",
+    "src/app/features/login/invitation-api.service.spec.ts",
+    "src/app/features/platform-admin/admin-api.service.spec.ts",
+    "src/app/features/platform-admin/admin-page-utils.spec.ts",
+    "src/app/features/platform-admin/admin-idempotency.spec.ts",
+    "src/app/features/doctor/scheduled-care/scheduled-care-errors.spec.ts",
+    "src/app/features/doctor/scheduled-care/scheduled-care.facade.spec.ts",
+    "src/app/features/doctor/clinical-record.store.spec.ts",
+    "src/app/features/doctor/prescription.store.spec.ts",
+    "src/app/features/doctor/clinical-order.store.spec.ts",
+    "src/app/features/doctor/artifact.store.spec.ts"
+  ]
+}

@@ -22,6 +22,8 @@ describe('scheduled-care ProblemDetail handling', () => {
 
   it('classifies transport loss as an unknown mutation outcome', () => {
     expect(isUnknownMutationOutcome(new HttpErrorResponse({ status: 0 }))).toBe(true);
+    expect(isUnknownMutationOutcome(new HttpErrorResponse({ status: 408 }))).toBe(true);
+    expect(isUnknownMutationOutcome(new HttpErrorResponse({ status: 504 }))).toBe(true);
     expect(isUnknownMutationOutcome(new HttpErrorResponse({ status: 400 }))).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { registerLocaleData } from '@angular/common';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import enGb from '@angular/common/locales/en-GB';
+import fr from '@angular/common/locales/fr';
 import {
   ApplicationConfig,
   LOCALE_ID,
@@ -12,31 +12,26 @@ import { provideClientHydration, withEventReplay } from '@angular/platform-brows
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { provideNzIcons } from 'ng-zorro-antd/icon';
-import { en_GB, NZ_DATE_CONFIG, provideNzI18n } from 'ng-zorro-antd/i18n';
+import { fr_FR, NZ_DATE_CONFIG, provideNzI18n } from 'ng-zorro-antd/i18n';
 
 import { OMNICARE_ICONS } from './app.icons';
 import { routes } from './app.routes';
-import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthBootstrapService } from './core/auth/auth-bootstrap.service';
-import { APP_MODE } from './core/config/app-mode';
-import { staticDemoApiInterceptor } from './core/demo/static-demo-api.interceptor';
+import { APPLICATION_HTTP_INTERCEPTORS } from './core/http/application-http-interceptors';
 
-registerLocaleData(enGb);
+registerLocaleData(fr);
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideAnimations(),
     provideRouter(routes),
-    provideHttpClient(
-      withFetch(),
-      withInterceptors(APP_MODE.staticDemo ? [staticDemoApiInterceptor] : [authInterceptor]),
-    ),
+    provideHttpClient(withFetch(), withInterceptors([...APPLICATION_HTTP_INTERCEPTORS])),
     provideAppInitializer(() => inject(AuthBootstrapService).initialize()),
     provideClientHydration(withEventReplay()),
-    provideNzI18n(en_GB),
+    provideNzI18n(fr_FR),
     provideNzIcons(OMNICARE_ICONS),
-    { provide: LOCALE_ID, useValue: 'en-GB' },
+    { provide: LOCALE_ID, useValue: 'fr' },
     { provide: NZ_DATE_CONFIG, useValue: { firstDayOfWeek: 1 } },
   ],
 };

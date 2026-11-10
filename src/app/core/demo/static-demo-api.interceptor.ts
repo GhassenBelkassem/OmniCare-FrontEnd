@@ -557,7 +557,7 @@ function appointments(now: string): readonly unknown[] {
       startTime: start.toISOString(),
       endTime: end.toISOString(),
       status: 'CONFIRMED',
-      source: 'WEB',
+      source: 'PATIENT_BOOKED',
       notes: 'Routine follow-up',
       quotedPriceTnd: 70,
       startedAt: null,

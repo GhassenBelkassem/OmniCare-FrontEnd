@@ -10,7 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 import {
   OcButton,
@@ -20,7 +20,6 @@ import {
   OcStatusBadge,
   OcPageHeader,
 } from '../../../shared/ui';
-import { PatientSummaryPanel } from '../shared/patient-summary-panel';
 import { BookingRequestDetailPanel } from '../scheduled-care/booking-request-detail-panel';
 import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
@@ -37,21 +36,18 @@ import { formatScheduledInstant } from '../scheduled-care/scheduled-care-time';
     OcEmptyState,
     OcStatusBadge,
     BookingRequestDetailPanel,
-    PatientSummaryPanel,
   ],
   templateUrl: './requests-page.html',
   styleUrl: './requests-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RequestsPage {
-  private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly scheduledCareApi = inject(ScheduledCareApiService);
   private readonly scheduledCare = inject(ScheduledCareFacade);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly requestPanel = viewChild.required<BookingRequestDetailPanel>('requestPanel');
-  readonly patientPanel = viewChild.required<PatientSummaryPanel>('patientPanel');
 
   readonly appointmentRequests = signal<readonly DoctorScheduledCareItem[]>([]);
   readonly appointmentsLoading = signal(false);
@@ -78,14 +74,6 @@ export class RequestsPage {
 
   openRequestDetail(request: DoctorScheduledCareItem): void {
     if (request.requestId) this.requestPanel().openWith(request.requestId);
-  }
-
-  openPatientDetail(patientId: string): void {
-    this.patientPanel().openWith(patientId);
-  }
-
-  startConsultation(): void {
-    void this.router.navigate(['/doctor', 'consultation', 'new']);
   }
 
   loadAppointments(silent = false): void {
@@ -118,10 +106,6 @@ export class RequestsPage {
 
   retryAppointments(): void {
     this.loadAppointments();
-  }
-
-  viewPatient(patientId: string): void {
-    void this.router.navigate(['/doctor/patient', patientId]);
   }
 
   appointmentStatusLabel(status: string): string {

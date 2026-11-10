@@ -12,7 +12,7 @@ export type OcSheetSide = 'left' | 'right';
       <span brnSheetOverlay class="oc-sheet-backdrop" aria-hidden="true"></span>
       <ng-template brnSheetContent class="oc-sheet-panel">
         <aside class="oc-sheet" [style.--oc-sheet-width]="width()" [attr.aria-busy]="submitting()">
-          <header class="oc-sheet__header"><div><h2 brnSheetTitle>{{ title() }}</h2>@if (description(); as text) { <p brnSheetDescription>{{ text }}</p> }</div>@if (!dismissalDisabled()) { <button type="button" class="oc-sheet__close" [attr.aria-label]="'Close ' + title()" (click)="dismiss()">×</button> }</header>
+          <header class="oc-sheet__header"><div><h2 brnSheetTitle>{{ title() }}</h2>@if (description(); as text) { <p brnSheetDescription>{{ text }}</p> }</div>@if (!dismissalDisabled()) { <button type="button" class="oc-sheet__close" [attr.aria-label]="'Fermer : ' + title()" (click)="dismiss()">×</button> }</header>
           <div class="oc-sheet__body"><ng-content /></div>
           @if (hasFooter()) { <footer class="oc-sheet__footer"><ng-content select="[ocSheetFooter]" /></footer> }
         </aside>

@@ -35,9 +35,7 @@ describe('PracticePatientApiService', () => {
   afterEach(() => http.verify());
 
   it('lists patients with search, filter and pagination params', () => {
-    service
-      .listPatients({ query: 'ben ', filter: 'LINKED', page: 2, size: 20 })
-      .subscribe();
+    service.listPatients({ query: 'ben ', filter: 'LINKED', page: 2, size: 20 }).subscribe();
     const request = http.expectOne(
       (candidate) =>
         candidate.url === '/api/v1/patients' &&
@@ -87,6 +85,53 @@ describe('PracticePatientApiService', () => {
       possibleOmniCareMatch: false,
       createdAt: '2026-08-21T09:00:00Z',
       updatedAt: '2026-08-21T09:00:00Z',
+    });
+  });
+
+  it('requests doctor-scoped duplicate candidates before creation', () => {
+    const requestBody = {
+      firstName: 'Ahmed',
+      lastName: 'Ben Salah',
+      approximateAgeYears: 68,
+      sex: 'M' as const,
+    };
+
+    service.findDuplicateCandidates(requestBody).subscribe();
+
+    const request = http.expectOne('/api/v1/patients/duplicate-candidates');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(requestBody);
+    request.flush([]);
+  });
+
+  it('creates an external-patient appointment with a caller-owned idempotency key', () => {
+    const body = {
+      practiceLocationId: 'cabinet-1',
+      startTime: '2026-11-10T09:00:00Z',
+      endTime: '2026-11-10T09:30:00Z',
+    };
+
+    service.createAppointment('patient/one', body, 'appointment-key').subscribe();
+
+    const request = http.expectOne('/api/v1/patients/patient%2Fone/appointments');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.headers.get('Idempotency-Key')).toBe('appointment-key');
+    expect(request.request.body).toEqual(body);
+    request.flush({});
+  });
+
+  it('queues one external-patient MRS reconciliation with a caller-owned idempotency key', () => {
+    service.reconcileMrsPatient('patient/one', 'reconciliation-key').subscribe();
+
+    const request = http.expectOne('/api/v1/patients/patient%2Fone/mrs-reconciliation');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.headers.get('Idempotency-Key')).toBe('reconciliation-key');
+    expect(request.request.body).toBeNull();
+    request.flush({
+      patientId: 'patient/one',
+      authorityVersion: 1,
+      status: 'QUEUED',
+      replayed: false,
     });
   });
 

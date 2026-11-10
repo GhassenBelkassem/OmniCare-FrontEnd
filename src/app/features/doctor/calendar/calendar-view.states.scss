@@ -1,3 +1,80 @@
+.doctor-calendar-demo__calendar .demo-calendar-appointment--omnicare-patient {
+  --demo-calendar-event-background: var(--oc-color-information-surface);
+  --demo-calendar-event-accent: var(--oc-color-information);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment--follow-up {
+  --demo-calendar-event-background: var(--oc-color-coordination-surface);
+  --demo-calendar-event-accent: var(--oc-color-coordination);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment--external-patient {
+  --demo-calendar-event-background: var(--oc-color-warning-surface);
+  --demo-calendar-event-accent: var(--oc-color-warning);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-appointment--urgent-request,
+.doctor-calendar-demo__calendar .omnicare-urgent-event--estimated,
+.doctor-calendar-demo__calendar .omnicare-urgent-event--arrived {
+  --demo-calendar-event-background: var(--oc-color-critical-surface);
+  --demo-calendar-event-accent: var(--oc-color-critical);
+  background: var(--demo-calendar-event-background);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--dayGridMonth .demo-event {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 7px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--dayGridMonth .demo-event__time {
+  align-self: start;
+  padding-block-start: 1px;
+  color: var(--oc-color-text-primary);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--dayGridMonth .demo-event strong {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-view--dayGridMonth .demo-event small {
+  line-height: 1.2;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-more-link {
+  margin: 2px var(--oc-space-2) 0;
+  padding: 2px var(--oc-space-1);
+  border-radius: var(--oc-radius-sm);
+  color: var(--oc-color-text-secondary);
+  font-size: 10px;
+  font-weight: var(--oc-font-weight-semibold);
+  line-height: 1.4;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-more-link:hover {
+  background: var(--oc-color-surface-hover);
+  color: var(--oc-color-text-primary);
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-more-link:focus-visible {
+  outline: 2px solid var(--oc-color-border-focus);
+  outline-offset: 1px;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-now-line {
+  border-color: var(--oc-color-critical);
+  border-width: 2px 0 0;
+}
+
+.doctor-calendar-demo__calendar .demo-calendar-now-dot {
+  border-color: var(--oc-color-critical);
+  background: var(--oc-color-critical);
+}
+
 .doctor-calendar-demo__sync-warning {
   color: var(--oc-color-warning);
   font-size: 11px;
@@ -63,4 +140,207 @@
   color: var(--oc-color-text-muted);
   font-size: 11px;
   line-height: 1.5;
+}
+
+// ── Page toolbar (navigation + view switch), below oc-page-header ─────────
+.doctor-calendar__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+  margin-block-end: var(--oc-space-4);
+}
+
+.doctor-calendar__navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oc-space-2);
+}
+
+.doctor-calendar__navigation .doctor-calendar-demo__sync-warning {
+  margin: 0;
+  white-space: normal;
+}
+
+// ── Phase 3: page surface, consistent with the home page ──────────────────
+.doctor-calendar-demo__calendar-host {
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-sm);
+  font-family: var(--oc-font-family);
+}
+
+.doctor-calendar-demo__state--hint {
+  border-color: var(--oc-color-border-default);
+  color: var(--oc-color-text-secondary);
+}
+
+// Non-working hours: hatched (weekly rules, pauses) and BLOCK exceptions.
+.doctor-calendar-demo__calendar .demo-calendar-non-business,
+.doctor-calendar-demo__calendar .omnicare-exception-background--block {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--oc-grey-100) 0 6px,
+    var(--oc-grey-50) 6px 12px
+  ) !important;
+  opacity: 1;
+}
+
+.doctor-calendar-demo__calendar .omnicare-exception-background--block {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--oc-error-tint) 0 6px,
+    var(--oc-grey-50) 6px 12px
+  ) !important;
+}
+
+// Today's date as a primary pill in the column header.
+.oc-day-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oc-space-2);
+  color: var(--oc-color-text-secondary);
+  font-size: var(--oc-text-small-size);
+  font-weight: var(--oc-font-weight-semibold);
+  text-transform: capitalize;
+}
+
+.oc-day-header__date {
+  display: inline-grid;
+  min-width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0 var(--oc-space-1);
+  border-radius: var(--oc-radius-pill);
+  color: var(--oc-color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.oc-day-header__date--today {
+  background: var(--oc-primary);
+  color: var(--oc-text-strong);
+  font-weight: var(--oc-font-weight-strong);
+}
+
+// Event cards: tint + left rule from the shared status colour.
+.doctor-calendar-demo__calendar .demo-calendar-appointment {
+  border: 0;
+  background: transparent;
+}
+
+.doctor-calendar-demo__calendar .fc-timegrid-event .oc-event,
+.doctor-calendar-demo__calendar .oc-event:not(.oc-event--month) {
+  height: 100%;
+}
+
+.oc-event {
+  display: grid;
+  box-sizing: border-box;
+  min-width: 0;
+  align-content: start;
+  gap: 2px;
+  overflow: hidden;
+  padding: 3px 6px;
+  border-left: 3px solid var(--oc-event-color, var(--oc-primary));
+  border-radius: var(--oc-radius-sm);
+  background: var(--oc-event-tint, var(--oc-primary-tint));
+  color: var(--oc-color-text-primary);
+  font-size: var(--oc-text-caption-size);
+  line-height: 1.25;
+}
+
+.oc-event--selected {
+  outline: 2px solid var(--oc-event-color, var(--oc-primary));
+  outline-offset: -1px;
+}
+
+.oc-event__line {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: var(--oc-space-1);
+}
+
+.oc-event__time {
+  flex: 0 0 auto;
+  color: var(--oc-event-text, var(--oc-primary-dark));
+  font-weight: var(--oc-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.oc-event__name,
+.oc-event__type {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-event__name {
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.oc-event__type {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--oc-color-text-muted);
+  font-size: 11px;
+}
+
+.oc-event__warning {
+  color: var(--oc-amber-dark);
+}
+
+.oc-event--short {
+  align-content: center;
+  padding-block: 1px;
+}
+
+.oc-event--muted {
+  background: var(--oc-grey-tint);
+  color: var(--oc-color-text-muted);
+}
+
+.oc-event--muted .oc-event__time {
+  color: var(--oc-color-text-muted);
+}
+
+.oc-event--struck .oc-event__name {
+  text-decoration: line-through;
+}
+
+// Month view: compact pill (dot, time, name).
+.oc-event--month {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-1);
+  padding: 1px 6px;
+  border-left: 0;
+  border-radius: var(--oc-radius-pill);
+}
+
+.oc-event__dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--oc-event-color, var(--oc-primary));
+}
+
+.doctor-calendar-demo__calendar .fc-more-link,
+.doctor-calendar-demo__calendar .demo-calendar-more-link {
+  color: var(--oc-color-text-link);
+  font-size: var(--oc-text-caption-size);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.oc-event-tooltip {
+  display: grid;
+  gap: 2px;
+  font-size: var(--oc-text-caption-size);
 }

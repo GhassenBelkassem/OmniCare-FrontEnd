@@ -1,0 +1,398 @@
+<oc-sheet
+  [open]="open()"
+  title="Nouveau rendez-vous"
+  description="Planifiez un créneau confirmé sans quitter le calendrier."
+  width="34rem"
+  initialFocus="#quick-booking-search"
+  [submitting]="submitting()"
+  [disabled]="outcomeUnknown() || patientFormOpen()"
+  [backdropDismissible]="!patientFormOpen()"
+  [hasFooter]="true"
+  (dismissed)="dismiss()"
+>
+  <div class="quick-booking" [attr.aria-busy]="submitting()">
+    <section class="quick-booking__section" aria-labelledby="quick-booking-patient-title">
+      <div class="quick-booking__section-heading">
+        <div>
+          <span class="quick-booking__step">1</span>
+          <h3 id="quick-booking-patient-title">Patient</h3>
+        </div>
+        @if (selectedPatient() && !patientPickerExpanded()) {
+          <button type="button" class="quick-booking__text-action" (click)="changePatient()">
+            Changer
+          </button>
+        }
+      </div>
+
+      @if (selectedPatient(); as patient) {
+        @if (!patientPickerExpanded()) {
+          <oc-patient-chip
+            [name]="patientName(patient)"
+            [phone]="patient.phone"
+            [removable]="!submitting() && !outcomeUnknown()"
+            (removed)="changePatient()"
+          />
+        }
+        @switch (selectedPatientRecordState()) {
+          @case ('PREPARING') {
+            <div
+              class="quick-booking__record-status"
+              data-testid="medical-record-status"
+              role="status"
+              aria-live="polite"
+            >
+              <span class="quick-booking__inline-spinner" aria-hidden="true"></span>
+              <span>
+                <strong>Dossier médical en cours de préparation…</strong>
+                <small>Vous pouvez confirmer le rendez-vous sans attendre.</small>
+              </span>
+            </div>
+          }
+          @case ('READY') {
+            <div
+              class="quick-booking__record-status quick-booking__record-status--ready"
+              data-testid="medical-record-status"
+              role="status"
+              aria-live="polite"
+            >
+              <span class="quick-booking__record-check" aria-hidden="true">✓</span>
+              <strong>Dossier médical prêt</strong>
+            </div>
+          }
+          @case ('FAILED') {
+            <div
+              class="quick-booking__record-status quick-booking__record-status--failed"
+              data-testid="medical-record-status"
+              role="alert"
+            >
+              <oc-icon name="warning" aria-hidden="true" />
+              <span>
+                <strong>La préparation du dossier a échoué.</strong>
+                <small>Le rendez-vous peut quand même être confirmé.</small>
+              </span>
+              <oc-button
+                variant="secondary"
+                size="small"
+                leadingIcon="reload"
+                [loading]="mrsActionPending()"
+                [disabled]="patientRefreshing()"
+                (click)="retryMrsProvisioning()"
+              >
+                Réessayer
+              </oc-button>
+            </div>
+          }
+        }
+      }
+
+      @if (patientFormOpen()) {
+        <app-practice-patient-form
+          [prefill]="patientFormPrefill()"
+          (created)="onPatientCreated($event)"
+          (useExisting)="selectDuplicate($event)"
+          (cancelled)="closePatientForm()"
+        />
+      } @else if (patientPickerExpanded()) {
+        <span class="quick-booking__search">
+          <label class="oc-sr-only" for="quick-booking-search">Rechercher un patient</label>
+          <oc-icon name="staff" aria-hidden="true" />
+          <input
+            id="quick-booking-search"
+            type="search"
+            name="quick-booking-patient-search"
+            autocomplete="off"
+            placeholder="Rechercher par nom ou téléphone…"
+            aria-describedby="quick-booking-search-hint"
+            [formControl]="searchControl"
+            (keydown.enter)="selectFirstResult($event)"
+          />
+          @if (patientSearchLoading()) {
+            <span class="quick-booking__inline-spinner" aria-hidden="true"></span>
+          }
+        </span>
+
+        <div class="quick-booking__search-meta" aria-live="polite">
+          <span id="quick-booking-search-hint">
+            @if (patientSearchError(); as error) {
+              <span class="quick-booking__error">{{ error }}</span>
+            } @else {
+              <strong>{{ patientListTitle() }}</strong>
+              @if (searchControl.value.trim().length === 1) {
+                · Saisissez au moins 2 caractères
+              }
+            }
+          </span>
+          <button type="button" class="quick-booking__text-action" (click)="openPatientCreation()">
+            <oc-icon name="staff" aria-hidden="true" />
+            Créer un patient
+          </button>
+        </div>
+
+        @if (patientSearchLoading()) {
+          <nz-skeleton
+            class="quick-booking__patient-skeleton"
+            data-testid="patient-search-skeleton"
+            [nzActive]="true"
+            [nzAvatar]="{ size: 'small' }"
+            [nzTitle]="false"
+            [nzParagraph]="{ rows: 3 }"
+          />
+        } @else if (patients().length > 0) {
+          <ul class="quick-booking__patient-results" [attr.aria-label]="patientListTitle()">
+            @for (patient of patients(); track patient.id) {
+              <li>
+                <button type="button" (click)="selectPatient(patient)">
+                  <oc-avatar [name]="patientName(patient)" size="small" />
+                  <span>
+                    <strong>{{ patientName(patient) }}</strong>
+                    <small>{{ patientDescription(patient) }}</small>
+                  </span>
+                  @if (readinessLabel(patient); as badge) {
+                    <span
+                      class="quick-booking__readiness"
+                      [class.quick-booking__readiness--failed]="badge !== 'En préparation'"
+                    >
+                      {{ badge }}
+                    </span>
+                  }
+                </button>
+              </li>
+            }
+          </ul>
+        } @else if (!patientSearchError()) {
+          <div class="quick-booking__empty">
+            <oc-icon name="staff" aria-hidden="true" />
+            @if (patientListMode() === 'results') {
+              <p>Aucun patient trouvé</p>
+              <button type="button" class="quick-booking__text-action" (click)="openPatientCreation()">
+                Créer « {{ searchedText() }} »
+              </button>
+            } @else {
+              <p>Aucun patient récent</p>
+              <button type="button" class="quick-booking__text-action" (click)="openPatientCreation()">
+                Créer un patient
+              </button>
+            }
+          </div>
+        }
+      }
+    </section>
+
+    <section class="quick-booking__section" aria-labelledby="quick-booking-cabinet-title">
+      <div class="quick-booking__section-heading">
+        <div>
+          <span class="quick-booking__step">2</span>
+          <h3 id="quick-booking-cabinet-title">Cabinet</h3>
+        </div>
+      </div>
+
+      @if (locationsLoading()) {
+        <p class="quick-booking__state" role="status">Chargement de vos cabinets…</p>
+      } @else if (locationsError(); as error) {
+        <p class="quick-booking__state quick-booking__error" role="alert">{{ error }}</p>
+      } @else if (singleLocation(); as location) {
+        <p class="quick-booking__cabinet-single" data-testid="single-cabinet">
+          <oc-icon name="building" aria-hidden="true" />
+          <strong>{{ location.name }}</strong>
+          <small>{{ location.address }}, {{ location.city }}</small>
+        </p>
+      } @else {
+        <nz-radio-group
+          class="quick-booking__cabinet-list"
+          aria-label="Cabinet du rendez-vous"
+          [ngModel]="selectedLocationId()"
+          [nzDisabled]="submitting() || outcomeUnknown() || slotsLoading()"
+          (ngModelChange)="selectLocation($event)"
+        >
+          @for (location of locations(); track location.id) {
+            <label
+              nz-radio
+              [nzValue]="location.id"
+              [class.quick-booking__cabinet--selected]="selectedLocationId() === location.id"
+            >
+              <span class="quick-booking__cabinet-copy">
+                <strong>{{ location.name }}</strong>
+                <small>{{ location.address }}, {{ location.city }}</small>
+              </span>
+              @if (location.primary) {
+                <span class="quick-booking__primary-label">Principal</span>
+              }
+            </label>
+          }
+        </nz-radio-group>
+      }
+    </section>
+
+    <section
+      id="quick-booking-date-section"
+      class="quick-booking__section"
+      tabindex="-1"
+      aria-labelledby="quick-booking-date-title"
+    >
+      <div class="quick-booking__section-heading">
+        <div>
+          <span class="quick-booking__step">3</span>
+          <h3 id="quick-booking-date-title">Date et créneau</h3>
+        </div>
+        @if (selectedPatient() && selectedLocation()) {
+          <button
+            type="button"
+            class="quick-booking__text-action"
+            [disabled]="slotsLoading() || submitting() || outcomeUnknown()"
+            (click)="refreshSlots()"
+          >
+            Actualiser
+          </button>
+        }
+      </div>
+
+      <div class="quick-booking__date-choices" aria-label="Choisir une date">
+        <button
+          type="button"
+          [class.quick-booking__date--selected]="dateChoice() === 'today'"
+          [disabled]="submitting() || outcomeUnknown()"
+          (click)="selectDateChoice('today')"
+        >
+          <strong>Aujourd'hui</strong>
+          <small>{{ dateLabel(todayDate()) }}</small>
+        </button>
+        <button
+          type="button"
+          [class.quick-booking__date--selected]="dateChoice() === 'tomorrow'"
+          [disabled]="submitting() || outcomeUnknown()"
+          (click)="selectDateChoice('tomorrow')"
+        >
+          <strong>Demain</strong>
+          <small>{{ dateLabel(tomorrowDate()) }}</small>
+        </button>
+        <button
+          type="button"
+          [class.quick-booking__date--selected]="dateChoice() === 'other'"
+          [disabled]="submitting() || outcomeUnknown()"
+          (click)="selectDateChoice('other')"
+        >
+          <strong>Autre date</strong>
+          <small>{{ dateLabel(otherDate()) }}</small>
+        </button>
+      </div>
+
+      @if (dateChoice() === 'other') {
+        <div class="quick-booking__other-date">
+          <label for="quick-booking-other-date">Date</label>
+          <oc-date-field
+            controlId="quick-booking-other-date"
+            ariaLabel="Autre date"
+            [allowClear]="false"
+            [min]="todayDate()"
+            [max]="maximumDate()"
+            [value]="otherDate()"
+            (valueChange)="setOtherDate($event)"
+          />
+        </div>
+      }
+
+      <p class="quick-booking__selected-date">{{ selectedDateLongLabel() }}</p>
+
+      @if (slotSelectionNotice(); as notice) {
+        <p class="quick-booking__state" role="status" aria-live="polite">{{ notice }}</p>
+      }
+
+      @if (!selectedPatient()) {
+        <p class="quick-booking__state">Sélectionnez d'abord un patient pour charger les disponibilités.</p>
+      } @else if (!selectedLocation()) {
+        <p class="quick-booking__state">Sélectionnez un cabinet actif.</p>
+      } @else if (slotsLoading()) {
+        <p class="quick-booking__state" role="status">Chargement des créneaux disponibles…</p>
+      } @else if (slotsError(); as error) {
+        <div class="quick-booking__state quick-booking__state--error" role="alert">
+          <span>{{ error }}</span>
+          <oc-button variant="secondary" size="small" (click)="refreshSlots()">Réessayer</oc-button>
+        </div>
+      } @else if (slots().length === 0) {
+        <div class="quick-booking__empty quick-booking__empty--slots">
+          <oc-icon name="calendar" aria-hidden="true" />
+          <p>Aucun créneau disponible pour cette date.</p>
+          <span>Choisissez une autre date ou actualisez les disponibilités.</span>
+        </div>
+      } @else {
+        <div class="quick-booking__slots" role="group" aria-label="Créneaux disponibles">
+          @for (slot of slots(); track slot.start + slot.end) {
+            <button
+              type="button"
+              [attr.aria-pressed]="selectedSlotKey() === slot.start + '|' + slot.end"
+              [class.quick-booking__slot--selected]="selectedSlotKey() === slot.start + '|' + slot.end"
+              [disabled]="submitting() || outcomeUnknown()"
+              (click)="selectSlot(slot.start + '|' + slot.end)"
+            >
+              <strong>{{ slotTime(slot) }}</strong>
+              <small>{{ slot.durationMinutes }} min</small>
+            </button>
+          }
+        </div>
+      }
+    </section>
+
+    @if (selectedPatient(); as patient) {
+      @if (selectedLocation(); as location) {
+        @if (selectedSlot(); as slot) {
+          <section class="quick-booking__summary" aria-labelledby="quick-booking-summary-title">
+            <div class="quick-booking__summary-heading">
+              <span class="quick-booking__summary-check" aria-hidden="true">✓</span>
+              <div>
+                <h3 id="quick-booking-summary-title">Résumé</h3>
+                <p>Le serveur confirmera ces informations.</p>
+              </div>
+            </div>
+            <dl>
+              <div><dt>Patient</dt><dd>{{ patientName(patient) }}</dd></div>
+              <div><dt>Cabinet</dt><dd>{{ location.name }}</dd></div>
+              <div><dt>Date</dt><dd>{{ selectedDateLongLabel() }}</dd></div>
+              <div>
+                <dt>Horaire</dt>
+                <dd>{{ slotTime(slot) }}–{{ slotEndTime(slot) }} · {{ slot.durationMinutes }} min</dd>
+              </div>
+            </dl>
+          </section>
+        }
+      }
+    }
+
+    @if (bookingError(); as error) {
+      <p class="quick-booking__booking-error" role="alert">{{ error }}</p>
+    }
+    @if (outcomeUnknown()) {
+      <p class="quick-booking__outcome-note" role="status">
+        Conservez ce tiroir ouvert. « Vérifier le résultat » réutilise exactement la même commande.
+      </p>
+    }
+  </div>
+
+  <div ocSheetFooter class="quick-booking__footer">
+    @if (submitBlockedReason(); as reason) {
+      <p
+        id="quick-booking-submit-reason"
+        class="quick-booking__footer-reason"
+        data-testid="submit-blocked-reason"
+        aria-live="polite"
+      >
+        {{ reason }}
+      </p>
+    }
+    <oc-button
+      variant="secondary"
+      [disabled]="submitting() || outcomeUnknown()"
+      (click)="dismiss()"
+    >
+      Annuler
+    </oc-button>
+    <oc-button
+      variant="primary"
+      [loading]="submitting()"
+      [disabled]="!canSubmit()"
+      (click)="submit()"
+    >
+      {{ footerActionLabel() }}
+    </oc-button>
+  </div>
+</oc-sheet>
+

@@ -6,17 +6,18 @@ import { By } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import {
   DatesSetInfo,
-  DayHeaderInfo,
   EventClickInfo,
   EventDisplayInfo,
   FullCalendarComponent,
 } from '@fullcalendar/angular';
 import { Calendar } from 'fullcalendar';
 import { en_GB, provideNzI18n } from 'ng-zorro-antd/i18n';
+import { provideNzIcons } from 'ng-zorro-antd/icon';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RealtimeHealth, RealtimeService } from '../../../core/realtime/realtime.service';
+import { OMNICARE_ICONS } from '../../../app.icons';
 import { OcTimeField } from '../../../shared/ui/time-field/oc-time-field';
 import type {
   AvailabilityExceptionDto,
@@ -29,6 +30,7 @@ import { ScheduledAppointmentDetailPanel } from '../scheduled-care/scheduled-app
 import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
 import type {
+  Appointment,
   DoctorScheduledCareAgenda,
   DoctorScheduledCareItem,
 } from '../scheduled-care/scheduled-care.models';
@@ -58,7 +60,7 @@ interface AppointmentApiStub {
 
 function appointment(
   id: string,
-  status = 'CONFIRMED',
+  status: DoctorScheduledCareItem['status'] = 'CONFIRMED',
   overrides: Partial<DoctorScheduledCareItem> = {},
 ): DoctorScheduledCareItem {
   return {
@@ -99,6 +101,53 @@ function agenda(items: readonly DoctorScheduledCareItem[]): DoctorScheduledCareA
   };
 }
 
+function appointmentDetail(
+  id: string,
+  status: Appointment['status'] = 'CONFIRMED',
+  version = 1,
+): Appointment {
+  return {
+    appointmentId: id,
+    sourceBookingRequestId: `request-${id}`,
+    version,
+    status,
+    doctor: {
+      doctorId: 'doctor-1',
+      displayName: 'Dr Test',
+      specialty: 'Médecine générale',
+    },
+    subject: {
+      subjectType: 'SELF',
+      familyMemberId: null,
+      displayName: 'Ahmed Ben Ali',
+      relationship: 'Patient',
+    },
+    cabinet: {
+      practiceLocationId: 'cabinet-1',
+      name: 'Cabinet Tunis',
+      address: '1 rue Test',
+      city: 'Tunis',
+      governorate: 'Tunis',
+      timezone: 'Africa/Tunis',
+    },
+    slot: {
+      start: '2031-04-08T08:17:00.000Z',
+      end: '2031-04-08T09:02:00.000Z',
+      durationMinutes: 45,
+      timezone: 'Africa/Tunis',
+    },
+    quotedPrice: null,
+    confirmedAt: '2031-04-01T08:00:00.000Z',
+    createdAt: '2031-04-01T08:00:00.000Z',
+    updatedAt: '2031-04-01T08:00:00.000Z',
+    cancellation: null,
+    intakeStatus: null,
+    availableActions: ['CANCEL_APPOINTMENT'],
+    practicePatient: null,
+    consultationReason: null,
+  };
+}
+
 function exception(id: string, type: 'BLOCK' | 'EXTRA' = 'BLOCK'): AvailabilityExceptionDto {
   return {
     id,
@@ -123,14 +172,24 @@ describe('CalendarPage', () => {
     >;
   };
   let projectionInvalidationEpoch: WritableSignal<number>;
-  let activeAppointment: WritableSignal<DoctorScheduledCareItem | null>;
+  let activeAppointment: WritableSignal<Appointment | null>;
+  let activeConsultation: WritableSignal<{
+    consultationId: string;
+    sourceType: 'SCHEDULED_APPOINTMENT';
+    sourceId: string;
+    status: 'IN_PROGRESS';
+    medicalAccessStatus: 'NONE';
+    version: number;
+    startedAt: string;
+  } | null>;
   let startScheduledAppointment: ReturnType<typeof vi.fn>;
   let navigate: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     realtimeHealth = signal<RealtimeHealth>('live');
     projectionInvalidationEpoch = signal(0);
-    activeAppointment = signal<DoctorScheduledCareItem | null>(null);
+    activeAppointment = signal<Appointment | null>(null);
+    activeConsultation = signal(null);
     startScheduledAppointment = vi.fn();
     navigate = vi.fn();
     scheduledApi = { getDoctorScheduledCare: vi.fn(() => of(agenda([]))) };
@@ -145,6 +204,7 @@ describe('CalendarPage', () => {
       imports: [CalendarPage],
       providers: [
         provideNzI18n(en_GB),
+        provideNzIcons(OMNICARE_ICONS),
         { provide: Router, useValue: { navigate } },
         { provide: AppointmentApiService, useValue: api },
         { provide: ScheduledCareApiService, useValue: scheduledApi },
@@ -165,7 +225,7 @@ describe('CalendarPage', () => {
         {
           provide: ActiveConsultationStore,
           useValue: {
-            active: signal(null),
+            active: activeConsultation,
             loading: signal(false),
             error: signal(null),
             starting: signal(false),
@@ -229,64 +289,31 @@ describe('CalendarPage', () => {
 
     expect(component).toBeTruthy();
     expect(fixture.debugElement.query(By.directive(FullCalendarComponent))).toBeTruthy();
-    expect(host.querySelector('.omnicare-calendar')).toBeTruthy();
-    expect(host.querySelector('.omnicare-calendar__surface > full-calendar')).toBeTruthy();
+    expect(host.querySelector('.doctor-calendar-demo')).toBeTruthy();
+    expect(host.querySelector('.doctor-calendar-demo__calendar-host > full-calendar')).toBeTruthy();
   });
 
-  it('uses one OmniCare-owned day-header renderer without native duplicate content', () => {
+  it('renders day headers through the template (today pill) with one stable class hook', () => {
     const options = component.calendarOptions();
-    const dayHeaderContent = options.dayHeaderContent;
     const dayHeaderClass = options.dayHeaderClass;
 
-    expect(dayHeaderContent).toBe(component.renderDayHeader);
-    expect(typeof dayHeaderContent).toBe('function');
-    expect(
-      component.renderDayHeader({
-        weekdayText: 'mer.',
-        dayNumberText: '7',
-        isToday: true,
-        view: { type: 'timeGridWeek' },
-      } as DayHeaderInfo),
-    ).toEqual({
-      html: expect.stringContaining(
-        'omnicare-calendar-day-heading omnicare-calendar-day-heading--today',
-      ),
-    });
+    // The date pill comes from the #dayHeaderContent template, not from an option.
+    expect(options.dayHeaderContent).toBeUndefined();
+    expect(options.dayHeaderFormat).toEqual({ weekday: 'short', day: 'numeric' });
     expect(typeof dayHeaderClass).toBe('function');
     expect(
       typeof dayHeaderClass === 'function'
-        ? dayHeaderClass({ isToday: true } as DayHeaderInfo)
+        ? dayHeaderClass({ isToday: true } as never)
         : dayHeaderClass,
-    ).toBe('omnicare-fc-day-header omnicare-fc-day-header--today');
-
-    const headers = [
-      ...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
-        '.omnicare-fc-day-header',
-      ),
-    ];
-
-    expect(headers).toHaveLength(7);
-    for (const header of headers) {
-      const inner = header.querySelector('.omnicare-fc-day-header__inner');
-      expect(inner?.children).toHaveLength(1);
-      expect(inner?.firstElementChild?.classList.contains('omnicare-calendar-day-heading')).toBe(
-        true,
-      );
-    }
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector(
-        '.omnicare-calendar__surface > .omnicare-calendar-day-heading',
-      ),
-    ).toBeNull();
-    expect(fixture.nativeElement.innerHTML).not.toContain('purple');
+    ).toBe('demo-calendar-day-header demo-calendar-day-header--today');
   });
 
-  it('removes the unused all-day lane and keeps the 07:00 initial scroll', () => {
+  it('removes the unused all-day lane and derives the initial scroll from schedule bounds', () => {
     const options = component.calendarOptions();
 
     expect(options.allDaySlot).toBe(false);
     expect(options.allDayHeaderContent).toBeUndefined();
-    expect(options.scrollTime).toBe('07:00:00');
+    expect(options.scrollTime).toBe('08:00:00');
     expect(options.scrollTimeReset).toBe(false);
   });
 
@@ -298,25 +325,31 @@ describe('CalendarPage', () => {
     expect(text).toContain('Semaine');
     expect(text).toContain('Mois');
     expect(text).toContain('Modifier les horaires');
-    expect(text).toContain('+ Exception');
+    expect(text).toContain('Exception');
     expect(text).toContain("Aujourd'hui");
     expect(text).not.toContain('Modifier emploi du temps');
   });
 
-  it('hides healthy local sync status and shows only a passive degraded warning', () => {
+  it('shows the realtime warning only while the live connection is down', () => {
+    const warning = 'Mise à jour en temps réel indisponible — actualisation automatique';
     fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain(warning);
     expect(fixture.nativeElement.textContent).not.toContain('Synchronisation différée');
-    expect(fixture.nativeElement.textContent).not.toContain('MAJ indisponibles');
 
+    // A quiet but connected socket is not degraded.
     realtimeHealth.set('stale');
     fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain(warning);
 
-    expect(fixture.nativeElement.textContent).toContain('Synchronisation différée');
+    realtimeHealth.set('down');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(warning);
   });
 
-  it('starts in month view with editing disabled', () => {
-    expect(component.viewMode()).toBe('month');
-    expect(component.calendarOptions().initialView).toBe('dayGridMonth');
+  it('starts in week view (Monday first) with editing disabled', () => {
+    expect(component.viewMode()).toBe('week');
+    expect(component.calendarOptions().initialView).toBe('timeGridWeek');
+    expect(component.calendarOptions().firstDay).toBe(1);
     expect(component.calendarOptions().editable).toBe(false);
     expect(component.calendarOptions().selectable).toBe(false);
     expect(component.calendarOptions().eventStartEditable).toBe(false);
@@ -360,11 +393,11 @@ describe('CalendarPage', () => {
       isOther: boolean;
     }) => string;
     expect(classHook({ date: new Date(2026, 9, 9), isToday: false, isOther: false })).toContain(
-      'omnicare-fc-day-cell--blocked',
+      'demo-calendar-day-cell--exception',
     );
     expect(
       classHook({ date: new Date(2026, 9, 16), isToday: false, isOther: false }),
-    ).not.toContain('omnicare-fc-day-cell--blocked');
+    ).not.toContain('demo-calendar-day-cell--exception');
   });
 
   it.each([
@@ -414,10 +447,63 @@ describe('CalendarPage', () => {
     expect(component.calendarEvents()).toEqual([]);
   });
 
-  it('updates the external title and view from datesSet', () => {
-    showRange(RANGE_A, 'timeGridWeek', '7 – 13 avril 2031');
-    expect(component.visibleTitle()).toBe('7 – 13 avril 2031');
+  it('updates the French title and view from datesSet', () => {
+    component.onDatesSet({
+      start: new Date(2031, 3, 7),
+      end: new Date(2031, 3, 14),
+      startStr: '',
+      endStr: '',
+      timeZone: 'local',
+      view: { type: 'timeGridWeek', title: 'ignored' },
+    } as never);
+    expect(component.visibleTitle()).toBe('7 – 13 avr. 2031');
     expect(component.viewMode()).toBe('week');
+  });
+
+  it('pads the time grid by one hour and uses the consultation slot length', () => {
+    component.rules.set([
+      {
+        dayOfWeek: 'MONDAY', active: true, startTime: '09:00', endTime: '17:00',
+        pauseStart: null, pauseEnd: null, slotDurationMinutes: 20,
+      },
+    ]);
+    const options = component.calendarOptions();
+    expect(options.slotMinTime).toBe('08:00:00');
+    expect(options.slotMaxTime).toBe('18:00:00');
+    expect(options.slotDuration).toBe('00:20:00');
+    expect(options.nowIndicator).toBe(true);
+    expect(options.editable).toBe(false);
+  });
+
+  it('opens the booking drawer on an empty working slot and ignores past or closed slots', () => {
+    const future = new Date();
+    future.setDate(future.getDate() + 7);
+    future.setHours(10, 0, 0, 0);
+    const weekday = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][
+      future.getDay()
+    ] as AvailabilityRuleDto['dayOfWeek'];
+    component.rules.set([
+      {
+        dayOfWeek: weekday, active: true, startTime: '09:00', endTime: '17:00',
+        pauseStart: null, pauseEnd: null, slotDurationMinutes: 20,
+      },
+    ]);
+    const click = (date: Date) =>
+      component.onDateClick({ date, allDay: false, view: { type: 'timeGridWeek' } } as never);
+
+    click(new Date(Date.now() - 3_600_000));
+    expect(component.quickBookingOpen()).toBe(false);
+    expect(component.slotHint()).toBe('Ce créneau est déjà passé.');
+
+    const evening = new Date(future);
+    evening.setHours(20);
+    click(evening);
+    expect(component.quickBookingOpen()).toBe(false);
+    expect(component.slotHint()).toContain('en dehors de vos horaires');
+
+    click(future);
+    expect(component.quickBookingOpen()).toBe(true);
+    expect(component.quickBookingStart()).toBe(future.toISOString());
   });
 
   it('keeps the calendar grid rendered for an empty result', () => {
@@ -496,7 +582,7 @@ describe('CalendarPage', () => {
   });
 
   it('starts from Calendar detail through the shared canonical command and UUID route', async () => {
-    activeAppointment.set(appointment('appointment-9', 'CONFIRMED', { version: 7 }));
+    activeAppointment.set(appointmentDetail('appointment-9', 'CONFIRMED', 7));
     startScheduledAppointment.mockResolvedValue({
       kind: 'STARTED',
       consultation: {
@@ -521,6 +607,48 @@ describe('CalendarPage', () => {
     expect(navigate).not.toHaveBeenCalledWith(['/doctor', 'consultation', 'new']);
   });
 
+  it('does not present another active Consultation as belonging to the selected appointment', () => {
+    activeAppointment.set(appointmentDetail('appointment-9'));
+    activeConsultation.set({
+      consultationId: '11111111-1111-4111-8111-111111111111',
+      sourceType: 'SCHEDULED_APPOINTMENT',
+      sourceId: 'appointment-other',
+      status: 'IN_PROGRESS',
+      medicalAccessStatus: 'NONE',
+      version: 0,
+      startedAt: '2031-04-08T08:17:00.000Z',
+    });
+
+    detailPanel.openWith('appointment-9');
+    fixture.detectChanges();
+
+    const text = document.body.textContent ?? '';
+    expect(text).toContain('Une autre consultation est déjà en cours');
+    expect(text).toContain('Ce rendez-vous n’a pas été démarré');
+    expect(text).not.toContain('Ouvrir l’autre consultation');
+    expect(text).not.toContain('Continuer ce rendez-vous');
+  });
+
+  it('offers to continue only when the active Consultation belongs to the selected appointment', () => {
+    activeAppointment.set(appointmentDetail('appointment-9', 'IN_PROGRESS'));
+    activeConsultation.set({
+      consultationId: '11111111-1111-4111-8111-111111111111',
+      sourceType: 'SCHEDULED_APPOINTMENT',
+      sourceId: 'appointment-9',
+      status: 'IN_PROGRESS',
+      medicalAccessStatus: 'NONE',
+      version: 0,
+      startedAt: '2031-04-08T08:17:00.000Z',
+    });
+
+    detailPanel.openWith('appointment-9');
+    fixture.detectChanges();
+
+    const text = document.body.textContent ?? '';
+    expect(text).toContain('Continuer ce rendez-vous');
+    expect(text).not.toContain('Ouvrir l’autre consultation');
+  });
+
   it('fails safely for non-appointment and missing event IDs', () => {
     const openWith = vi.spyOn(detailPanel, 'openWith');
 
@@ -534,7 +662,7 @@ describe('CalendarPage', () => {
     component.appointments.set([appointment('completed', 'COMPLETED')]);
 
     expect(component.calendarEvents()[0]).toMatchObject({
-      className: 'omnicare-appointment-event--completed',
+      className: expect.stringContaining('omnicare-appointment-event--completed'),
       extendedProps: { statusLabel: 'Terminé' },
     });
   });
@@ -573,13 +701,13 @@ describe('CalendarPage', () => {
       } as unknown as EventDisplayInfo);
 
     expect(classesFor({ kind: 'appointment', status: 'CONFIRMED' })).toContain(
-      'omnicare-fc-event--appointment omnicare-fc-event--confirmed',
+      'demo-calendar-appointment',
     );
     expect(classesFor({ kind: 'exception-annotation', exceptionType: 'BLOCK' })).toContain(
-      'omnicare-fc-event--block',
+      'demo-calendar-state--unavailable',
     );
     expect(classesFor({ kind: 'exception-annotation', exceptionType: 'EXTRA' })).toContain(
-      'omnicare-fc-event--extra',
+      'demo-calendar-state--exception',
     );
   });
 

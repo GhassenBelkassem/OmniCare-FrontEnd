@@ -12,9 +12,11 @@ import {
   DashboardOutline,
   DeleteOutline,
   DownOutline,
+  DownloadOutline,
   EditOutline,
   EnvironmentOutline,
   ExclamationCircleOutline,
+  FileImageOutline,
   FileTextOutline,
   FilterOutline,
   HomeOutline,
@@ -47,6 +49,11 @@ import {
   UserOutline,
   UserAddOutline,
   WarningOutline,
+  EyeOutline,
+  IdcardOutline,
+  LockOutline,
+  PhoneOutline,
+  UploadOutline,
 } from '@ant-design/icons-angular/icons';
 
 export const OMNICARE_ICONS = [
@@ -66,6 +73,7 @@ export const OMNICARE_ICONS = [
   EditOutline,
   EnvironmentOutline,
   ExclamationCircleOutline,
+  FileImageOutline,
   FileTextOutline,
   FilterOutline,
   HomeOutline,
@@ -98,4 +106,10 @@ export const OMNICARE_ICONS = [
   UserOutline,
   UserAddOutline,
   WarningOutline,
+  EyeOutline,
+  IdcardOutline,
+  LockOutline,
+  PhoneOutline,
+  UploadOutline,
+  DownloadOutline,
 ];

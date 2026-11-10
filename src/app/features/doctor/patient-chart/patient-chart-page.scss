@@ -1,4 +1,259 @@
 :host {
   display: block;
+}
+
+.patient-chart {
+  display: grid;
+  gap: var(--oc-space-4);
   min-width: 0;
+}
+
+.patient-chart__breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+  align-items: center;
+  color: var(--oc-text-muted);
+  font-size: var(--oc-text-small-size);
+
+  a {
+    color: var(--oc-primary-dark);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  [aria-current='page'] {
+    color: var(--oc-text);
+  }
+}
+
+.chart-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--oc-space-4);
+  align-items: start;
+  padding: var(--oc-space-6);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-surface);
+  box-shadow: var(--oc-shadow-sm);
+}
+
+.chart-header__avatar {
+  display: inline-grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--oc-primary-tint);
+  color: var(--oc-primary-dark);
+  font-size: var(--oc-text-h3-size);
+  font-weight: 700;
+}
+
+.chart-header__identity {
+  min-width: 0;
+
+  h1 {
+    margin: 0;
+    color: var(--oc-text-strong);
+    font-size: var(--oc-text-h1-size);
+    font-weight: var(--oc-text-h1-weight);
+    line-height: var(--oc-text-h1-line-height);
+    overflow-wrap: anywhere;
+  }
+}
+
+.chart-header__meta {
+  margin: var(--oc-space-1) 0 0;
+  color: var(--oc-text-muted);
+  font-size: var(--oc-text-body-size);
+}
+
+.chart-header__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+  margin-block-start: var(--oc-space-3);
+}
+
+.chart-header__note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-3);
+  align-items: center;
+  margin: var(--oc-space-2) 0 0;
+  color: var(--oc-text-muted);
+  font-size: var(--oc-text-small-size);
+}
+
+.chart-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+  justify-content: flex-end;
+}
+
+.chart-header__error {
+  grid-column: 1 / -1;
+}
+
+.chart-tag {
+  margin: 0;
+  border-radius: var(--oc-radius-pill);
+  font-weight: 600;
+}
+
+.chart-tag--neutral {
+  border-color: var(--oc-border);
+  background: var(--oc-grey-50);
+  color: var(--oc-text);
+}
+
+.chart-tag--primary {
+  border-color: transparent;
+  background: var(--oc-primary-tint);
+  color: var(--oc-primary-dark);
+}
+
+.chart-tag--amber {
+  border-color: transparent;
+  background: var(--oc-amber-tint);
+  color: var(--oc-amber-dark);
+}
+
+.chart-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--oc-primary-dark);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--oc-text-muted);
+    cursor: progress;
+  }
+}
+
+.patient-chart__panel {
+  min-width: 0;
+}
+
+.patient-chart__state {
+  padding: var(--oc-space-8) var(--oc-space-4);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-surface);
+}
+
+.patient-chart__state-link {
+  color: var(--oc-primary-dark);
+  font-weight: 600;
+}
+
+.patient-chart__loading {
+  display: grid;
+  gap: var(--oc-space-4);
+  padding: var(--oc-space-6);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-surface);
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--oc-space-4);
+  align-items: start;
+}
+
+.chart-grid__column {
+  display: grid;
+  gap: var(--oc-space-4);
+  min-width: 0;
+}
+
+.contact-list {
+  display: grid;
+  gap: var(--oc-space-3);
+  margin: 0;
+
+  > div {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.2fr);
+    gap: var(--oc-space-3);
+    align-items: baseline;
+  }
+
+  dt {
+    display: inline-flex;
+    gap: var(--oc-space-2);
+    align-items: center;
+    color: var(--oc-text-muted);
+    font-size: var(--oc-text-small-size);
+  }
+
+  dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--oc-text-strong);
+    overflow-wrap: anywhere;
+  }
+
+  a {
+    color: var(--oc-primary-dark);
+  }
+}
+
+.chart-fact {
+  display: flex;
+  gap: var(--oc-space-3);
+  align-items: center;
+  justify-content: space-between;
+
+  p {
+    margin: 0;
+  }
+}
+
+.chart-fact__value {
+  color: var(--oc-text-strong);
+  font-weight: 600;
+}
+
+.chart-compact-empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oc-space-3);
+  align-items: center;
+  justify-content: space-between;
+
+  p {
+    margin: 0;
+    color: var(--oc-text-muted);
+  }
+}
+
+@media (max-width: 1199px) {
+  .chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .chart-header {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: var(--oc-space-4);
+  }
+
+  .chart-header__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .contact-list > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--oc-space-1);
+  }
 }

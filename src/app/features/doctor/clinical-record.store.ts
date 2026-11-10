@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import { normalizeHttpError } from '../../core/http/app-http-error';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import type { ScheduledCareEvent } from '../../core/realtime/live-event.models';
 import { ClinicalRecordApiService } from './clinical-record-api.service';
@@ -12,6 +13,7 @@ import {
   type ClinicalRecordPayload,
   type ClinicalRecordResponse,
 } from './clinical-record.models';
+import { validateClinicalRecord } from './clinical-record.validation';
 
 interface PendingSave {
   readonly key: string;
@@ -101,6 +103,13 @@ export class ClinicalRecordStore {
     const authoritative = this.authoritativeState();
     if (consultationId === null || authoritative === null || this.saving() || !this.dirty()) return;
     const draft = this.draftState();
+    const validationErrors = validateClinicalRecord(draft);
+    if (Object.keys(validationErrors).length > 0) {
+      this.failure.set('VALIDATION_ERROR');
+      this.fieldErrors.set(validationErrors);
+      this.conflict.set(false);
+      return;
+    }
     const draftFingerprint = fingerprint(draft);
     if (this.pendingSave === null || this.pendingSave.fingerprint !== draftFingerprint) {
       this.pendingSave = { key: operationKey(), fingerprint: draftFingerprint };
@@ -171,22 +180,11 @@ function operationKey(): string {
 }
 
 function errorCode(error: unknown): string {
-  if (error instanceof HttpErrorResponse && error.error !== null && typeof error.error === 'object') {
-    const code = (error.error as { code?: unknown }).code;
-    if (typeof code === 'string' && code.length <= 80) return code;
-  }
-  return 'MRS_UNAVAILABLE';
+  return normalizeHttpError(error).code ?? 'MRS_UNAVAILABLE';
 }
 
 function validationFieldErrors(error: unknown): Readonly<Record<string, string>> {
-  if (!(error instanceof HttpErrorResponse) || error.error === null || typeof error.error !== 'object') {
-    return {};
-  }
-  const candidate = (error.error as { fieldErrors?: unknown }).fieldErrors;
-  if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) return {};
-  return Object.fromEntries(Object.entries(candidate).filter(
-    (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length <= 200,
-  ));
+  return normalizeHttpError(error).fieldErrors;
 }
 
 function isAmbiguous(error: unknown): boolean {

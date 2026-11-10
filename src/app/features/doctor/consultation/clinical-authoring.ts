@@ -1,9 +1,17 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { OcButton } from '../../../shared/ui';
 import { ClinicalRecordStore } from '../clinical-record.store';
 import type { ClinicalDiagnosis, ClinicalFinding, ClinicalRecordPayload, FollowUpDecision } from '../clinical-record.models';
+
+export type ClinicalQuickAction =
+  | 'prescription'
+  | 'lab'
+  | 'imaging'
+  | 'referral'
+  | 'medical-certificate'
+  | 'sick-leave-certificate';
 
 @Component({
   selector: 'app-clinical-authoring',
@@ -14,6 +22,7 @@ import type { ClinicalDiagnosis, ClinicalFinding, ClinicalRecordPayload, FollowU
 })
 export class ClinicalAuthoring {
   readonly consultationId = input.required<string>();
+  readonly actionRequested = output<ClinicalQuickAction>();
   readonly store = inject(ClinicalRecordStore);
 
   constructor() {
@@ -34,15 +43,17 @@ export class ClinicalAuthoring {
   updateFinding(field: keyof ClinicalFinding, value: string): void {
     const current = this.store.draft();
     const finding = current.clinicalFindings[0] ?? { type: '', description: '' };
-    const next = { ...finding, [field]: value };
+    const next = { ...finding, [field]: value,
+      ...(field === 'description' && value.trim().length > 0 && finding.type.length === 0
+        ? { type: 'EXAMINATION' } : {}) };
     this.update({ ...current, clinicalFindings: next.type || next.description ? [next] : [] });
   }
 
   updateDiagnosis(field: keyof ClinicalDiagnosis, value: string): void {
     const current = this.store.draft();
-    const diagnosis = current.diagnoses[0] ?? { system: '', code: '', label: '', status: 'PROVISIONAL' };
+    const diagnosis = current.diagnoses[0] ?? { system: 'LOCAL', code: '', label: '', status: 'PROVISIONAL' };
     const next = { ...diagnosis, [field]: value };
-    this.update({ ...current, diagnoses: next.system || next.code || next.label ? [next] : [] });
+    this.update({ ...current, diagnoses: next.label.trim().length > 0 ? [next] : [] });
   }
 
   updateTreatment(value: string): void {
@@ -65,6 +76,11 @@ export class ClinicalAuthoring {
   updateMedicationDecision(value: string): void {
     const decision = value === 'MEDICATION_PRESCRIBED' || value === 'NO_MEDICATION' ? value : null;
     this.update({ ...this.store.draft(), medicationDecision: decision });
+    if (decision === 'MEDICATION_PRESCRIBED') this.actionRequested.emit('prescription');
+  }
+
+  requestAction(action: ClinicalQuickAction): void {
+    this.actionRequested.emit(action);
   }
 
   finding(field: keyof ClinicalFinding): string {

@@ -247,7 +247,7 @@ export class TeamDetailPage {
   formatDateTime(value: string): string {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
-    return new Intl.DateTimeFormat('en-GB', {
+    return new Intl.DateTimeFormat('fr-FR', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(parsed);

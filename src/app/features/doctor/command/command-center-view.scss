@@ -10,12 +10,19 @@
 
 .dashboard-heading {
   position: relative;
-  display: grid;
+  display: block;
+  overflow: hidden;
+}
+
+.dashboard-heading__decor {
+  position: relative;
+  display: flex;
+  min-width: 0;
   min-height: 86px;
-  grid-template-columns: 42px minmax(340px, 1fr) minmax(380px, 0.95fr);
+  max-width: 560px;
+  flex: 1 1 380px;
   align-items: center;
   gap: var(--oc-space-3);
-  overflow: hidden;
 }
 
 .dashboard-heading__sun {
@@ -27,40 +34,11 @@
   stroke-linecap: round;
 }
 
-.dashboard-heading__copy {
-  position: relative;
-  z-index: 1;
-  min-width: 0;
-}
-
-.dashboard-heading h1,
-.dashboard-panel h2 {
-  margin: 0;
-  color: var(--oc-color-text-primary);
-}
-
-.dashboard-heading h1 {
-  font-size: clamp(26px, 2.3vw, 32px);
-  font-weight: var(--oc-font-weight-strong);
-  letter-spacing: -0.035em;
-  line-height: 1.15;
-  text-wrap: balance;
-}
-
-.dashboard-heading p {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--oc-space-2);
-  margin: var(--oc-space-2) 0 0;
-  color: var(--oc-color-text-secondary);
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-}
-
 .dashboard-heading__art {
   position: relative;
   align-self: stretch;
   min-width: 0;
+  flex: 1;
 }
 
 .dashboard-heading__art svg {
@@ -429,47 +407,7 @@
 }
 
 .appointment-status {
-  display: inline-flex;
-  min-width: 96px;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: var(--oc-space-2);
-  padding: 0 var(--oc-space-3);
-  border-radius: var(--oc-radius-pill);
-  font-size: 12px;
-  font-weight: var(--oc-font-weight-semibold);
-  white-space: nowrap;
-}
-
-.appointment-status svg,
-.appointment-status oc-icon {
-  width: 17px;
-  height: 17px;
-}
-
-.appointment-status svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-}
-
-.appointment-status--completed,
-.appointment-status--active {
-  background: var(--oc-color-success-surface);
-  color: var(--oc-color-success);
-}
-
-.appointment-status--confirmed {
-  background: var(--oc-color-information-surface);
-  color: var(--oc-color-information);
-}
-
-.appointment-status--upcoming {
-  background: var(--oc-color-neutral-surface);
-  color: var(--oc-color-text-secondary);
+  justify-self: end;
 }
 
 .row-chevron {
@@ -750,10 +688,6 @@ button.primary-action:disabled {
 }
 
 @media (max-width: 1180px) {
-  .dashboard-heading {
-    grid-template-columns: 42px minmax(0, 1fr);
-  }
-
   .dashboard-heading__art {
     display: none;
   }
@@ -777,12 +711,6 @@ button.primary-action:disabled {
     grid-template-columns: 74px 44px minmax(0, 1fr) 18px;
   }
 
-  .appointment-status {
-    min-width: 0;
-    width: 34px;
-    padding: 0;
-    font-size: 0;
-  }
 
   .next-appointment {
     grid-template-columns: 52px minmax(0, 1fr) auto;
@@ -798,24 +726,8 @@ button.primary-action:disabled {
     gap: var(--oc-space-3);
   }
 
-  .dashboard-heading {
-    min-height: 76px;
-    grid-template-columns: 34px minmax(0, 1fr);
-    gap: var(--oc-space-2);
-  }
-
-  .dashboard-heading__sun {
-    width: 30px;
-    height: 30px;
-  }
-
-  .dashboard-heading h1 {
-    font-size: 24px;
-  }
-
-  .dashboard-heading p {
-    gap: var(--oc-space-1);
-    font-size: 12px;
+  .dashboard-heading__decor {
+    display: none;
   }
 
   .dashboard-column--secondary {
@@ -909,4 +821,58 @@ button.primary-action:disabled {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+// « À clôturer »: consultations still open from a previous day.
+.to-close-panel {
+  padding: var(--oc-space-4) var(--oc-space-5);
+}
+
+.compact-title__icon--warning {
+  background: var(--oc-amber-tint);
+  color: var(--oc-amber-dark);
+}
+
+.to-close-list {
+  display: grid;
+  gap: var(--oc-space-3);
+  margin: var(--oc-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.to-close-list li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--oc-space-2) var(--oc-space-3);
+}
+
+.to-close-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.to-close-copy strong {
+  overflow: hidden;
+  color: var(--oc-color-text-primary);
+  font-size: var(--oc-text-small-size);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.to-close-copy small {
+  color: var(--oc-color-text-muted);
+  font-size: var(--oc-text-caption-size);
+}
+
+.to-close-note {
+  color: var(--oc-amber-dark);
+}
+
+.to-close-actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 2;
+  gap: var(--oc-space-2);
 }

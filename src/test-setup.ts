@@ -1,3 +1,9 @@
+import { registerLocaleData } from '@angular/common';
+import fr from '@angular/common/locales/fr';
+
+// The application registers French locale data in app.config.ts; specs need it too.
+registerLocaleData(fr);
+
 // JSDOM does not implement ResizeObserver. Spartan Brain uses it only after
 // rendering to keep connected overlays sized; this no-op keeps unit tests
 // deterministic without affecting browser or SSR production behavior.

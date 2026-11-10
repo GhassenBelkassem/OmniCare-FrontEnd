@@ -3,6 +3,7 @@ import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angul
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import { httpErrorCode } from '../../core/http/app-http-error';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import type { ScheduledCareEvent } from '../../core/realtime/live-event.models';
 import { ClinicalOrderApiService } from './clinical-order-api.service';
@@ -133,5 +134,5 @@ function valid(editor: Editor): boolean { return label(editor.category, editor.d
 function label(category: ClinicalOrderCategory, value: ClinicalOrderDefinition): string { return category === 'LAB' ? value.requestedExamination ?? '' : category === 'IMAGING' ? value.requestedStudy ?? '' : value.targetSpecialty ?? ''; }
 function fingerprint(value: ClinicalOrderDefinition): string { return JSON.stringify(value); }
 function operationKey(prefix: string): string { return `${prefix}:${globalThis.crypto.randomUUID()}`; }
-function code(error: unknown): string { if (error instanceof HttpErrorResponse && error.error !== null && typeof error.error === 'object') { const value = (error.error as { code?: unknown }).code; if (typeof value === 'string' && value.length <= 80) return value; } return 'MRS_UNAVAILABLE'; }
+function code(error: unknown): string { return httpErrorCode(error) ?? 'MRS_UNAVAILABLE'; }
 function ambiguous(error: unknown): boolean { return error instanceof HttpErrorResponse && (error.status === 0 || error.status >= 500); }

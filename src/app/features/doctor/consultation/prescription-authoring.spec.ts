@@ -84,6 +84,23 @@ describe('PrescriptionAuthoring', () => {
     expect(store.authoritative()?.status).toBe('DRAFT');
   });
 
+  it('offers rapid frequency and duration choices for repeated structured entry', async () => {
+    await setup(NONE, 'MEDICATION_PRESCRIBED');
+    button('Ajouter un médicament')!.click();
+    fixture.detectChanges();
+
+    expect(button('2x/jour')).not.toBeNull();
+    expect(button('3 jours')).not.toBeNull();
+    button('2x/jour')!.click();
+    button('3 jours')!.click();
+
+    expect(store.draft().medications[0]).toEqual(expect.objectContaining({
+      frequency: { timesPerDay: 2, text: null },
+      duration: { value: 3, unit: 'DAY' },
+      quantity: 6,
+    }));
+  });
+
   it('does not offer authoring for NO_MEDICATION', async () => {
     await setup({ ...NONE, medicationDecision: 'NO_MEDICATION' }, 'NO_MEDICATION');
 

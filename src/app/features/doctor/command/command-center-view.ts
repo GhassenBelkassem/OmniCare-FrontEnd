@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { OcIcon } from '../../../shared/ui';
+import { OcIcon, OcPageHeader, OcStatusTag } from '../../../shared/ui';
 import type {
   CommandCenterAction,
   CommandCenterLinkAction,
@@ -9,7 +9,7 @@ import type {
 
 @Component({
   selector: 'app-command-center-view',
-  imports: [OcIcon],
+  imports: [OcIcon, OcPageHeader, OcStatusTag],
   templateUrl: './command-center-view.html',
   styleUrl: './command-center-view.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

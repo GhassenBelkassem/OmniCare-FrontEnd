@@ -1,20 +1,28 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { OcButton, OcSheet, type OcStatus, type OcTab } from '../../../shared/ui';
 import { ActiveConsultationStore } from '../active-consultation.store';
-import type { ActiveConsultation, ConsultationStatus } from '../active-consultation.models';
+import {
+  canReadMedicalContext,
+  isExternalOwner,
+  type ActiveConsultation,
+  type ConsultationStatus,
+} from '../active-consultation.models';
 import { ArtifactStore } from '../artifact.store';
 import { ClinicalOrderStore } from '../clinical-order.store';
 import { ClinicalRecordStore } from '../clinical-record.store';
 import { ConsultationFinishStore } from '../consultation-finish.store';
+import { MedicalRecordStore } from '../medical-record.store';
 import { PrescriptionStore } from '../prescription.store';
 import { UrgentCabinetClinicalStore } from '../urgent-cabinet-clinical.store';
+import { ageLabel, patientInitials, sexLabel } from '../patient-chart/patient-chart-format';
 import { UnsavedChangesAware } from '../unsaved-changes.guard';
-import { ClinicalAuthoring } from './clinical-authoring';
+import { ClinicalAuthoring, type ClinicalQuickAction } from './clinical-authoring';
 import { ClinicalOrders } from './clinical-orders';
 import { ConsultationWorkspaceView } from './consultation-workspace-view';
 import type {
+  ConsultationIdentityBadge,
   ConsultationWorkspaceAction,
   ConsultationWorkspaceSection,
   ConsultationWorkspaceViewModel,
@@ -52,6 +60,7 @@ export class ConsultationPage implements UnsavedChangesAware {
   readonly orders = inject(ClinicalOrderStore);
   readonly artifacts = inject(ArtifactStore);
   readonly finish = inject(ConsultationFinishStore);
+  readonly medicalRecord = inject(MedicalRecordStore);
   readonly urgentCabinet = inject(UrgentCabinetClinicalStore);
 
   readonly consultationId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -59,6 +68,11 @@ export class ConsultationPage implements UnsavedChangesAware {
   readonly activeSection = signal<ConsultationWorkspaceSection>('note');
   readonly mrsDrawerOpen = signal(false);
   readonly feedback = signal<string | null>(null);
+
+  /** The patient's medical context may be shown (external owner, or OmniCare grant). */
+  readonly canReadContext = computed(() => canReadMedicalContext(this.finish.consultation()));
+  /** The doctor owns this external patient's record: no access message is ever shown. */
+  readonly externalOwner = computed(() => isExternalOwner(this.finish.consultation()));
 
   readonly urgentIntake = computed(() => {
     const active = this.activeConsultation.active();
@@ -111,29 +125,25 @@ export class ConsultationPage implements UnsavedChangesAware {
     const status = consultation?.status ?? 'IN_PROGRESS';
     const activeSave = this.activeSavePresentation(section);
 
+    const patient = consultation?.patient ?? null;
+
     return {
-      screenReaderDescription:
-        'Espace clinique connecté aux services de production. Les données non présentes dans la projection autorisée ne sont pas affichées.',
-      title: 'Consultation active',
-      initials: 'CS',
-      identityBadges: [
-        { label: 'Identité patient non disponible', icon: 'user', emphasis: true },
-        { label: this.accessLabel(consultation) },
-      ],
+      screenReaderDescription: patient
+        ? `Consultation de ${patient.fullName}. Seules les informations auxquelles vous avez accès sont affichées.`
+        : 'Consultation en cours. Seules les informations auxquelles vous avez accès sont affichées.',
+      title: patient?.fullName ?? 'Patient',
+      initials: patient ? patientInitials(patient) : 'P',
+      identityBadges: this.identityBadges(consultation),
       contextItems: consultation
-        ? [
-            this.sourceLabel(consultation),
-            `Début ${this.formatTime(consultation.startedAt)}`,
-            `Référence ${this.shortReference(consultation.consultationId)}`,
-          ]
-        : ['Synchronisation de la consultation'],
+        ? [this.sourceLabel(consultation), `Début ${this.formatTime(consultation.startedAt)}`]
+        : ['Chargement de la consultation'],
       status: this.consultationTone(status),
       statusLabel: this.consultationLabel(status),
       tabs: this.workspaceTabs(),
       activeSection: section,
       activeSectionLabel: this.activeSectionLabel(),
       feedback: this.feedback(),
-      patientRecordHref: null,
+      patientRecordHref: patient ? `/doctor/patient/${patient.chartId}` : null,
       activeSaveStatus: activeSave.status,
       activeSaveLabel: activeSave.label,
       showSaveAction: ['note', 'prescription', 'orders', 'documents'].includes(section),
@@ -158,6 +168,14 @@ export class ConsultationPage implements UnsavedChangesAware {
   });
 
   constructor() {
+    effect(() => {
+      const consultation = this.finish.consultation();
+      if (consultation && canReadMedicalContext(consultation)) {
+        this.medicalRecord.attach(consultation.consultationId);
+      } else {
+        this.medicalRecord.clear();
+      }
+    });
     if (this.canonicalRoute) void this.finish.attach(this.consultationId);
   }
 
@@ -180,7 +198,8 @@ export class ConsultationPage implements UnsavedChangesAware {
         this.feedback.set('Aucun aperçu PDF global n’est disponible pour cette consultation.');
         break;
       case 'FINISH':
-        void this.finish.finish();
+        this.activeSection.set('finalization');
+        void this.finish.review();
         break;
     }
   }
@@ -202,6 +221,46 @@ export class ConsultationPage implements UnsavedChangesAware {
 
   back(): void {
     void this.router.navigate(['/doctor']);
+  }
+
+  openAction(action: ClinicalQuickAction): void {
+    if (action === 'prescription') {
+      this.activeSection.set('prescription');
+    } else if (action === 'lab' || action === 'imaging' || action === 'referral') {
+      this.activeSection.set('orders');
+      this.orders.beginCreate(action === 'lab' ? 'LAB' : action === 'imaging' ? 'IMAGING' : 'REFERRAL');
+    } else {
+      this.activeSection.set('documents');
+      this.artifacts.begin(action === 'medical-certificate' ? 'MEDICAL_CERTIFICATE' : 'SICK_LEAVE_CERTIFICATE');
+    }
+    this.feedback.set(null);
+  }
+
+  readinessLabel(code: string): string {
+    const labels: Record<string, string> = {
+      CLINICAL_RECORD_MISSING: 'Enregistrez le dossier clinique.',
+      DIAGNOSIS: 'Diagnostic ou conclusion requis.',
+      MEDICATION_DECISION: 'Décision médicamenteuse requise.',
+      FOLLOW_UP_DECISION: 'Décision de suivi requise.',
+      PRESCRIPTION_NOT_FINALIZED: 'Finalisez et signez la prescription.',
+      PRESCRIPTION_CONTRADICTS_DECISION: 'La prescription contredit la décision médicamenteuse.',
+      ORDER_NOT_FINALIZED: 'Finalisez les ordres cliniques en brouillon.',
+      ARTIFACT_NOT_FINALIZED: 'Finalisez les documents officiels en brouillon.',
+    };
+    return labels[code] ?? 'Un élément doit être vérifié avant la fin.';
+  }
+
+  resolveReadiness(code: string): void {
+    if (code.startsWith('PRESCRIPTION_')) {
+      this.activeSection.set('prescription');
+    } else if (code.startsWith('ORDER_')) {
+      this.activeSection.set('orders');
+    } else if (code.startsWith('ARTIFACT_')) {
+      this.activeSection.set('documents');
+    } else {
+      this.activeSection.set('note');
+    }
+    this.feedback.set(null);
   }
 
   private async saveActiveDomain(): Promise<void> {
@@ -289,6 +348,26 @@ export class ConsultationPage implements UnsavedChangesAware {
     return 'Interrompue';
   }
 
+  /**
+   * « environ 20 ans », « Homme », « Patient externe » ; an OmniCare patient also keeps the
+   * consultation's access badge. An external owner never sees an access message.
+   */
+  private identityBadges(consultation: ActiveConsultation | null): readonly ConsultationIdentityBadge[] {
+    const patient = consultation?.patient ?? null;
+    const badges: ConsultationIdentityBadge[] = [];
+    if (patient) {
+      const age = ageLabel(patient);
+      if (age) badges.push({ label: age });
+      if (patient.sex) badges.push({ label: sexLabel(patient.sex) });
+    }
+    const external = patient ? patient.patientType === 'EXTERNAL' : isExternalOwner(consultation);
+    if (patient || consultation?.access) {
+      badges.push({ label: external ? 'Patient externe' : 'Patient OmniCare', icon: 'user', emphasis: true });
+    }
+    if (!isExternalOwner(consultation)) badges.push({ label: this.accessLabel(consultation) });
+    return badges;
+  }
+
   private accessLabel(consultation: ActiveConsultation | null): string {
     if (consultation === null) return 'Accès médical en vérification';
     const labels: Record<ActiveConsultation['medicalAccessStatus'], string> = {
@@ -317,7 +396,4 @@ export class ConsultationPage implements UnsavedChangesAware {
     }).format(date);
   }
 
-  private shortReference(value: string): string {
-    return value.slice(0, 8).toLocaleUpperCase('fr-FR');
-  }
 }

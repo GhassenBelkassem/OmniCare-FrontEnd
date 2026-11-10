@@ -1,12 +1,22 @@
-import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { RUNTIME_CONFIG } from '../config/runtime-config';
 import { AuthTokenStore } from './auth-token.store';
+import { SensitiveStateRegistry } from './sensitive-state.registry';
 import { authInterceptor } from './auth.interceptor';
 import { LoginSession } from './auth.models';
+
+@Component({ template: '' })
+class LoginStub {}
 
 describe('authInterceptor', () => {
   let client: HttpClient;
@@ -19,7 +29,7 @@ describe('authInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
-        provideRouter([]),
+        provideRouter([{ path: 'login', component: LoginStub }]),
         { provide: RUNTIME_CONFIG, useValue: { apiBaseUrl: '/api/v1' } },
       ],
     });
@@ -72,25 +82,31 @@ describe('authInterceptor', () => {
   });
 
   it('refreshes and retries a protected request after a 401 response', () => {
-    tokens.setSession(session({
-      accessToken: 'expired-access-token',
-      refreshToken: 'valid-refresh-token',
-    }));
+    tokens.setSession(
+      session({
+        accessToken: 'expired-access-token',
+        refreshToken: 'valid-refresh-token',
+      }),
+    );
 
     client.get('/api/v1/me/access').subscribe();
 
-    http.expectOne('/api/v1/me/access').flush(
-      { code: 'UNAUTHENTICATED', message: 'Session expired.' },
-      { status: 401, statusText: 'Unauthorized' },
-    );
+    http
+      .expectOne('/api/v1/me/access')
+      .flush(
+        { code: 'UNAUTHENTICATED', message: 'Session expired.' },
+        { status: 401, statusText: 'Unauthorized' },
+      );
 
     const refresh = http.expectOne('/api/v1/auth/refresh');
     expect(refresh.request.headers.has('Authorization')).toBe(false);
     expect(refresh.request.body).toEqual({ refreshToken: 'valid-refresh-token' });
-    refresh.flush(session({
-      accessToken: 'new-access-token',
-      refreshToken: 'rotated-refresh-token',
-    }));
+    refresh.flush(
+      session({
+        accessToken: 'new-access-token',
+        refreshToken: 'rotated-refresh-token',
+      }),
+    );
 
     const retry = http.expectOne('/api/v1/me/access');
     expect(retry.request.headers.get('Authorization')).toBe('Bearer new-access-token');
@@ -120,24 +136,47 @@ describe('authInterceptor', () => {
   });
 
   it('clears the session when refreshing the request fails', () => {
-    tokens.setSession(session({
-      accessToken: 'expired-access-token',
-      refreshToken: 'expired-refresh-token',
-    }));
+    tokens.setSession(
+      session({
+        accessToken: 'expired-access-token',
+        refreshToken: 'expired-refresh-token',
+      }),
+    );
 
     client.get('/api/v1/patient/requests').subscribe({ error: () => undefined });
 
-    http.expectOne('/api/v1/patient/requests').flush(
-      { code: 'UNAUTHENTICATED' },
-      { status: 401, statusText: 'Unauthorized' },
-    );
-    http.expectOne('/api/v1/auth/refresh').flush(
-      { code: 'AUTH_SESSION_INVALID' },
-      { status: 401, statusText: 'Unauthorized' },
-    );
+    http
+      .expectOne('/api/v1/patient/requests')
+      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    http
+      .expectOne('/api/v1/auth/refresh')
+      .flush({ code: 'AUTH_SESSION_INVALID' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(tokens.authenticated()).toBe(false);
     expect(tokens.accessToken()).toBeNull();
+  });
+
+  it('clears sensitive state and disconnects registered realtime on refresh failure', () => {
+    let sensitiveRecord: string | null = 'patient-record';
+    let realtimeConnected = true;
+    const registry = TestBed.inject(SensitiveStateRegistry);
+    registry.register(() => {
+      sensitiveRecord = null;
+    });
+    registry.register(() => {
+      realtimeConnected = false;
+    });
+    tokens.setSession(session({ accessToken: 'expired', refreshToken: 'rejected' }));
+
+    client.get('/api/v1/clinical-record').subscribe({ error: () => undefined });
+    http
+      .expectOne('/api/v1/clinical-record')
+      .flush({}, { status: 401, statusText: 'Unauthorized' });
+    http.expectOne('/api/v1/auth/refresh').flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(sensitiveRecord).toBeNull();
+    expect(realtimeConnected).toBe(false);
+    expect(tokens.authState()).toBe('ANONYMOUS');
   });
 
   it('keeps the session for non-401 errors', () => {
@@ -150,13 +189,39 @@ describe('authInterceptor', () => {
       },
     });
 
-    http.expectOne('/api/v1/patient/requests').flush(
-      {},
-      { status: 500, statusText: 'Server Error' },
-    );
+    http
+      .expectOne('/api/v1/patient/requests')
+      .flush({}, { status: 500, statusText: 'Server Error' });
 
     expect(receivedError?.status).toBe(500);
     expect(tokens.authenticated()).toBe(true);
+  });
+
+  it('does not destroy the session for an ordinary 403 permission failure', () => {
+    tokens.setSession(session({ accessToken: 'authorized-but-forbidden' }));
+    client.get('/api/v1/doctor/restricted-resource').subscribe({ error: () => undefined });
+
+    http
+      .expectOne('/api/v1/doctor/restricted-resource')
+      .flush({ code: 'ACCESS_DENIED' }, { status: 403, statusText: 'Forbidden' });
+
+    http.expectNone('/api/v1/auth/refresh');
+    expect(tokens.authenticated()).toBe(true);
+  });
+
+  it('shares one refresh request across concurrent 401 responses', () => {
+    tokens.setSession(session({ accessToken: 'expired', refreshToken: 'refresh-once' }));
+    client.get('/api/v1/a').subscribe({ error: () => undefined });
+    client.get('/api/v1/b').subscribe({ error: () => undefined });
+
+    http.expectOne('/api/v1/a').flush({}, { status: 401, statusText: 'Unauthorized' });
+    http.expectOne('/api/v1/b').flush({}, { status: 401, statusText: 'Unauthorized' });
+    const refresh = http.expectOne('/api/v1/auth/refresh');
+    refresh.flush(session({ accessToken: 'fresh', refreshToken: 'rotated' }));
+
+    http.expectOne('/api/v1/a').flush({});
+    http.expectOne('/api/v1/b').flush({});
+    http.expectNone('/api/v1/auth/refresh');
   });
 });
 

@@ -39,6 +39,26 @@
       <p class="demo-disclaimer">
         All people, clinics, and clinical records in this demo are fictional.
       </p>
+    } @else if (otpRequired()) {
+      <form (ngSubmit)="verifyOtp()" novalidate>
+        <p>Enter the six-digit code sent to the phone registered for this account.</p>
+        <label for="otp">Verification code</label>
+        <input
+          id="otp"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          [formControl]="otp"
+        />
+        @if (otp.touched && otp.invalid) {
+          <p class="field-error">Enter the six-digit verification code.</p>
+        }
+        <oc-button variant="primary" type="submit" [loading]="submitting()">Verify code</oc-button>
+        <button class="back-link" type="button" [disabled]="submitting()" (click)="resendOtp()">
+          Send a new code
+        </button>
+      </form>
     } @else {
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <label for="email">Email address</label>

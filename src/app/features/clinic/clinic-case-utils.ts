@@ -25,8 +25,15 @@ export const CLINIC_CASE_STATUS_OPTIONS: readonly ClinicCaseOption<ClinicCaseSta
   { value: 'UNDER_ADMIN_REVIEW', label: 'Under review' },
   { value: 'INFORMATION_REQUIRED', label: 'Waiting for information' },
   { value: 'READY_FOR_PLANNING', label: 'Ready for planning' },
+  { value: 'AWAITING_PATIENT_CONFIRMATION', label: 'Awaiting patient confirmation' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'PATIENT_ARRIVED', label: 'Patient arrived' },
+  { value: 'IN_EXECUTION', label: 'In execution' },
+  { value: 'AWAITING_ADMINISTRATIVE_CLOSURE', label: 'Awaiting administrative closure' },
+  { value: 'CLOSED', label: 'Closed' },
   { value: 'DECLINED', label: 'Declined' },
   { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'NO_SHOW', label: 'No show' },
 ];
 
 export const CLINIC_CASE_SITUATION_OPTIONS: readonly ClinicCaseOption<ClinicCaseSituation>[] = [
@@ -146,15 +153,15 @@ export function clinicCaseActionIcon(action: ClinicCaseAction): string {
 }
 
 export function clinicCaseStatusTone(status: ClinicCaseStatus): OcStatus {
-  if (status === 'READY_FOR_PLANNING') return 'confirmed';
-  if (status === 'DECLINED' || status === 'CANCELLED') return 'cancelled';
-  if (status === 'UNDER_ADMIN_REVIEW') return 'in-progress';
+  if (status === 'READY_FOR_PLANNING' || status === 'CONFIRMED' || status === 'CLOSED') return 'confirmed';
+  if (status === 'DECLINED' || status === 'CANCELLED' || status === 'NO_SHOW') return 'cancelled';
+  if (status === 'UNDER_ADMIN_REVIEW' || status === 'IN_EXECUTION') return 'in-progress';
   if (status === 'INFORMATION_REQUIRED') return 'requires-attention';
   return 'pending';
 }
 
 export function isTerminalClinicCase(status: ClinicCaseStatus): boolean {
-  return status === 'DECLINED' || status === 'CANCELLED';
+  return status === 'CLOSED' || status === 'DECLINED' || status === 'CANCELLED' || status === 'NO_SHOW';
 }
 
 export function clinicCaseFailureMessage(reason: ClinicCaseFailureReason): string {
