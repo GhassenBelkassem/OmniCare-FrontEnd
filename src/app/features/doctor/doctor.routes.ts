@@ -86,6 +86,11 @@ export const DOCTOR_ROUTES: Routes = [
         title: 'Prescriptions | OmniCare',
       }),
       doctorOnly({
+        path: 'documents',
+        loadComponent: () => import('./documents/documents-page').then((c) => c.DocumentsPage),
+        title: 'Documents & modèles | OmniCare',
+      }),
+      doctorOnly({
         path: 'results',
         loadComponent: () => import('./results/results-page').then((c) => c.ResultsPage),
         title: 'Résultats et suivi | OmniCare',

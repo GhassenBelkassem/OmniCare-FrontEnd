@@ -1,0 +1,22 @@
+:host {
+  display: block;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--oc-color-surface-default);
+}
+
+.documents-route {
+  display: grid;
+  width: min(100%, 1320px);
+  min-width: 0;
+  margin: 0 auto;
+  padding: var(--oc-space-8) var(--oc-space-6) var(--oc-space-10);
+  gap: var(--oc-space-5);
+}
+
+@media (max-width: 720px) {
+  .documents-route {
+    padding: var(--oc-space-4) var(--oc-space-3) var(--oc-space-8);
+  }
+}

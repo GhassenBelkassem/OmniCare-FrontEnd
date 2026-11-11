@@ -13,11 +13,11 @@ describe('DoctorSidebar', () => {
       children: [{ id: 'command', label: 'Accueil', icon: 'workspace', route: '/doctor/command' }],
     },
     {
-      id: 'clinical-follow-up',
-      label: 'Suivi clinique',
-      icon: 'tasks',
+      id: 'management',
+      label: 'Pilotage',
+      icon: 'settings',
       children: [
-        { id: 'requests', label: 'Demandes', icon: 'requests', route: '/doctor/requests' },
+        { id: 'settings', label: 'Paramètres', icon: 'settings', route: '/doctor/settings' },
       ],
     },
   ];

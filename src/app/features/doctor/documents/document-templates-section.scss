@@ -1,0 +1,147 @@
+.documents-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--oc-space-2);
+}
+
+.preview-page {
+  position: relative;
+  width: min(100%, 390px);
+  overflow: hidden;
+  border: 1px solid var(--oc-color-border-default);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-overlay);
+}
+
+.preview-page img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.preview-fields {
+  position: absolute;
+  inset: 0;
+}
+
+.preview-field {
+  position: absolute;
+  display: grid;
+  align-content: center;
+  padding: 2px 4px;
+  overflow: hidden;
+  border: 1px dashed var(--oc-color-information);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--oc-color-information) 10%, transparent);
+  color: var(--oc-color-information);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-field--date {
+  border-color: var(--oc-color-success);
+  background: color-mix(in srgb, var(--oc-color-success) 12%, transparent);
+  color: var(--oc-color-success);
+}
+
+.preview-field--clinical {
+  border-color: var(--oc-color-coordination);
+  background: color-mix(in srgb, var(--oc-color-coordination) 12%, transparent);
+  color: var(--oc-color-coordination);
+}
+
+.preview-field--verification {
+  border-color: var(--oc-color-text-secondary);
+  background: color-mix(in srgb, var(--oc-color-text-secondary) 10%, transparent);
+  color: var(--oc-color-text-secondary);
+}
+
+.preview-field--required {
+  border-style: solid;
+}
+
+.preview-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-2) var(--oc-space-3);
+}
+
+.preview-pager button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-sm);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-secondary);
+}
+
+.preview-pager button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.preview-pager output {
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.preview-detection {
+  display: grid;
+  gap: var(--oc-space-1);
+  margin: 0 var(--oc-space-3) var(--oc-space-2);
+  padding: var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-text-secondary);
+  font-size: 11px;
+}
+
+.preview-detection strong {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-2);
+  color: var(--oc-color-text-primary);
+  font-size: 11px;
+}
+
+.preview-detection p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.preview-page-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--oc-space-2);
+  color: var(--oc-color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.documents-layout--fullscreen .preview-page {
+  width: min(100%, 560px);
+  max-height: 100%;
+}
+
+.documents-layout--fullscreen .preview-page img {
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 720px) {
+  .documents-actions {
+    justify-content: stretch;
+  }
+
+  .documents-actions oc-button {
+    flex: 1 1 auto;
+  }
+}
