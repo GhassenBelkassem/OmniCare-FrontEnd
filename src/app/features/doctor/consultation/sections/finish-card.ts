@@ -42,6 +42,17 @@ import type { ChecklistTarget } from '../model/consultation-errors';
             }
           </div>
         }
+        @if (flow.identityGate() && flow.identityWarning(); as warning) {
+          <div class="c-identity" role="status" data-testid="identity-warning">
+            <p>{{ warning.message }}</p>
+            <div class="c-identity__actions">
+              @if (warning.editable) {
+                <oc-button size="small" variant="outline" data-testid="identity-complete" (click)="ui.contactOpen.set(true)">Compléter les coordonnées</oc-button>
+              }
+              <oc-button size="small" variant="primary" data-testid="identity-continue" (click)="flow.continueDespiteIdentity()">Terminer quand même</oc-button>
+            </div>
+          </div>
+        }
         @if (flow.error(); as message) {
           <p class="c-alert" role="alert">{{ message }}</p>
         }
@@ -77,6 +88,11 @@ import type { ChecklistTarget } from '../model/consultation-errors';
     .c-missing { color: inherit; font-weight: var(--oc-font-weight-semibold); }
     .c-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     oc-button { display: block; }
+    /* Soft warning (never blocks): allergy/warning tint + dark text (docs/ui-guidelines.md §8). */
+    .c-identity { display: grid; gap: var(--oc-space-2); padding: var(--oc-space-3); border-radius: var(--oc-radius-tile); background: var(--oc-info-allergy-tint); color: var(--oc-info-allergy); }
+    .c-identity p { margin: 0; font-size: var(--oc-text-body-size); }
+    .c-identity__actions { display: flex; flex-wrap: wrap; gap: var(--oc-space-2); }
+    .c-identity__actions oc-button { display: inline-block; }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

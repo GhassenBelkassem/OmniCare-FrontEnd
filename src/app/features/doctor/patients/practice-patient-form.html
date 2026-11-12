@@ -133,6 +133,21 @@
       @if (showError('phone')) { <small class="patient-form__error">Numéro de téléphone invalide.</small> }
     </label>
 
+    <label class="patient-form__field" for="patient-form-address">
+      <span>Adresse <small>(facultatif)</small></span>
+      <textarea
+        id="patient-form-address"
+        nz-input
+        rows="2"
+        formControlName="address"
+        autocomplete="street-address"
+        [nzStatus]="showError('address') ? 'error' : ''"
+      ></textarea>
+      @if (showError('address')) {
+        <small class="patient-form__error" data-testid="address-error">Adresse trop longue (2000 caractères maximum).</small>
+      }
+    </label>
+
     <button
       type="button"
       class="patient-form__more"

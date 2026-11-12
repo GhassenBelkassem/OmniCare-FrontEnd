@@ -22,6 +22,8 @@ export interface ConsultationPatient {
   readonly ageApproximate: boolean;
   readonly sex: 'F' | 'M' | 'OTHER' | null;
   readonly dateOfBirth: string | null;
+  /** G-1 D5: whether an address is known (never the address itself). */
+  readonly addressKnown?: boolean;
 }
 
 /**

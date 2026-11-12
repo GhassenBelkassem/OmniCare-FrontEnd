@@ -166,6 +166,29 @@ describe('PracticePatientForm', () => {
     expect(element.querySelector('[data-testid="birth-age"]')?.textContent).toMatch(/Âge : \d+ ans/u);
   });
 
+  it('sends the optional address trimmed, and refuses one longer than 2000 characters in French', () => {
+    const fixture = TestBed.createComponent(PracticePatientForm);
+    fixture.detectChanges();
+    fixture.componentInstance.form.patchValue({
+      firstName: 'Hédi', lastName: 'Trabelsi', dateOfBirth: '1980-02-29', sex: 'M',
+      address: 'x'.repeat(2001),
+    });
+    fixture.componentInstance.submit();
+    http.expectNone('/api/v1/patients/duplicate-candidates');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="address-error"]')?.textContent)
+      .toContain('Adresse trop longue (2000 caractères maximum).');
+
+    fixture.componentInstance.form.patchValue({ address: '  5 avenue Habib Bourguiba, Ariana  ' });
+    fixture.componentInstance.submit();
+    const duplicateCheck = http.expectOne('/api/v1/patients/duplicate-candidates');
+    expect(duplicateCheck.request.body.address).toBe('5 avenue Habib Bourguiba, Ariana');
+    duplicateCheck.flush([]);
+    const create = http.expectOne('/api/v1/patients');
+    expect(create.request.body.address).toBe('5 avenue Habib Bourguiba, Ariana');
+    create.flush(patientResponse());
+  });
+
   it('supports an approximate age and does not require a phone number', () => {
     const fixture = TestBed.createComponent(PracticePatientForm);
     fixture.detectChanges();

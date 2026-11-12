@@ -9,6 +9,8 @@ export interface SickLeaveTemplateOption {
   readonly id: string;
   readonly label: string;
   readonly isDefault: boolean;
+  /** Zones placed on the template's current version (catalog keys). */
+  readonly fieldKeys?: readonly string[];
 }
 
 /** The doctor's ACTIVE « Arrêt de travail » templates, in list order, default first. */
@@ -21,6 +23,7 @@ export function sickLeaveTemplateOptions(
       id: template.id,
       label: template.isDefault ? `${template.name} (par défaut)` : template.name,
       isDefault: template.isDefault,
+      fieldKeys: (template.fields ?? []).map((field) => field.fieldKey),
     }))
     .sort((left, right) => Number(right.isDefault) - Number(left.isDefault));
 }
@@ -54,6 +57,12 @@ export class SickLeaveTemplatePicker {
   readonly options = signal<readonly SickLeaveTemplateOption[]>([]);
   readonly selectedId = signal<string | null>(null);
   readonly visible = computed(() => this.options().length > 0);
+  /** Zones of the template that will be used for the arrêt de travail (none for the standard one). */
+  readonly selectedFieldKeys = computed<ReadonlySet<string>>(() => {
+    const selected = this.selectedId();
+    const option = this.options().find((candidate) => candidate.id === selected);
+    return new Set(option?.fieldKeys ?? []);
+  });
   /** What the « Modèle » list shows: the doctor's templates, then « Modèle standard ». */
   readonly choices = computed<readonly SickLeaveTemplateOption[]>(() =>
     this.visible() ? [...this.options(), STANDARD_TEMPLATE_CHOICE] : [],

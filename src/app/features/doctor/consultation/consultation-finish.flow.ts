@@ -11,6 +11,7 @@ import { ClinicalOrderApiService } from '../clinical-order-api.service';
 import { PrescriptionApiService } from '../prescription-api.service';
 import { ConsultationSessionStore } from './consultation-session.store';
 import { SickLeaveTemplatePicker } from './sick-leave-template-picker';
+import { type IdentityWarning, identityWarning } from './model/identity-warning';
 import {
   CONFLICT_MESSAGE,
   consultationErrorMessage,
@@ -77,6 +78,17 @@ export class ConsultationFinishFlow {
   readonly phase = signal<FinishPhase>('idle');
   readonly attempted = signal(false);
   readonly confirmOpen = signal(false);
+  /**
+   * G-1 D5: shown in « Avant de terminer » after a « Terminer » attempt when the arrêt de travail
+   * will be printed on a template whose patient zones (birth date, age, address) have no value.
+   * Soft: « Terminer quand même » always goes on.
+   */
+  readonly identityGate = signal(false);
+  readonly identityWarning = computed<IdentityWarning | null>(() => {
+    const draft = this.session.certificates()['SICK_LEAVE_CERTIFICATE']?.server ?? null;
+    if (draft?.status !== 'DRAFT' || this.templates.templateIdFor('SICK_LEAVE_CERTIFICATE') === null) return null;
+    return identityWarning(this.templates.selectedFieldKeys(), this.session.consultation()?.patient);
+  });
   readonly missing = signal<readonly ReadinessItem[]>([]);
   readonly error = signal<string | null>(null);
   readonly busy = computed(() => this.phase() !== 'idle' && this.phase() !== 'done');
@@ -131,6 +143,7 @@ export class ConsultationFinishFlow {
    */
   async requestFinish(): Promise<boolean> {
     if (this.busy()) return false;
+    this.identityGate.set(false);
     this.error.set(null);
     this.missing.set([]);
     this.phase.set('saving');
@@ -155,8 +168,18 @@ export class ConsultationFinishFlow {
       this.missing.set(missing.length > 0 ? missing : [{ label: 'Champs à corriger', target: 'motif' }]);
       return false;
     }
+    if (this.identityWarning() !== null) {
+      this.identityGate.set(true);
+      return true;
+    }
     this.confirmOpen.set(true);
     return true;
+  }
+
+  /** « Terminer quand même »: the warning never blocks. */
+  continueDespiteIdentity(): void {
+    this.identityGate.set(false);
+    this.confirmOpen.set(true);
   }
 
   cancelConfirm(): void {

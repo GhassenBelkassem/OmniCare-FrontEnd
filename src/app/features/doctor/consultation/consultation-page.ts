@@ -31,6 +31,7 @@ import { MedicalContextCard } from './sections/medical-context-card';
 import { MedicalSummarySection } from './sections/medical-summary-section';
 import { OrdersSection } from './sections/orders-section';
 import { PatientRecordDrawer } from './record/patient-record-drawer';
+import { ContactCompletionDrawer } from './contact-completion-drawer';
 import { TreatmentSection } from './sections/treatment-section';
 import { ActiveConsultationApiService } from '../active-consultation-api.service';
 import type { ConsultationFollowUpOutcome } from '../active-consultation.models';
@@ -84,6 +85,7 @@ const FOLLOW_UPS = [
     MedicalSummarySection,
     OrdersSection,
     PatientRecordDrawer,
+    ContactCompletionDrawer,
     QuickBookingDrawer,
     TreatmentSection,
   ],

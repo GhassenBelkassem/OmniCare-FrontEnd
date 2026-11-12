@@ -70,6 +70,8 @@ export class ConsultationUi {
   readonly confirmRequest = signal<ConfirmRequest | null>(null);
   /** « Dossier patient » side panel. */
   readonly recordOpen = signal(false);
+  /** G-1 D5 « Compléter les coordonnées » side panel (external patients, from the « Terminer » warning). */
+  readonly contactOpen = signal(false);
 
   /** Every current error: live client rules, finish rules after an attempt, server field errors. */
   readonly currentErrors = computed<Readonly<Record<string, string>>>(() => ({
