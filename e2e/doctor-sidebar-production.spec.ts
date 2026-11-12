@@ -97,6 +97,8 @@ async function prepareShell(page: Page, role: ShellRole): Promise<Set<string>> {
         nextConfirmedAppointment: null,
       });
     }
+    if (pathname.endsWith('/me/document-templates/field-catalog')) return json(route, 200, []);
+    if (pathname.endsWith('/me/document-templates')) return json(route, 200, []);
     if (pathname.endsWith('/secretary/appointments')) {
       return json(route, 200, {
         items: [],
@@ -143,11 +145,13 @@ test.describe('production Doctor sidebar and shell', () => {
         'aria-current',
         'page',
       );
-      await expect(sidebar.locator('.doctor-sidebar__badge')).toHaveText('2');
+      await expect(sidebar.locator('.doctor-sidebar__badge')).toHaveCount(0);
       await expect(sidebar.getByRole('link', { name: 'Consultation', exact: true })).toHaveAttribute(
         'href',
         `/doctor/consultation/${consultationId}`,
       );
+      await expect(sidebar.getByText('Suivi clinique')).toHaveCount(0);
+      await expect(sidebar.getByRole('link', { name: 'Documents', exact: true })).toHaveCount(0);
       await page.screenshot({
         path: testInfo.outputPath(`doctor-sidebar-production-${testInfo.project.name}.png`),
         fullPage: true,
@@ -168,6 +172,35 @@ test.describe('production Doctor sidebar and shell', () => {
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
       ),
     ).toBe(false);
+  });
+
+  test('keeps document templates reachable from settings and the direct route without a sidebar entry', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Documents reachability runs once.');
+    await prepareShell(page, 'DOCTOR');
+    await page.goto('/doctor/settings?tab=documents');
+
+    const sidebar = page.locator('app-doctor-sidebar.doctor-shell__desktop-sidebar');
+    await expect(sidebar.getByText('Suivi clinique')).toHaveCount(0);
+    await expect(sidebar.getByRole('link', { name: 'Documents', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'Documents', exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(page.getByRole('heading', { name: 'Documents & modèles' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Comment ça marche ?' })).toBeVisible();
+    await expect(
+      page.getByText(/testez le rendu avec des données de démonstration/i),
+    ).toBeVisible();
+
+    await page.goto('/doctor/documents');
+    await expect(page.getByRole('heading', { name: 'Documents & modèles' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Aucun modèle configuré' })).toBeVisible();
+    await expect(
+      page.getByText(/prévisualisez le rendu avec des données de démonstration/i),
+    ).toBeVisible();
+    await expect(sidebar.getByText('Suivi clinique')).toHaveCount(0);
   });
 
   test('preserves collapse, focus, notifications, lookup and logout behavior', async ({

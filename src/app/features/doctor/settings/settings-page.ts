@@ -27,10 +27,12 @@ import {
   mergeScheduleRules,
   removeScheduleDay,
 } from './bulk-schedule-editor';
+import { DocumentTemplatesSection } from '../documents/document-templates-section';
 import { CabinetSettingsSection } from './cabinet-settings-section';
 import { NotificationSettingsSection } from './notification-settings-section';
 import { ProfessionalProfileSection } from './professional-profile-section';
 import { ServicesSettingsSection } from './services-settings-section';
+import { TeamPage } from '../secretary/team/team-page';
 
 @Component({
   selector: 'app-settings-page',
@@ -48,6 +50,8 @@ import { ServicesSettingsSection } from './services-settings-section';
     ServicesSettingsSection,
     AccountSecuritySection,
     NotificationSettingsSection,
+    DocumentTemplatesSection,
+    TeamPage,
   ],
   templateUrl: './settings-page.html',
   styleUrl: './settings-page.scss',
@@ -68,8 +72,10 @@ export class SettingsPage implements UnsavedChangesAware {
     { id: 'cabinets', label: 'Cabinets', icon: 'environment' },
     { id: 'schedule', label: 'Horaires et disponibilités', icon: 'calendar' },
     { id: 'services', label: 'Services', icon: 'medicine-box' },
+    { id: 'documents', label: 'Documents', icon: 'file-text' },
     { id: 'account', label: 'Sécurité', icon: 'audit' },
     { id: 'notifications', label: 'Notifications', icon: 'notification' },
+    { id: 'team', label: 'Équipe', icon: 'user' },
   ]);
 
   readonly availabilityRules = signal<readonly AvailabilityRuleDto[]>([]);

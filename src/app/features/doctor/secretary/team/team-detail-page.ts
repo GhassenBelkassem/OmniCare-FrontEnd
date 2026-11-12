@@ -9,10 +9,11 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import {
+  OcAvatar,
   OcButton,
+  OcCard,
   OcConfirmDialog,
-  OcPageHeader,
-  OcStatus,
+  OcSkeleton,
   OcStatusBadge,
 } from '../../../../shared/ui';
 import {
@@ -21,7 +22,8 @@ import {
   SecretaryPermission,
 } from '../secretary-api.models';
 import { SecretaryApiService } from '../secretary-api.service';
-import { SecretaryPermissionSelect } from '../secretary-permission-select';
+import { InviteDialog } from './invite-dialog';
+import { InviteDialogResult } from './invite-dialog';
 import {
   canEditPermissions,
   canEnd,
@@ -29,8 +31,10 @@ import {
   canSuspend,
   membershipStatusLabel,
   membershipStatusTone,
-  permissionLabel,
+  permissionLabel as permissionLabelFn,
+  permissionTone,
   secretaryErrorMessage,
+  formatDateTimeFr,
 } from '../secretary-page-utils';
 
 type PendingAction = 'resend' | 'suspend' | 'end';
@@ -48,11 +52,13 @@ type PendingAction = 'resend' | 'suspend' | 'end';
   imports: [
     ReactiveFormsModule,
     RouterLink,
+    OcAvatar,
     OcButton,
+    OcCard,
     OcConfirmDialog,
-    OcPageHeader,
+    OcSkeleton,
     OcStatusBadge,
-    SecretaryPermissionSelect,
+    InviteDialog,
   ],
   templateUrl: './team-detail-page.html',
   styleUrl: './team-detail-page.scss',
@@ -102,9 +108,12 @@ export class TeamDetailPage {
   readonly permissionEntries = computed(() =>
     (this.member()?.permissions ?? []).map((permission) => ({
       permission,
-      label: permissionLabel(permission),
+      label: permissionLabelFn(permission),
     })),
   );
+
+  // Dialog state for permissions editing
+  readonly editingPermissionsDialog = signal(false);
 
   constructor() {
     this.load();
@@ -130,7 +139,7 @@ export class TeamDetailPage {
 
   // --- permissions -------------------------------------------------------------------------
 
-  canEditPermissions(status: SecretaryMembershipStatus): boolean {
+  canEditPermissionsFn(status: SecretaryMembershipStatus): boolean {
     return canEditPermissions(status);
   }
 
@@ -227,7 +236,7 @@ export class TeamDetailPage {
     return membershipStatusLabel(status);
   }
 
-  statusTone(status: SecretaryMembershipStatus): OcStatus {
+  statusTone(status: SecretaryMembershipStatus) {
     return membershipStatusTone(status);
   }
 
@@ -239,28 +248,18 @@ export class TeamDetailPage {
     return canSuspend(status);
   }
 
-  canEnd(status: SecretaryMembershipStatus): boolean {
+  canEndFn(status: SecretaryMembershipStatus): boolean {
     return canEnd(status);
-  }
-
-  /** `Intl` keeps this SSR-safe and avoids hand-rolled date formatting. */
-  formatDateTime(value: string): string {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return new Intl.DateTimeFormat('en-GB', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(parsed);
   }
 
   protected pendingDialogTitle(): string {
     switch (this.pending()) {
       case 'resend':
-        return 'Resend invitation';
+        return 'Renvoyer l\'invitation';
       case 'suspend':
-        return 'Suspend access';
+        return 'Suspendre l\'accès';
       default:
-        return 'End access';
+        return 'Mettre fin à l\'accès';
     }
   }
 
@@ -268,33 +267,95 @@ export class TeamDetailPage {
     const email = this.member()?.email ?? '';
     switch (this.pending()) {
       case 'resend':
-        return `Send a new invitation to ${email}? The previous link stops working.`;
+        return `Envoyer une nouvelle invitation à ${email} ? Le lien précédent cessera de fonctionner.`;
       case 'suspend':
-        return `Suspend ${email}? They will lose access to the agenda immediately.`;
+        return `Suspendre ${email} ? Elle perdra l'accès à l'agenda immédiatement.`;
       default:
-        return `End access for ${email}? This cannot be undone.`;
+        return `Mettre fin à l'accès de ${email} ? Cette action est irréversible.`;
     }
   }
 
   protected pendingDialogConfirmLabel(): string {
     switch (this.pending()) {
       case 'resend':
-        return 'Resend invitation';
+        return 'Renvoyer l\'invitation';
       case 'suspend':
-        return 'Suspend access';
+        return 'Suspendre';
       default:
-        return 'End access';
+        return 'Mettre fin à l\'accès';
     }
+  }
+
+  // --- Permissions dialog methods ---
+  openPermissionsDialog(): void {
+    const member = this.member();
+    if (member === null) return;
+    this.permissionForm.controls.permissions.setValue([...member.permissions]);
+    this.permissionsError.set(null);
+    this.actionError.set(null);
+    this.editingPermissionsDialog.set(true);
+  }
+
+  closePermissionsDialog(): void {
+    this.editingPermissionsDialog.set(false);
+  }
+
+  savePermissionsDialog(): void {
+    if (this.savingPermissions()) return;
+    const { permissions } = this.permissionForm.getRawValue();
+    this.savingPermissions.set(true);
+    this.permissionsError.set(null);
+    this.actionError.set(null);
+
+    this.api.replacePermissions(this.membershipId, permissions).subscribe({
+      next: () => {
+        this.savingPermissions.set(false);
+        this.editingPermissionsDialog.set(false);
+        this.notice.set('Permissions mises à jour.');
+        this.load();
+      },
+      error: (error: unknown) => {
+        this.savingPermissions.set(false);
+        this.permissionsError.set(secretaryErrorMessage(error));
+      },
+    });
+  }
+
+  onPermissionsDialogClose(result: InviteDialogResult): void {
+    if (result === null) {
+      this.closePermissionsDialog();
+      return;
+    }
+    // The dialog returns the updated permissions, save them
+    const { permissions } = result;
+    if (permissions) {
+      this.permissionForm.controls.permissions.setValue([...permissions]);
+      this.savePermissionsDialog();
+    } else {
+      this.closePermissionsDialog();
+    }
+  }
+
+  permissionLabelFnLocal(permission: SecretaryPermission): string {
+    return permissionLabelFn(permission);
+  }
+
+  permissionToneFn(permission: SecretaryPermission): 'emerald' | 'teal' | 'aqua' | 'neutral' {
+    return permissionTone(permission);
+  }
+
+  formatDateTime(value: string): string {
+    return formatDateTimeFr(value);
   }
 }
 
 function successNotice(kind: PendingAction, email: string): string {
   switch (kind) {
     case 'resend':
-      return `Invitation resent to ${email}.`;
+      return `Invitation renvoyée à ${email}.`;
     case 'suspend':
-      return `${email} is suspended.`;
+      return `${email} est suspendu.`;
     default:
-      return `Access for ${email} has ended.`;
+      return `L'accès de ${email} a été mis fin.`;
   }
 }

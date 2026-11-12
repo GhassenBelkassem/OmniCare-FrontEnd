@@ -172,6 +172,19 @@
         />
       }
 
+      @if (activeTab() === 'documents') {
+        <div class="settings-page__schedule">
+          <header class="settings-page__section-heading">
+            <h2>Documents &amp; modèles</h2>
+            <p>
+              Importez vos arrêts de travail et positionnez les champs une seule fois pour chaque
+              modèle.
+            </p>
+          </header>
+          <app-document-templates-section />
+        </div>
+      }
+
       @if (activeTab() === 'account') {
         <app-account-security-section />
       }
@@ -179,6 +192,10 @@
       @if (activeTab() === 'notifications') {
         <app-notification-settings-section />
       }
+
+      @if (activeTab() === 'team') {
+    <app-team-page [embedded]="true" />
+  }
     </section>
   </div>
 

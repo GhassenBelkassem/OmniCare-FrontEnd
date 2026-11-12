@@ -30,7 +30,7 @@ const DEFAULT_LABELS: SidebarLabels = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DoctorSidebar {
-  private readonly defaultExpandedGroups = new Set(['daily-work', 'clinical-follow-up']);
+  private readonly defaultExpandedGroups = new Set(['daily-work']);
   private readonly closedDefaultGroups = signal<ReadonlySet<string>>(new Set());
 
   readonly items = input.required<readonly SidebarNavigationItem[]>();

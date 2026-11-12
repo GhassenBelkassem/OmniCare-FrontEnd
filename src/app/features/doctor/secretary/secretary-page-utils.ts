@@ -14,44 +14,37 @@ import { SecretaryMembershipStatus, SecretaryPermission } from './secretary-api.
  */
 const SECRETARY_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   'secretary-permission-unknown':
-    'One of the selected permissions is not recognised. Review the selection and try again.',
-  'secretary-request-invalid': 'The request could not be processed. Check the details and try again.',
+    'Une des permissions sélectionnées n\'est pas reconnue. Vérifiez la sélection et réessayez.',
+  'secretary-request-invalid': 'La demande ne peut pas être traitée. Vérifiez les détails et réessayez.',
   'secretary-clinical-access-forbidden':
-    'Clinical access cannot be delegated to a secretary.',
+    'L\'accès clinique ne peut pas être délégué à une secrétaire.',
   'secretary-permission-required':
-    'This action requires a permission that has not been granted.',
+    'Cette action nécessite une permission qui n\'a pas été accordée.',
   'secretary-context-unavailable':
-    'Your delegation is not available right now. Ask the doctor to restore it.',
+    'Votre délégation n\'est pas disponible pour le moment. Demandez au médecin de la restaurer.',
   'secretary-membership-required':
-    'You do not have an active delegation for this doctor.',
+    "Vous ne disposez pas d'une délégation active pour ce médecin.",
   'secretary-membership-suspended':
-    'This delegation is suspended. Ask the doctor to restore it.',
+    "Cette délégation est suspendue. Demandez au médecin de la restaurer.",
   'secretary-membership-ended':
-    'This delegation has ended and can no longer be used.',
-  'secretary-doctor-role-required': 'Only a doctor can manage their delegation.',
-  'secretary-not-found': 'That delegation no longer exists.',
-  'secretary-cross-doctor-forbidden': 'That delegation belongs to another doctor.',
+    "Cette délégation est terminée et ne peut plus être utilisée.",
+  'secretary-doctor-role-required': "Seul un médecin peut gérer sa délégation.",
+  'secretary-not-found': 'Cette délégation n\'existe plus.',
+  'secretary-cross-doctor-forbidden': "Cette délégation appartient à un autre médecin.",
   'secretary-email-already-registered':
-    'This email already belongs to a delegated secretary.',
+    'Cette adresse e-mail appartient déjà à une secrétaire déléguée.',
   'secretary-invitation-cooldown':
-    'An invitation was sent recently. Wait before sending another one.',
-  'secretary-transition-invalid': 'That change is not allowed from the current status.',
-  'secretary-permission-empty': 'Grant at least one permission.',
-  'secretary-self-invite-forbidden': 'You cannot delegate your own account.',
+    'Une invitation a été envoyée récemment. Attendez avant d\'en envoyer une autre.',
+  'secretary-transition-invalid': 'Cette modification n\'est pas autorisée depuis l\'état actuel.',
+  'secretary-permission-empty': 'Accordez au moins une permission.',
+  'secretary-self-invite-forbidden': "Vous ne pouvez pas déléguier votre propre compte.",
 };
-
-const GENERIC_SECRETARY_ERROR =
-  'The request could not be completed. Please try again.';
 
 /**
- * Field-scoped copy for the delegated invitation form. Keyed by the field the
- * backend names in `fieldErrors`, never by its raw `defaultMessage`, which is
- * developer-facing text ("Already used.", "Header is required.").
+ * Generic secretary error fallback.
  */
-const SECRETARY_FIELD_MESSAGES: Readonly<Record<string, string>> = {
-  email: 'Enter a valid email address.',
-  permissions: 'Grant at least one permission.',
-};
+const GENERIC_SECRETARY_ERROR =
+  'La demande ne peut pas être effectuée. Veuillez réessayez.';
 
 /**
  * Maps a failed delegation request onto the contract's error code.
@@ -72,7 +65,21 @@ export function secretaryErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : GENERIC_SECRETARY_ERROR;
 }
 
-/** Field-level validation copy keyed by the backend's `fieldErrors`. */
+/**
+ * Field-scoped copy for the delegated invitation form. Keyed by the field the
+ * backend names in `fieldErrors`, never by its raw `defaultMessage`, which is
+ * developer-facing text ("Already used.", "Header is required.").
+ */
+const SECRETARY_FIELD_MESSAGES: Readonly<Record<string, string>> = {
+  email: 'Entrez une adresse e-mail valide.',
+  permissions: 'Accordez au moins une permission.',
+};
+
+/**
+ * Field-level copy for the delegated invitation form. Keyed by the field the
+ * backend names in `fieldErrors`, never by its raw `defaultMessage`, which is
+ * developer-facing text ("Already used.", "Header is required.").
+ */
 export function secretaryFieldError(error: unknown, field: string): string | null {
   if (!(error instanceof HttpErrorResponse)) return null;
   const body = error.error as ApiErrorBody | null;
@@ -94,10 +101,10 @@ export function membershipStatusTone(status: SecretaryMembershipStatus): OcStatu
 }
 
 const MEMBERSHIP_STATUS_LABELS: Readonly<Record<SecretaryMembershipStatus, string>> = {
-  INVITED: 'Invitation sent',
-  ACTIVE: 'Active',
-  SUSPENDED: 'Suspended',
-  ENDED: 'Ended',
+  INVITED: 'Invitation envoyée',
+  ACTIVE: 'Actif',
+  SUSPENDED: 'Suspendu',
+  ENDED: 'Terminé',
 };
 
 export function membershipStatusLabel(status: SecretaryMembershipStatus): string {
@@ -105,12 +112,12 @@ export function membershipStatusLabel(status: SecretaryMembershipStatus): string
 }
 
 const PERMISSION_LABELS: Readonly<Record<SecretaryPermission, string>> = {
-  VIEW_AGENDA: 'View agenda',
-  MANAGE_AGENDA: 'Manage agenda',
-  CREATE_APPOINTMENT: 'Create appointments',
-  RESCHEDULE_APPOINTMENT: 'Reschedule appointments',
-  CANCEL_APPOINTMENT: 'Cancel appointments',
-  VIEW_PATIENT_CONTACT: 'View patient contact details',
+  VIEW_AGENDA: 'Consulter l\'agenda',
+  MANAGE_AGENDA: 'Gérer l\'agenda',
+  CREATE_APPOINTMENT: 'Créer des rendez-vous',
+  RESCHEDULE_APPOINTMENT: 'Reprogrammer des rendez-vous',
+  CANCEL_APPOINTMENT: 'Annuler des rendez-vous',
+  VIEW_PATIENT_CONTACT: 'Voir les coordonnées des patients',
 };
 
 export function permissionLabel(permission: SecretaryPermission): string {
@@ -119,8 +126,29 @@ export function permissionLabel(permission: SecretaryPermission): string {
 
 export function permissionLabels(permissions: readonly SecretaryPermission[]): string {
   return permissions.length === 0
-    ? 'None'
+    ? 'Aucune'
     : permissions.map(permissionLabel).join(', ');
+}
+
+/**
+ * Tone mapping for permission chips in the team list.
+ * Uses the oc-tag tone palette (emerald, teal, aqua, neutral).
+ */
+export function permissionTone(permission: SecretaryPermission): 'emerald' | 'teal' | 'aqua' | 'neutral' {
+  switch (permission) {
+    case 'VIEW_AGENDA':
+      return 'emerald';
+    case 'MANAGE_AGENDA':
+      return 'teal';
+    case 'CREATE_APPOINTMENT':
+      return 'emerald';
+    case 'RESCHEDULE_APPOINTMENT':
+      return 'aqua';
+    case 'CANCEL_APPOINTMENT':
+      return 'neutral';
+    case 'VIEW_PATIENT_CONTACT':
+      return 'teal';
+  }
 }
 
 /**
@@ -157,3 +185,22 @@ export function isMutable(status: SecretaryMembershipStatus): boolean {
 export function canEditPermissions(status: SecretaryMembershipStatus): boolean {
   return isMutable(status);
 }
+
+/**
+ * Format a DateTime in French locale
+ * Example: "5 oct. 2026, 16:45"
+ */
+export function formatDateTimeFr(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsed);
+}
+
+/** Alias for backward compatibility with components using formatDateTime */
+export const formatDateTime = formatDateTimeFr;
