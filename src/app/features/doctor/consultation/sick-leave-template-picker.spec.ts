@@ -9,6 +9,7 @@ import { ArtifactApiService } from '../artifact-api.service';
 import { ConsultationFinishFlow } from './consultation-finish.flow';
 import { ConsultationSessionStore } from './consultation-session.store';
 import {
+  STANDARD_TEMPLATE_ID,
   SickLeaveTemplatePicker,
   preselectedTemplateId,
   sickLeaveTemplateOptions,
@@ -106,6 +107,29 @@ describe('sick-leave template preselection', () => {
     expect(subject.templateIdFor('PRESCRIPTION')).toBeNull();
   });
 
+  it('ends the list with « Modèle standard », keeps the default preselected, and sends no template for it', () => {
+    const { picker: subject } = picker({
+      templates: [sickLeaveTemplate({ id: 'one' }), sickLeaveTemplate({ id: 'two', isDefault: true })],
+    });
+    subject.ensureLoaded();
+    expect(subject.choices().map((option) => option.label)).toEqual([
+      expect.stringContaining('(par défaut)'), expect.any(String), 'Modèle standard',
+    ]);
+    expect(subject.choices().at(-1)?.id).toBe(STANDARD_TEMPLATE_ID);
+    expect(subject.selectedId()).toBe('two');
+    subject.select(STANDARD_TEMPLATE_ID);
+    expect(subject.selectedId()).toBe(STANDARD_TEMPLATE_ID);
+    expect(subject.templateIdFor('SICK_LEAVE_CERTIFICATE')).toBeNull();
+    subject.reload();
+    expect(subject.selectedId()).toBe(STANDARD_TEMPLATE_ID);
+  });
+
+  it('offers no « Modèle standard » choice when the doctor has no active template (list hidden)', () => {
+    const { picker: subject } = picker({ templates: [] });
+    subject.ensureLoaded();
+    expect(subject.choices()).toEqual([]);
+  });
+
   it('ignores an id that is not in the list', () => {
     const { picker: subject } = picker({ templates: [sickLeaveTemplate({ id: 'only' })] });
     subject.ensureLoaded();
@@ -172,8 +196,27 @@ describe('« Terminer » with a sick-leave template', () => {
     },
   );
 
+  it('« Modèle standard » chosen: « Terminer » sends no template', async () => {
+    const { fakes, flow, templates } = await setup({ templates: [sickLeaveTemplate({ id: 'template-1', isDefault: true })] });
+    templates.select(STANDARD_TEMPLATE_ID);
+    await flow.confirmFinish();
+    expect(finalizeCall(fakes, 'artifact-sick-leave')[3]).toBeNull();
+    expect(flow.phase()).toBe('done');
+  });
+
+  it('a name only the template cannot print: the message points to « Modèle standard »', async () => {
+    const { fakes, flow } = await setup({ templates: [sickLeaveTemplate({ id: 'template-1', isDefault: true })] });
+    fakes.artifacts.finalize.mockReturnValueOnce(throwError(() => new HttpErrorResponse({
+      status: 422, error: { code: 'TEMPLATE_UNPRINTABLE_TEXT', detail: 'Unprintable (English)' },
+    })));
+    await flow.confirmFinish();
+    expect(flow.error()).toContain('Rien n’a été signé.');
+    expect(flow.error()).toMatch(/ou choisissez « Modèle standard » dans la liste\.$/);
+    expect(flow.phase()).toBe('idle');
+  });
+
   it.each([
-    ['UNPRINTABLE_TEXT', 'Le document contient des caractères que l’impression ne prend pas encore en charge'],
+    ['UNPRINTABLE_TEXT', 'Le texte du document contient des caractères que l’impression ne prend pas encore en charge'],
     ['TEMPLATE_TEXT_OVERFLOW', 'Un texte est trop long pour sa zone sur votre modèle d’arrêt de travail.'],
   ])('%s at signature (G-1 D5 guard): French message, nothing signed, consultation left open', async (code, message) => {
     const { fakes, flow } = await setup({ templates: [sickLeaveTemplate({ id: 'template-1' })] });
@@ -183,6 +226,7 @@ describe('« Terminer » with a sick-leave template', () => {
     await flow.confirmFinish();
     expect(flow.error()).toContain(message);
     expect(flow.error()).toContain('Rien n’a été signé.');
+    expect(flow.error()).not.toContain('Modèle standard');
     expect(flow.phase()).toBe('idle');
     expect(fakes.consultations.finish).not.toHaveBeenCalled();
   });

@@ -42,7 +42,7 @@ const CERTIFICATES: readonly CertificateType[] = ['SICK_LEAVE_CERTIFICATE', 'MED
 /** The chosen sick-leave template was deactivated or deleted meanwhile (G-1 D5). */
 const TEMPLATE_CODES = new Set(['TEMPLATE_NOT_FOUND', 'INVALID_TEMPLATE_STATE']);
 /** G-1 D5: a text the document cannot print (Arabic letters, a text longer than its template zone); nothing was signed. */
-const PRINT_CODES: ReadonlySet<string> = new Set(['UNPRINTABLE_TEXT', 'TEMPLATE_TEXT_OVERFLOW']);
+const PRINT_CODES: ReadonlySet<string> = new Set(['UNPRINTABLE_TEXT', 'TEMPLATE_UNPRINTABLE_TEXT', 'TEMPLATE_TEXT_OVERFLOW']);
 
 const PHASE_LABELS: Readonly<Record<FinishPhase, string>> = {
   idle: 'Terminer la consultation',

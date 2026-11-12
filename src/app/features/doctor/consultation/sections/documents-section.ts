@@ -58,7 +58,7 @@ const DOCUMENTS: readonly { readonly type: CertificateType; readonly label: stri
                       [nzDisabled]="flow.busy()"
                       (ngModelChange)="templates.select($event)"
                     >
-                      @for (option of templates.options(); track option.id) {
+                      @for (option of templates.choices(); track option.id) {
                         <nz-option [nzValue]="option.id" [nzLabel]="option.label" />
                       }
                     </nz-select>

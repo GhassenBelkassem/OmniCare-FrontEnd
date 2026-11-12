@@ -25,6 +25,14 @@ export function sickLeaveTemplateOptions(
     .sort((left, right) => Number(right.isDefault) - Number(left.isDefault));
 }
 
+/** Last choice of the list: no template, the standard MRS document (prints no names). */
+export const STANDARD_TEMPLATE_ID = 'standard';
+export const STANDARD_TEMPLATE_CHOICE: SickLeaveTemplateOption = {
+  id: STANDARD_TEMPLATE_ID,
+  label: 'Modèle standard',
+  isDefault: false,
+};
+
 /** Preselection: the default template, else the only active one, else nothing. */
 export function preselectedTemplateId(options: readonly SickLeaveTemplateOption[]): string | null {
   const preferred = options.find((option) => option.isDefault);
@@ -46,6 +54,10 @@ export class SickLeaveTemplatePicker {
   readonly options = signal<readonly SickLeaveTemplateOption[]>([]);
   readonly selectedId = signal<string | null>(null);
   readonly visible = computed(() => this.options().length > 0);
+  /** What the « Modèle » list shows: the doctor's templates, then « Modèle standard ». */
+  readonly choices = computed<readonly SickLeaveTemplateOption[]>(() =>
+    this.visible() ? [...this.options(), STANDARD_TEMPLATE_CHOICE] : [],
+  );
 
   /** Loads the list once (later calls are ignored). */
   ensureLoaded(): void {
@@ -61,7 +73,7 @@ export class SickLeaveTemplatePicker {
   }
 
   select(id: string | null): void {
-    this.selectedId.set(id !== null && this.options().some((option) => option.id === id) ? id : null);
+    this.selectedId.set(id !== null && this.isChoice(id) ? id : null);
   }
 
   /** `templateId` to send when finalizing this document: only for the sick-leave certificate. */
@@ -69,6 +81,10 @@ export class SickLeaveTemplatePicker {
     if (type !== 'SICK_LEAVE_CERTIFICATE' || !this.visible()) return null;
     const selected = this.selectedId();
     return selected !== null && this.options().some((option) => option.id === selected) ? selected : null;
+  }
+
+  private isChoice(id: string): boolean {
+    return this.choices().some((option) => option.id === id);
   }
 
   private load(): void {
@@ -81,7 +97,7 @@ export class SickLeaveTemplatePicker {
           const current = this.selectedId();
           this.options.set(options);
           this.selectedId.set(
-            current !== null && options.some((option) => option.id === current)
+            current !== null && (current === STANDARD_TEMPLATE_ID || options.some((option) => option.id === current))
               ? current
               : preselectedTemplateId(options),
           );
