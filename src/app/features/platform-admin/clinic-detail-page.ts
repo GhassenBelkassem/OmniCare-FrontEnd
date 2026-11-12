@@ -6,7 +6,7 @@ import { forkJoin } from 'rxjs';
 
 import { OcButton, OcPageHeader, OcStatusBadge } from '../../shared/ui';
 import { Clinic, ClinicMembership } from './admin-api.models';
-import { AdminApiService } from './admin-api.service';
+import { AdminApiService, newIdempotencyKey } from './admin-api.service';
 import { apiMessage, statusTone } from './admin-page-utils';
 
 @Component({
@@ -19,6 +19,8 @@ import { apiMessage, statusTone } from './admin-page-utils';
 export class ClinicDetailPage {
   private readonly api = inject(AdminApiService);
   private readonly route = inject(ActivatedRoute);
+  private inviteIdempotencyKey = '';
+  private inviteFingerprint = '';
   readonly clinicId = this.route.snapshot.paramMap.get('clinicId') ?? '';
   readonly clinic = signal<Clinic | null>(null);
   readonly memberships = signal<readonly ClinicMembership[]>([]);
@@ -47,8 +49,15 @@ export class ClinicDetailPage {
     if (this.form.invalid || this.submitting()) { this.form.markAllAsTouched(); return; }
     this.submitting.set(true);
     const { email, phone } = this.form.getRawValue();
-    this.api.inviteClinicAdmin(this.clinicId, email, phone.trim() || null).subscribe({
-      next: () => { this.successMessage.set('Clinic administrator created and invitation queued.'); this.submitting.set(false); this.inviteOpen.set(false); this.form.reset(); this.load(); },
+    const normalizedEmail = email.trim();
+    const normalizedPhone = phone.trim() || null;
+    const fingerprint = JSON.stringify([this.clinicId, normalizedEmail, normalizedPhone]);
+    if (!this.inviteIdempotencyKey || fingerprint !== this.inviteFingerprint) {
+      this.inviteIdempotencyKey = newIdempotencyKey();
+      this.inviteFingerprint = fingerprint;
+    }
+    this.api.inviteClinicAdmin(this.clinicId, normalizedEmail, normalizedPhone, this.inviteIdempotencyKey).subscribe({
+      next: () => { this.inviteIdempotencyKey = ''; this.inviteFingerprint = ''; this.successMessage.set('Clinic administrator created and invitation queued.'); this.submitting.set(false); this.inviteOpen.set(false); this.form.reset(); this.load(); },
       error: (error: unknown) => { this.errorMessage.set(apiMessage(error)); this.submitting.set(false); },
     });
   }

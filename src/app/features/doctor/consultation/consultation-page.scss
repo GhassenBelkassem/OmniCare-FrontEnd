@@ -3,321 +3,108 @@
   min-width: 0;
 }
 
-.consultation-domain {
-  min-width: 0;
-  min-height: 570px;
-  padding: var(--oc-space-5);
-  border: 1px solid var(--oc-color-border-subtle);
-  border-radius: var(--oc-radius-lg);
-  background: var(--oc-color-surface-card);
-  box-shadow: var(--oc-shadow-card);
-}
-
-.consultation-domain[hidden] {
-  display: none !important;
-}
-
-.consultation-domain > app-clinical-authoring,
-.consultation-domain > app-prescription-authoring,
-.consultation-domain > app-clinical-orders,
-.consultation-domain > app-official-artifacts {
-  display: block;
-  min-width: 0;
-}
-
-.urgent-intake {
+.consultation {
   display: grid;
-  grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.2fr);
-  gap: var(--oc-space-5);
-  margin-block-end: var(--oc-space-4);
-  padding: var(--oc-space-4);
-  border: 1px solid var(--oc-color-information);
-  border-radius: var(--oc-radius-lg);
-  background: var(--oc-color-information-surface);
-}
-
-.urgent-intake h2,
-.urgent-intake p,
-.urgent-intake dl,
-.urgent-intake dd {
-  margin: 0;
-}
-
-.urgent-intake h2 {
-  font-size: 15px;
-  font-weight: var(--oc-font-weight-semibold);
-}
-
-.urgent-intake p,
-.urgent-intake dt,
-.urgent-intake dd {
-  font-size: 12px;
-}
-
-.urgent-intake p,
-.urgent-intake dt {
-  color: var(--oc-color-text-muted);
-}
-
-.urgent-intake dl {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--oc-space-3);
-}
-
-.urgent-intake dl > div {
-  display: grid;
-  align-content: start;
-  gap: var(--oc-space-1);
-}
-
-.urgent-intake dd {
-  color: var(--oc-color-text-primary);
-  font-weight: var(--oc-font-weight-semibold);
-  overflow-wrap: anywhere;
-}
-
-.unsupported-panel {
-  display: flex;
-  max-width: 720px;
-  min-height: 260px;
-  align-items: flex-start;
   gap: var(--oc-space-4);
-  margin: var(--oc-space-10) auto;
-  padding: var(--oc-space-8);
-  border: 1px dashed var(--oc-color-border-default);
-  border-radius: var(--oc-radius-lg);
-  background: var(--oc-color-surface-subtle);
+  max-width: 1320px;
+  margin-inline: auto;
 }
 
-.unsupported-panel__icon,
-.consultation-state__icon {
+.consultation-layout {
   display: grid;
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--oc-color-surface-subtle);
-  color: var(--oc-color-text-secondary);
-  font-size: 20px;
-  font-weight: var(--oc-font-weight-strong);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  align-items: start;
+  gap: var(--oc-space-4);
 }
 
-.unsupported-panel__eyebrow,
-.finalization-panel__eyebrow {
-  margin: 0 0 var(--oc-space-1);
-  color: var(--oc-color-brand-primary);
-  font-size: 11px;
-  font-weight: var(--oc-font-weight-strong);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.unsupported-panel h2,
-.unsupported-panel p,
-.finalization-panel h2,
-.finalization-panel p {
-  margin: 0;
-}
-
-.unsupported-panel h2,
-.finalization-panel h2 {
-  font-size: 20px;
-  font-weight: var(--oc-font-weight-strong);
-  letter-spacing: -0.02em;
-}
-
-.unsupported-panel p:not(.unsupported-panel__eyebrow),
-.finalization-panel header > p:not(.finalization-panel__eyebrow) {
-  max-width: 720px;
-  margin-block-start: var(--oc-space-2);
-  color: var(--oc-color-text-secondary);
-  font-size: 13px;
-  line-height: 1.65;
-}
-
-.finalization-panel {
-  display: grid;
-  gap: var(--oc-space-5);
-}
-
-.finalization-checklist {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--oc-space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.finalization-checklist li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--oc-space-3);
-  min-height: 74px;
-  padding: var(--oc-space-3) var(--oc-space-4);
-  border: 1px solid var(--oc-color-warning);
-  border-radius: var(--oc-radius-md);
-  background: var(--oc-color-warning-surface);
-}
-
-.finalization-checklist li > span {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--oc-color-surface-card);
-  color: var(--oc-color-warning);
-  font-size: 13px;
-  font-weight: var(--oc-font-weight-strong);
-}
-
-.finalization-checklist .finalization-checklist__item--ready {
-  border-color: var(--oc-color-success);
-  background: var(--oc-color-success-surface);
-}
-
-.finalization-checklist .finalization-checklist__item--ready > span {
-  color: var(--oc-color-success);
-}
-
-.finalization-checklist div {
+.consultation-main,
+.consultation-aside {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--oc-space-4);
 }
 
-.finalization-checklist strong {
-  font-size: 13px;
+.consultation-aside {
+  position: sticky;
+  inset-block-start: var(--oc-space-4);
 }
 
-.finalization-checklist small {
-  color: var(--oc-color-text-secondary);
-  font-size: 11px;
-}
-
-.finalization-checklist button {
-  min-height: 32px;
-  padding: 0 var(--oc-space-3);
-  border: 1px solid var(--oc-color-border-default);
+.consultation-banner {
   border-radius: var(--oc-radius-md);
-  background: var(--oc-color-surface-card);
-  color: var(--oc-color-text-primary);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: var(--oc-font-weight-semibold);
-}
-
-.finalization-checklist button:hover,
-.finalization-checklist button:focus-visible {
-  border-color: var(--oc-color-brand-primary);
-  background: var(--oc-color-surface-hover);
-}
-
-.finish-alert {
-  padding: var(--oc-space-3) var(--oc-space-4);
-  border: 1px solid var(--oc-color-critical);
-  border-radius: var(--oc-radius-md);
-  background: var(--oc-color-critical-surface);
-  color: var(--oc-color-critical);
-  font-size: 13px;
 }
 
 .consultation-state {
   display: grid;
-  width: min(640px, 100%);
-  min-height: 360px;
-  align-content: center;
-  justify-items: center;
-  gap: var(--oc-space-3);
-  margin: var(--oc-space-10) auto;
-  padding: var(--oc-space-8);
-  border: 1px solid var(--oc-color-border-subtle);
+  place-items: center;
+  min-height: 320px;
+  padding: var(--oc-space-6);
+  border: 1px solid var(--oc-color-border-default);
   border-radius: var(--oc-radius-lg);
   background: var(--oc-color-surface-card);
   box-shadow: var(--oc-shadow-card);
-  text-align: center;
-}
-
-.consultation-state--embedded {
-  min-height: 440px;
-  margin: 0;
-  box-shadow: none;
-}
-
-.consultation-state__icon--pending {
-  background: var(--oc-color-information-surface);
-  color: var(--oc-color-information);
-}
-
-.consultation-state__icon--complete {
-  background: var(--oc-color-success-surface);
-  color: var(--oc-color-success);
-}
-
-.consultation-state h1,
-.consultation-state h2,
-.consultation-state p {
-  margin: 0;
-}
-
-.consultation-state h1,
-.consultation-state h2 {
-  font-size: 22px;
-  font-weight: var(--oc-font-weight-strong);
-  letter-spacing: -0.025em;
-}
-
-.consultation-state p {
-  max-width: 500px;
-  color: var(--oc-color-text-secondary);
-  font-size: 13px;
-  line-height: 1.65;
 }
 
 .consultation-state__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
+  gap: var(--oc-space-4);
+}
+
+.consultation-link {
+  color: var(--oc-primary-dark);
+  font-weight: var(--oc-font-weight-semibold);
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+}
+
+.c-field--date {
+  max-width: 260px;
+}
+
+/* G-1 D4: the chosen follow-up slot (« jeu. 13 nov. à 10:20 · Cabinet »). */
+.c-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oc-space-3);
+}
+
+.c-slot__text {
+  color: var(--oc-ink);
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.consultation-follow-up {
+  margin: 0 0 var(--oc-space-3);
+  color: var(--oc-ink);
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.consultation-follow-up__taken {
+  display: grid;
   gap: var(--oc-space-2);
-}
+  justify-items: start;
+  margin-bottom: var(--oc-space-3);
+  background: var(--oc-amber-tint);
+  color: var(--oc-amber-dark);
 
-@media (max-width: 900px) {
-  .urgent-intake {
-    grid-template-columns: 1fr;
-  }
-
-  .finalization-checklist {
-    grid-template-columns: 1fr;
+  p {
+    margin: 0;
   }
 }
 
-@media (max-width: 640px) {
-  .consultation-domain {
-    min-height: 480px;
-    padding: var(--oc-space-3);
+@media (max-width: 1024px) {
+  .consultation-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .urgent-intake dl {
-    grid-template-columns: 1fr;
-  }
-
-  .unsupported-panel {
-    min-height: auto;
-    margin: var(--oc-space-4) 0;
-    padding: var(--oc-space-5);
-  }
-
-  .finalization-checklist li {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .finalization-checklist button {
-    grid-column: 2;
-    justify-self: start;
+  .consultation-aside {
+    position: static;
   }
 }

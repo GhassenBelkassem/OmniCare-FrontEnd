@@ -6,7 +6,7 @@ export type BookingRequestStatus =
   | 'CANCELLED_BY_DOCTOR'
   | 'EXPIRED';
 
-export type AppointmentStatus = 'CONFIRMED' | 'IN_PROGRESS' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
+export type AppointmentStatus = 'PROPOSED' | 'CONFIRMED' | 'IN_PROGRESS' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 
 export type ScheduledCareResourceType = 'BOOKING_REQUEST' | 'APPOINTMENT';
 
@@ -88,17 +88,17 @@ export interface QuotedPrice {
 
 export interface AppointmentPracticePatient {
   readonly practicePatientId: string;
-  readonly dateOfBirth: string;
-  readonly sex: string;
-  readonly phone: string;
+  readonly dateOfBirth: string | null;
+  readonly sex: string | null;
+  readonly phone: string | null;
   readonly email: string | null;
   readonly address: string | null;
 }
 
 export interface Appointment {
   readonly appointmentId: string;
-  readonly sourceBookingRequestId: string;
-  readonly version: number;
+  readonly sourceBookingRequestId: string | null;
+  readonly version: number | null;
   readonly status: AppointmentStatus;
   readonly doctor: DoctorSummary & { readonly doctorId: string };
   readonly subject: CareSubject;
@@ -121,7 +121,7 @@ export interface DoctorScheduledCareItem {
   readonly appointmentId: string | null;
   readonly sourceBookingRequestId: string | null;
   readonly version: number;
-  readonly status: string;
+  readonly status: BookingRequestStatus | AppointmentStatus;
   readonly doctor: DoctorSummary;
   readonly subject: Omit<CareSubject, 'familyMemberId'>;
   readonly cabinet: CabinetSnapshot;

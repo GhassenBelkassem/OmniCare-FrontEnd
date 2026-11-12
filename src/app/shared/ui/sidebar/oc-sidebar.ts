@@ -84,7 +84,7 @@ const DEFAULT_LABELS: SidebarLabels = {
                   (click)="toggleGroup(item.id)"
                 >
                   @if (item.icon) {
-                    <oc-icon [name]="item.icon" intent="information" />
+                    <oc-icon [name]="item.icon" intent="neutral" />
                   }
                   @if (!collapsed()) {
                     <span>{{ item.label }}</span>
@@ -125,7 +125,7 @@ const DEFAULT_LABELS: SidebarLabels = {
                   (click)="activateLink(item, $event)"
                 >
                   @if (item.icon) {
-                    <oc-icon [name]="item.icon" intent="information" />
+                    <oc-icon [name]="item.icon" intent="neutral" />
                   }
                   @if (!collapsed()) {
                     <span>{{ item.label }}</span>

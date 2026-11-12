@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "include": [
+    "src/test-setup.ts",
+    "src/polyfills/global.ts",
+    "src/app/features/doctor/urgent-requests/urgent-requests-page.spec.ts",
+    "src/app/features/doctor/calendar/calendar-event.adapter.spec.ts",
+    "src/app/features/doctor/calendar/calendar-page.spec.ts",
+    "src/app/features/doctor/settings/settings-page.spec.ts",
+    "src/app/features/doctor/scheduled-care/scheduled-care.facade.spec.ts",
+    "src/app/features/clinic/clinic-case.store.spec.ts",
+    "src/app/features/clinic/clinic-context.store.spec.ts",
+    "src/app/features/clinic/clinic-task.store.spec.ts"
+  ]
+}

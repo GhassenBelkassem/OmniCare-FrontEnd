@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 
 import { OcButton, OcDataTableShell, OcEmptyState, OcPageHeader, OcStatusBadge } from '../../shared/ui';
 import { AdminProfessional, ProfessionalPage } from './admin-api.models';
-import { AdminApiService } from './admin-api.service';
+import { AdminApiService, newIdempotencyKey } from './admin-api.service';
 import { apiMessage, professionalRoleLabel, statusTone } from './admin-page-utils';
 
 @Component({
@@ -17,6 +17,8 @@ import { apiMessage, professionalRoleLabel, statusTone } from './admin-page-util
 })
 export class ProfessionalsPage {
   private readonly api = inject(AdminApiService);
+  private attemptIdempotencyKey = '';
+  private attemptFingerprint = '';
   readonly page = signal<ProfessionalPage | null>(null);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
@@ -52,7 +54,7 @@ export class ProfessionalsPage {
     this.submitting.set(true);
     this.errorMessage.set(null);
     const value = this.form.getRawValue();
-    this.api.createDoctor({
+    const input = {
       ...value,
       email: value.email.trim(),
       firstName: value.firstName.trim(),
@@ -61,8 +63,16 @@ export class ProfessionalsPage {
       professionalLicenseNumber: value.professionalLicenseNumber.trim(),
       specialty: value.specialty.trim(),
       governorate: value.governorate.trim(),
-    }).subscribe({
+    };
+    const fingerprint = JSON.stringify(input);
+    if (!this.attemptIdempotencyKey || fingerprint !== this.attemptFingerprint) {
+      this.attemptIdempotencyKey = newIdempotencyKey();
+      this.attemptFingerprint = fingerprint;
+    }
+    this.api.createDoctor(input, this.attemptIdempotencyKey).subscribe({
       next: () => {
+        this.attemptIdempotencyKey = '';
+        this.attemptFingerprint = '';
         this.successMessage.set('Doctor created. An invitation was sent so they can create their password.');
         this.submitting.set(false);
         this.createOpen.set(false);

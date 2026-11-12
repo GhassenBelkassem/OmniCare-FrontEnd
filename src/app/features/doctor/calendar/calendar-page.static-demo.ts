@@ -172,6 +172,8 @@ export class CalendarPage {
       start: appointment.start,
       end: appointment.end,
       allDay: false,
+      interactive: true,
+      className: this.demoAppointmentToneClass(appointment),
       extendedProps: {
         kind: 'appointment',
         appointmentId: appointment.id,
@@ -234,8 +236,11 @@ export class CalendarPage {
     slotDuration: this.viewMode() === 'day' ? '01:00:00' : '00:30:00',
     slotLabelInterval: '01:00:00',
     slotMinHeight: this.viewMode() === 'day' ? 54 : 30,
-    eventMinHeight: this.viewMode() === 'month' ? 28 : this.viewMode() === 'day' ? 36 : 44,
+    eventMinHeight: this.viewMode() === 'month' ? 28 : this.viewMode() === 'day' ? 40 : 34,
+    eventShortHeight: 44,
     dayMaxEvents: 3,
+    moreLinkText: (count) => `+${count} ${count === 1 ? 'autre' : 'autres'}`,
+    moreLinkClass: 'demo-calendar-more-link',
     nowIndicator: false,
     navLinks: false,
     editable: false,
@@ -264,6 +269,7 @@ export class CalendarPage {
       `demo-calendar-slot ${info.isMajor ? 'demo-calendar-slot--major' : 'demo-calendar-slot--minor'}`,
     slotHeaderClass: 'demo-calendar-slot-header',
     slotHeaderInnerClass: 'demo-calendar-slot-label',
+    nonBusinessHoursClass: 'demo-calendar-non-business',
     eventClass: (info) => this.eventClasses(info),
     datesSet: (info) => this.onDatesSet(info),
     eventClick: (info) => this.openAppointment(info),
@@ -274,6 +280,7 @@ export class CalendarPage {
     visibleTitle: this.visibleTitle(),
     visibleSubtitle: this.visibleSubtitle(),
     weekNumber: this.weekNumber(),
+    selectedAppointmentId: this.selectedAppointmentId(),
     panelOpen: this.selectedAppointment() !== null,
     loading: false,
     loadError: null,
@@ -295,6 +302,7 @@ export class CalendarPage {
           }
         : null,
     notice: null,
+    quickBookingEnabled: false,
   }));
 
   readonly presentation = computed<CalendarPresentationInput>(() => ({
@@ -346,6 +354,7 @@ export class CalendarPage {
       case 'NEXT': this.next(); break;
       case 'CONFIGURE_SCHEDULE': this.scheduleDialogOpen.set(true); break;
       case 'ADD_EXCEPTION': this.exceptionDialogOpen.set(true); break;
+      case 'NEW_APPOINTMENT': break;
       case 'RETRY_APPOINTMENTS':
       case 'RETRY_RULES':
       case 'RETRY_EXCEPTIONS': break;
@@ -493,17 +502,24 @@ export class CalendarPage {
       return `demo-calendar-state demo-calendar-state--${metadata.state.kind}`;
     }
     if (metadata.kind === 'break') return 'demo-calendar-break';
-    const appointment = DEMO_CALENDAR_APPOINTMENTS.find(
-      (candidate) => candidate.id === metadata.appointmentId,
-    );
     return [
       'demo-calendar-appointment',
-      appointment ? `demo-calendar-appointment--${appointment.category}` : '',
       this.selectedAppointmentId() === metadata.appointmentId
         ? 'demo-calendar-appointment--selected'
         : '',
     ]
       .filter(Boolean)
       .join(' ');
+  }
+
+  private demoAppointmentToneClass(appointment: DemoCalendarAppointment): string {
+    if (appointment.category === 'urgent') return 'demo-calendar-appointment--urgent-request';
+    if (appointment.patientId.startsWith('demo-practice-patient')) {
+      return 'demo-calendar-appointment--external-patient';
+    }
+    if (appointment.category === 'follow-up' || appointment.category === 'control') {
+      return 'demo-calendar-appointment--follow-up';
+    }
+    return 'demo-calendar-appointment--omnicare-patient';
   }
 }

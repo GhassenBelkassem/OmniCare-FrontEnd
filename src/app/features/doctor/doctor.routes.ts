@@ -20,7 +20,7 @@ export const DOCTOR_ROUTES: Routes = [
     path: '',
     canActivate: [authenticatedGuard, roleGuard('DOCTOR', 'SECRETARY')],
     loadComponent: () => import('./doctor-shell').then((c) => c.DoctorShell),
-    title: 'Doctor workspace | OmniCare',
+    title: 'Espace médecin | OmniCare',
     children: [
       {
         path: '',
@@ -69,7 +69,14 @@ export const DOCTOR_ROUTES: Routes = [
       doctorOnly({
         path: 'waiting-room',
         loadComponent: () =>
-          import('./waiting-room/waiting-room-page').then((c) => c.WaitingRoomPage),
+          import('./unavailable/production-unavailable-page').then(
+            (c) => c.ProductionUnavailablePage,
+          ),
+        data: {
+          featureTitle: 'Salle d’attente',
+          featureDescription:
+            'Le suivi de présence et les changements de statut ne sont pas encore reliés à un service serveur autoritatif.',
+        },
         title: "Salle d'attente | OmniCare",
       }),
       doctorOnly({
@@ -82,7 +89,14 @@ export const DOCTOR_ROUTES: Routes = [
       doctorOnly({
         path: 'prescriptions',
         loadComponent: () =>
-          import('./prescriptions/prescriptions-page').then((c) => c.PrescriptionsPage),
+          import('./unavailable/production-unavailable-page').then(
+            (c) => c.ProductionUnavailablePage,
+          ),
+        data: {
+          featureTitle: 'Prescriptions & demandes',
+          featureDescription:
+            'La liste transversale des prescriptions, demandes et modèles ne dispose pas encore d’un contrat serveur de production.',
+        },
         title: 'Prescriptions | OmniCare',
       }),
       doctorOnly({
@@ -92,7 +106,15 @@ export const DOCTOR_ROUTES: Routes = [
       }),
       doctorOnly({
         path: 'results',
-        loadComponent: () => import('./results/results-page').then((c) => c.ResultsPage),
+        loadComponent: () =>
+          import('./unavailable/production-unavailable-page').then(
+            (c) => c.ProductionUnavailablePage,
+          ),
+        data: {
+          featureTitle: 'Résultats & suivi',
+          featureDescription:
+            'La boîte de résultats, les rappels patients et les tâches de suivi ne disposent pas encore d’un stockage serveur de production.',
+        },
         title: 'Résultats et suivi | OmniCare',
       }),
       doctorOnly({
@@ -139,7 +161,15 @@ export const DOCTOR_ROUTES: Routes = [
       }),
       doctorOnly({
         path: 'analytics',
-        loadComponent: () => import('./analytics/analytics-page').then((c) => c.AnalyticsPage),
+        loadComponent: () =>
+          import('./unavailable/production-unavailable-page').then(
+            (c) => c.ProductionUnavailablePage,
+          ),
+        data: {
+          featureTitle: 'Analyses',
+          featureDescription:
+            'Les indicateurs d’activité et de revenus ne disposent pas encore d’une source serveur de production vérifiée.',
+        },
         title: 'Analyses | OmniCare',
       }),
       doctorOnly({

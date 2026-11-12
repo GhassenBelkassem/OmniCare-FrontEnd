@@ -9,16 +9,21 @@ import {
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
+import { appointmentStatusLabel } from '../../../shared/ui/appointment-status';
 import { AppointmentApiService } from '../appointment-api.service';
-import type { AppointmentDto, AvailabilityRuleDto, DoctorStatsDto } from '../appointment-api.models';
+import type {
+  AppointmentDto,
+  AvailabilityRuleDto,
+  DoctorStatsDto,
+} from '../appointment-api.models';
 import { ActiveConsultationStore } from '../active-consultation.store';
 import type { ActiveConsultation } from '../active-consultation.models';
 import { BookingRequestDetailPanel } from '../scheduled-care/booking-request-detail-panel';
 import { ScheduledAppointmentDetailPanel } from '../scheduled-care/scheduled-appointment-detail-panel';
+import { ScheduledCareApiService } from '../scheduled-care/scheduled-care-api.service';
 import { ScheduledCareFacade } from '../scheduled-care/scheduled-care.facade';
 import type { DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.models';
 import { AppointmentDetailPanel } from '../shared/appointment-detail-panel';
-import { PatientSummaryPanel } from '../shared/patient-summary-panel';
 import { UrgentCabinetClinicalStore } from '../urgent-cabinet-clinical.store';
 import type { UrgentCabinetClinicalCommitment } from '../urgent-cabinet-clinical.models';
 import { CommandCenterView } from './command-center-view';
@@ -30,6 +35,7 @@ import type {
   CommandCenterClinicalViewModel,
   CommandCenterNextAppointmentViewModel,
   CommandCenterRequestViewModel,
+  CommandCenterToCloseViewModel,
   CommandCenterViewModel,
 } from './command-center-view.models';
 
@@ -38,7 +44,6 @@ import type {
   imports: [
     CommandCenterView,
     AppointmentDetailPanel,
-    PatientSummaryPanel,
     BookingRequestDetailPanel,
     ScheduledAppointmentDetailPanel,
   ],
@@ -49,12 +54,14 @@ import type {
 export class CommandCenterPage {
   private readonly router = inject(Router);
   private readonly api = inject(AppointmentApiService);
+  private readonly scheduledCareApi = inject(ScheduledCareApiService);
+  /** Appointments of the last 30 days (through today): stale IN_PROGRESS and patient names. */
+  readonly recentAgenda = signal<readonly DoctorScheduledCareItem[]>([]);
   readonly scheduledCare = inject(ScheduledCareFacade);
   readonly activeConsultation = inject(ActiveConsultationStore);
   readonly urgentCabinet = inject(UrgentCabinetClinicalStore);
 
   readonly aptPanel = viewChild.required<AppointmentDetailPanel>('aptPanel');
-  readonly patientPanel = viewChild.required<PatientSummaryPanel>('patientPanel');
   readonly scheduledRequestPanel =
     viewChild.required<BookingRequestDetailPanel>('scheduledRequestPanel');
   readonly scheduledAppointmentPanel = viewChild.required<ScheduledAppointmentDetailPanel>(
@@ -70,9 +77,17 @@ export class CommandCenterPage {
   readonly pendingScheduledRequest = computed(
     () => this.scheduledCare.home()?.nextPendingRequest ?? null,
   );
-  readonly nextScheduledAppointment = computed(
-    () => this.scheduledCare.home()?.nextConfirmedAppointment ?? null,
-  );
+  /** Only a strictly future CONFIRMED appointment is « Prochain rendez-vous ». */
+  readonly nextScheduledAppointment = computed(() => {
+    const next = this.scheduledCare.home()?.nextConfirmedAppointment ?? null;
+    return next !== null && isUpcomingConfirmed(next) ? next : null;
+  });
+  /** The active consultation, only when it started today. */
+  readonly todayConsultation = computed(() => {
+    const active = this.activeConsultation.active();
+    return active !== null && isToday(active.startedAt) ? active : null;
+  });
+  readonly toClose = computed(() => this.toCloseView());
   readonly stats = computed(() => {
     const stats = this.todayStats();
     return [
@@ -83,7 +98,12 @@ export class CommandCenterPage {
         route: null,
       },
       { value: stats?.upcoming ?? 0, label: 'A venir', icon: 'clock-circle', route: null },
-      { value: stats?.finished ?? 0, label: 'Terminees', icon: 'check-circle', route: '/doctor/history' },
+      {
+        value: stats?.finished ?? 0,
+        label: 'Terminees',
+        icon: 'check-circle',
+        route: '/doctor/history',
+      },
       {
         value: this.scheduledCare.home()?.pendingRequestCount ?? 0,
         label: 'Demandes planifiées',
@@ -102,8 +122,8 @@ export class CommandCenterPage {
   readonly viewModel = computed<CommandCenterViewModel>(() => {
     const home = this.scheduledCare.home();
     const pendingRequest = home?.nextPendingRequest ?? null;
-    const nextAppointment = home?.nextConfirmedAppointment ?? null;
-    const active = this.activeConsultation.active();
+    const nextAppointment = this.nextScheduledAppointment();
+    const active = this.todayConsultation();
     const urgentReady = this.urgentCabinet.actionable();
     const urgentWaiting = this.urgentCabinet.waiting();
     const clinical = this.clinicalView(active, urgentReady, urgentWaiting, nextAppointment);
@@ -119,7 +139,7 @@ export class CommandCenterPage {
 
     return {
       fixtureNote: null,
-      greeting: 'Bonjour, Dr Ben Salah',
+      greeting: 'Bonjour',
       dateLabel: formatDate(new Date(), undefined, {
         weekday: 'long',
         day: 'numeric',
@@ -138,13 +158,13 @@ export class CommandCenterPage {
       pendingRequests: pendingRequest ? [this.requestView(pendingRequest)] : [],
       nextAppointment: nextAppointment ? this.nextAppointmentView(nextAppointment) : null,
       clinicalLoading:
-        clinical === null &&
-        (this.activeConsultation.loading() || this.urgentCabinet.loading()),
+        clinical === null && (this.activeConsultation.loading() || this.urgentCabinet.loading()),
       clinicalError,
       clinicalRetryAction,
       clinical,
       clinicalStarting: this.activeConsultation.starting(),
       clinicalStartError: this.activeConsultation.startError(),
+      toClose: this.toClose(),
       availabilityState: availability.state,
       availabilityTitle: availability.title,
       availabilityDescription: availability.description,
@@ -174,7 +194,7 @@ export class CommandCenterPage {
         return;
       }
       case 'OPEN_SCHEDULED_APPOINTMENT': {
-        const appointment = this.scheduledCare.home()?.nextConfirmedAppointment;
+        const appointment = this.nextScheduledAppointment();
         if (appointment?.appointmentId === action.appointmentId) {
           this.openScheduledAppointment(appointment);
         }
@@ -183,8 +203,21 @@ export class CommandCenterPage {
       case 'CONTINUE_CONSULTATION':
         this.continueConsultation(action.consultationId);
         return;
+      case 'CLOSE_CONSULTATION':
+        // Closing is the consultation's own finish flow; never auto-completed here.
+        void this.router.navigate(['/doctor', 'consultation', action.consultationId], {
+          queryParams: { cloture: '1' },
+        });
+        return;
+      case 'OPEN_STALE_APPOINTMENT': {
+        const appointment = this.recentAgenda().find(
+          (candidate) => candidate.appointmentId === action.appointmentId,
+        );
+        if (appointment) this.openScheduledAppointment(appointment);
+        return;
+      }
       case 'START_SCHEDULED': {
-        const appointment = this.scheduledCare.home()?.nextConfirmedAppointment;
+        const appointment = this.nextScheduledAppointment();
         if (appointment?.appointmentId === action.appointmentId) {
           void this.startScheduledConsultation(appointment);
         }
@@ -216,11 +249,6 @@ export class CommandCenterPage {
     this.aptPanel().openWith(appointment);
   }
 
-  onAppointmentUpdated(updated: AppointmentDto): void {
-    this.appointments.update((list) => list.map((item) => (item.id === updated.id ? updated : item)));
-    this.loadData();
-  }
-
   async startScheduledConsultation(appointment: DoctorScheduledCareItem): Promise<void> {
     if (appointment.appointmentId === null || appointment.status !== 'CONFIRMED') return;
     const outcome = await this.activeConsultation.startScheduledAppointment(
@@ -228,17 +256,11 @@ export class CommandCenterPage {
       appointment.version,
     );
     if (outcome.kind === 'STARTED' || outcome.kind === 'RECOVERED') {
-      await this.router.navigate([
-        '/doctor',
-        'consultation',
-        outcome.consultation.consultationId,
-      ]);
+      await this.router.navigate(['/doctor', 'consultation', outcome.consultation.consultationId]);
     }
   }
 
-  async startUrgentCabinetConsultation(
-    commitment: UrgentCabinetClinicalCommitment,
-  ): Promise<void> {
+  async startUrgentCabinetConsultation(commitment: UrgentCabinetClinicalCommitment): Promise<void> {
     if (
       !commitment.clinicalStartReady ||
       !commitment.allowedActions.includes('START_CONSULTATION')
@@ -251,11 +273,7 @@ export class CommandCenterPage {
     );
     await this.urgentCabinet.refresh();
     if (outcome.kind === 'STARTED' || outcome.kind === 'RECOVERED') {
-      await this.router.navigate([
-        '/doctor',
-        'consultation',
-        outcome.consultation.consultationId,
-      ]);
+      await this.router.navigate(['/doctor', 'consultation', outcome.consultation.consultationId]);
     }
   }
 
@@ -269,7 +287,7 @@ export class CommandCenterPage {
 
   openScheduledAppointment(appointment: DoctorScheduledCareItem): void {
     if (appointment.appointmentId) {
-      this.scheduledAppointmentPanel().openWith(appointment.appointmentId);
+      this.scheduledAppointmentPanel().openWith(appointment);
     }
   }
 
@@ -282,6 +300,7 @@ export class CommandCenterPage {
       initials: initials(patient),
       reason: appointment.notes?.trim() || 'Consultation',
       state: appointmentState(appointment.status),
+      statusCode: appointment.status,
       status: appointmentStatusLabel(appointment.status),
       avatarTone: avatarTone(appointment.id),
       action: {
@@ -333,7 +352,7 @@ export class CommandCenterPage {
           }),
       timeRange: `${formatTime(appointment.start, appointment.timezone)} – ${formatTime(appointment.end, appointment.timezone)}`,
       location: appointment.cabinet.name.trim() || 'Cabinet non renseigné',
-      room: 'Salle non renseignée',
+      room: null,
       avatarTone: avatarTone(appointmentId),
       detailAction: {
         kind: 'OPEN_SCHEDULED_APPOINTMENT',
@@ -341,9 +360,7 @@ export class CommandCenterPage {
         href: `/doctor/calendar?appointmentId=${encodeURIComponent(appointmentId)}`,
       },
       startAction:
-        appointment.status === 'CONFIRMED'
-          ? { kind: 'START_SCHEDULED', appointmentId }
-          : null,
+        appointment.status === 'CONFIRMED' ? { kind: 'START_SCHEDULED', appointmentId } : null,
     };
   }
 
@@ -354,13 +371,14 @@ export class CommandCenterPage {
     nextAppointment: DoctorScheduledCareItem | null,
   ): CommandCenterClinicalViewModel | null {
     if (active) {
+      const patient = this.consultationPatientName(active);
       return {
         title: 'Consultation en cours',
-        patient: 'Consultation en cours',
-        initials: 'EC',
-        meta: `Épisode ${active.consultationId}`,
+        patient,
+        initials: initials(patient),
+        meta: `Démarrée à ${formatTime(active.startedAt)}`,
         reasonLabel: 'Informations patient',
-        reason: 'Non disponibles dans la projection active autorisée.',
+        reason: 'Informations patient disponibles dans la consultation.',
         avatarTone: 'mint',
         primaryLabel: 'Continuer la consultation',
         primaryAction: {
@@ -436,6 +454,87 @@ export class CommandCenterPage {
     return null;
   }
 
+  /** Patient name of a consultation, from the scheduled appointment it was started from. */
+  private consultationPatientName(consultation: ActiveConsultation): string {
+    if (consultation.sourceType === 'SCHEDULED_APPOINTMENT') {
+      const appointment =
+        this.recentAgenda().find((item) => item.appointmentId === consultation.sourceId) ??
+        null;
+      const name = appointment?.subject.displayName.trim();
+      if (name) return name;
+      const today = this.appointments().find((item) => item.id === consultation.sourceId);
+      if (today?.patientName?.trim()) return today.patientName.trim();
+    }
+    return consultation.sourceType === 'SCHEDULED_APPOINTMENT'
+      ? 'Patient en consultation'
+      : 'Patient en consultation urgente';
+  }
+
+  /**
+   * « À clôturer »: consultations or appointments still IN_PROGRESS from a previous day.
+   * They are listed for the doctor to resume or close; nothing is auto-completed.
+   */
+  private toCloseView(): CommandCenterToCloseViewModel[] {
+    const active = this.activeConsultation.active();
+    const staleActive = active !== null && !isToday(active.startedAt) ? active : null;
+    const rows: CommandCenterToCloseViewModel[] = [];
+    const seen = new Set<string>();
+    if (staleActive !== null) {
+      const patient = this.consultationPatientName(staleActive);
+      const href = `/doctor/consultation/${encodeURIComponent(staleActive.consultationId)}`;
+      rows.push({
+        id: staleActive.consultationId,
+        patient,
+        initials: initials(patient),
+        startedLabel: `Démarrée le ${formatDate(staleActive.startedAt, undefined, {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+        })} à ${formatTime(staleActive.startedAt)}`,
+        resumeAction: { kind: 'CONTINUE_CONSULTATION', consultationId: staleActive.consultationId, href },
+        closeAction: { kind: 'CLOSE_CONSULTATION', consultationId: staleActive.consultationId, href },
+        detailAction: null,
+        note: null,
+      });
+      if (staleActive.sourceType === 'SCHEDULED_APPOINTMENT') seen.add(staleActive.sourceId);
+    }
+    for (const item of this.recentAgenda()) {
+      if (
+        item.resourceType !== 'APPOINTMENT' ||
+        item.appointmentId === null ||
+        item.status !== 'IN_PROGRESS' ||
+        isToday(item.start, item.timezone) ||
+        new Date(item.start).getTime() > Date.now() ||
+        seen.has(item.appointmentId)
+      ) {
+        continue;
+      }
+      if (active?.sourceType === 'SCHEDULED_APPOINTMENT' && active.sourceId === item.appointmentId) {
+        continue;
+      }
+      const patient = item.subject.displayName.trim() || 'Patient non renseigné';
+      rows.push({
+        id: item.appointmentId,
+        patient,
+        initials: initials(patient),
+        startedLabel: `Rendez-vous du ${formatDate(item.start, item.timezone, {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+        })} à ${formatTime(item.start, item.timezone)}`,
+        resumeAction: null,
+        closeAction: null,
+        detailAction: {
+          kind: 'OPEN_STALE_APPOINTMENT',
+          appointmentId: item.appointmentId,
+          href: `/doctor/calendar?appointmentId=${encodeURIComponent(item.appointmentId)}`,
+        },
+        note: 'Aucune consultation ouverte pour ce rendez-vous.',
+      });
+    }
+    return rows;
+  }
+
   private availabilityPresentation(): {
     readonly state: CommandCenterViewModel['availabilityState'];
     readonly title: string;
@@ -473,6 +572,7 @@ export class CommandCenterPage {
     this.loading.set(true);
     this.error.set(null);
     const { from, to } = this.todayRange();
+    this.loadRecentAgenda();
     forkJoin({
       stats: this.api.todayStats(),
       appointments: this.api.listAppointments(from, to),
@@ -488,6 +588,17 @@ export class CommandCenterPage {
         this.error.set('Impossible de charger les données du jour.');
         this.loading.set(false);
       },
+    });
+  }
+
+  private loadRecentAgenda(): void {
+    const today = new Date();
+    const from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
+    const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    this.scheduledCareApi.getDoctorScheduledCare(from.toISOString(), to.toISOString()).subscribe({
+      next: (agenda) => this.recentAgenda.set(agenda.items),
+      // Optional enrichment: the home stays usable without it.
+      error: () => this.recentAgenda.set([]),
     });
   }
 
@@ -513,32 +624,21 @@ function appointmentState(status: AppointmentDto['status']): CommandCenterAppoin
   }
 }
 
-function appointmentStatusLabel(status: AppointmentDto['status']): string {
-  switch (status) {
-    case 'CONFIRMED':
-      return 'En attente';
-    case 'IN_PROGRESS':
-      return 'En cours';
-    case 'CANCELLED':
-      return 'Annulé';
-    case 'COMPLETED':
-      return 'Terminé';
-    case 'NO_SHOW':
-      return 'Absent';
-    default:
-      return status;
-  }
-}
-
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/u).filter(Boolean);
   if (parts.length === 0) return 'PN';
-  return parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase('fr-FR') ?? '').join('');
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toLocaleUpperCase('fr-FR') ?? '')
+    .join('');
 }
 
 function avatarTone(identity: string): CommandCenterAvatarTone {
   const tones: readonly CommandCenterAvatarTone[] = ['mint', 'blue', 'rose'];
-  const hash = Array.from(identity).reduce((total, character) => total + character.codePointAt(0)!, 0);
+  const hash = Array.from(identity).reduce(
+    (total, character) => total + character.codePointAt(0)!,
+    0,
+  );
   return tones[hash % tones.length] ?? 'mint';
 }
 
@@ -561,7 +661,11 @@ function formatDate(
   return value.length === 0 ? value : value[0].toLocaleUpperCase('fr-FR') + value.slice(1);
 }
 
-function isToday(instant: string, timeZone: string): boolean {
+function isUpcomingConfirmed(item: DoctorScheduledCareItem): boolean {
+  return item.status === 'CONFIRMED' && new Date(item.start).getTime() > Date.now();
+}
+
+function isToday(instant: string, timeZone?: string): boolean {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
     month: '2-digit',

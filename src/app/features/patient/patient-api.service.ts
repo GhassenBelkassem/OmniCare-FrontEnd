@@ -68,8 +68,16 @@ export class PatientApiService {
     return this.http.get<readonly AppointmentDto[]>(`${this.baseUrl}/appointments`, { params });
   }
 
-  cancelAppointment(id: string): Observable<AppointmentDto> {
-    return this.http.patch<AppointmentDto>(`${this.baseUrl}/appointments/${id}/cancel`, {});
+  /**
+   * Versioned cancellation (G-1 P3b): the legacy PATCH is retired (410). The patient gives no
+   * reason; the server checks ownership, CONFIRMED status, the version and the slot not passed.
+   */
+  cancelAppointment(id: string, expectedVersion: number, idempotencyKey: string): Observable<AppointmentDto> {
+    return this.http.post<AppointmentDto>(
+      `${this.baseUrl}/appointments/${encodeURIComponent(id)}/cancel`,
+      { expectedVersion, reasonCode: null },
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
   }
 
   createUrgentRequest(

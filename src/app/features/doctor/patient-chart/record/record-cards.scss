@@ -1,0 +1,185 @@
+// « Dossier patient »: the clinical visual language (docs/ui-guidelines.md §8).
+// White cards (radius 20, soft shadow) on the page grey; inner tiles on --oc-tile (radius 16);
+// one tint + same-hue text per kind of information; no uppercase labels, no left-border accents.
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.r-stack {
+  display: grid;
+  gap: var(--oc-space-4);
+}
+
+.r-card {
+  display: grid;
+  gap: var(--oc-space-4);
+  min-width: 0;
+  padding: var(--oc-space-6);
+  border: 1px solid var(--oc-hairline);
+  border-radius: var(--oc-radius-card);
+  background: var(--oc-surface);
+  box-shadow: var(--oc-shadow-soft);
+}
+
+.r-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+
+  h3 {
+    margin: 0;
+    color: var(--oc-ink);
+    font-size: 18px;
+    font-weight: var(--oc-font-weight-strong);
+    line-height: 1.3;
+  }
+
+  p {
+    margin: 2px 0 0;
+    color: var(--oc-ink-secondary);
+    font-size: var(--oc-text-small-size);
+  }
+}
+
+.r-heading__text {
+  flex: 1;
+  min-width: 0;
+}
+
+// Icon inside a tinted square tile (40–44px, radius 12).
+.r-tile {
+  display: inline-grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: var(--oc-radius-icon);
+  font-size: 20px;
+
+  &--small {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  &--care { background: var(--oc-info-care-tint); color: var(--oc-info-care-icon); }
+  &--blood { background: var(--oc-info-blood-tint); color: var(--oc-info-blood); }
+  &--allergy { background: var(--oc-info-allergy-tint); color: var(--oc-info-allergy-icon); }
+  &--history { background: var(--oc-info-history-tint); color: var(--oc-info-history); }
+  &--current { background: var(--oc-info-current-tint); color: var(--oc-info-current); }
+}
+
+// Inner tile (radius 16 on --oc-tile).
+.r-info {
+  display: grid;
+  align-content: start;
+  gap: var(--oc-space-3);
+  min-width: 0;
+  padding: var(--oc-space-4);
+  border-radius: var(--oc-radius-tile);
+  background: var(--oc-tile);
+}
+
+.r-info__head {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+}
+
+.r-tiles {
+  display: grid;
+  gap: var(--oc-space-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.r-label {
+  margin: 0;
+  color: var(--oc-ink-secondary);
+  font-size: var(--oc-text-small-size);
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+// The three states (« Aucune connue », « Aucun connu », « Non renseigné ») as plain text.
+.r-state {
+  margin: 0;
+  color: var(--oc-ink);
+  font-size: 16px;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.r-big {
+  margin: 0;
+  color: var(--oc-info-blood);
+  font-size: 32px;
+  font-weight: var(--oc-font-weight-heavy);
+  line-height: 1.1;
+}
+
+.r-value {
+  margin: 0;
+  color: var(--oc-ink);
+  font-size: 16px;
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.r-secondary,
+.r-empty {
+  margin: 0;
+  color: var(--oc-ink-secondary);
+}
+
+.r-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.r-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: var(--oc-space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--oc-info-care-icon);
+  font: inherit;
+  font-weight: var(--oc-font-weight-semibold);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+
+  &--quiet {
+    color: var(--oc-ink-secondary);
+  }
+}
+
+.r-count {
+  margin: 0;
+  color: var(--oc-ink-secondary);
+  font-size: var(--oc-text-small-size);
+}
+
+.r-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oc-space-3);
+  margin: 0;
+  color: var(--oc-error-dark);
+}
+
+@media (max-width: 768px) {
+  .r-card {
+    padding: var(--oc-space-4);
+  }
+
+  .r-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

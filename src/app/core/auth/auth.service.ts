@@ -1,59 +1,113 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
 
-import { APP_MODE } from '../config/app-mode';
 import { RUNTIME_CONFIG } from '../config/runtime-config';
 import {
   ApiErrorBody,
   DashboardRole,
+  DevicePayload,
   EmailPasswordLoginResponse,
+  LoginOutcome,
   LoginSession,
   dashboardRouteFor,
+  isLoginSessionPayload,
 } from './auth.models';
+import { AUTH_MODE } from './auth-mode';
 import { AuthTokenStore } from './auth-token.store';
-import { createDemoSession, DemoWorkspaceRole, isDemoWorkspaceRole } from './demo-auth';
+import { SessionTerminationService } from './session-termination.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
   private readonly config = inject(RUNTIME_CONFIG);
   private readonly tokens = inject(AuthTokenStore);
+  private readonly termination = inject(SessionTerminationService);
 
   readonly user = this.tokens.user;
   readonly authenticated = this.tokens.authenticated;
 
   private refreshInFlight: Observable<LoginSession> | null = null;
 
-  login(email: string, password: string): Observable<DashboardRole> {
-    if (APP_MODE.staticDemo) {
+  login(email: string, password: string): Observable<LoginOutcome> {
+    if (AUTH_MODE.staticDemo) {
       return throwError(() => new Error('Choose a demo workspace to continue.'));
     }
+    const device = devicePayload();
     return this.http
       .post<EmailPasswordLoginResponse>(`${this.config.apiBaseUrl}/auth/login`, {
         identifier: email,
         password,
-        ...devicePayload(),
+        ...device,
       })
       .pipe(
         map((response) => {
-          if (response.status !== 'AUTHENTICATED' || response.session == null) {
-            throw new Error('The server returned an invalid login response.');
+          if (response.status === 'REQUIRES_PHONE_OTP' && response.phone !== null) {
+            this.tokens.requirePhoneOtp({ phone: response.phone, device });
+            return { kind: 'OTP_REQUIRED' } as const;
           }
-          this.tokens.setSession(response.session);
-          return response.session.user.role;
+          if (response.status === 'AUTHENTICATED' && response.session !== null) {
+            return this.acceptSession(response.session);
+          }
+          throw new Error('The server returned an invalid login response.');
+        }),
+        catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
+      );
+  }
+
+  verifyPhoneOtp(otp: string): Observable<LoginOutcome> {
+    const challenge = this.tokens.otpChallenge();
+    if (challenge === null) {
+      return throwError(() => new Error('The phone verification challenge has expired.'));
+    }
+    return this.http
+      .post<unknown>(`${this.config.apiBaseUrl}/auth/login/phone/verify`, {
+        phone: challenge.phone,
+        otp,
+        ...challenge.device,
+      })
+      .pipe(
+        map((session) => this.acceptSession(session)),
+        catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
+      );
+  }
+
+  resendPhoneOtp(): Observable<void> {
+    const challenge = this.tokens.otpChallenge();
+    if (challenge === null) {
+      return throwError(() => new Error('The phone verification challenge has expired.'));
+    }
+    return this.http
+      .post<void>(`${this.config.apiBaseUrl}/auth/login/phone/initiate`, {
+        phone: challenge.phone,
+      })
+      .pipe(catchError((error: unknown) => throwError(() => normalizeAuthError(error))));
+  }
+
+  changeRequiredPassword(currentPassword: string, newPassword: string): Observable<DashboardRole> {
+    return this.http
+      .post<void>(`${this.config.apiBaseUrl}/auth/password/change`, {
+        currentPassword,
+        newPassword,
+      })
+      .pipe(
+        map(() => {
+          const role = this.tokens.user()?.role;
+          if (role === undefined) throw new Error('The authenticated session is unavailable.');
+          this.tokens.markPasswordChanged();
+          return role;
         }),
         catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
       );
   }
 
   refreshSession(): Observable<LoginSession> {
-    if (APP_MODE.staticDemo) {
+    if (AUTH_MODE.staticDemo) {
       const role = this.tokens.user()?.role;
-      if (role !== undefined && isDemoWorkspaceRole(role)) {
-        return of(createDemoSession(role)).pipe(tap((session) => this.tokens.setSession(session)));
+      if (role !== undefined && AUTH_MODE.canSelectWorkspace(role)) {
+        return of(AUTH_MODE.createWorkspaceSession(role)).pipe(
+          tap((session) => this.tokens.setSession(session)),
+        );
       }
       return throwError(() => new Error('No demo session is available.'));
     }
@@ -65,8 +119,9 @@ export class AuthService {
     if (this.refreshInFlight !== null) return this.refreshInFlight;
 
     const refresh$ = this.http
-      .post<LoginSession>(`${this.config.apiBaseUrl}/auth/refresh`, { refreshToken })
+      .post<unknown>(`${this.config.apiBaseUrl}/auth/refresh`, { refreshToken })
       .pipe(
+        map((session) => requireLoginSession(session)),
         tap((session) => this.tokens.setSession(session)),
         catchError((error: unknown) => throwError(() => normalizeAuthError(error))),
         finalize(() => {
@@ -80,51 +135,55 @@ export class AuthService {
   }
 
   logout(): void {
-    if (APP_MODE.staticDemo) {
-      this.finishLogout();
+    if (AUTH_MODE.staticDemo) {
+      void this.termination.terminate('EXPLICIT_LOGOUT');
       return;
     }
     this.http.post<void>(`${this.config.apiBaseUrl}/auth/logout`, {}).subscribe({
-      complete: () => this.finishLogout(),
-      error: () => this.finishLogout(),
+      complete: () => void this.termination.terminate('EXPLICIT_LOGOUT'),
+      error: () => void this.termination.terminate('EXPLICIT_LOGOUT'),
     });
   }
 
   logoutAll(): Observable<void> {
-    if (APP_MODE.staticDemo) {
-      this.finishLogout();
+    if (AUTH_MODE.staticDemo) {
+      void this.termination.terminate('EXPLICIT_LOGOUT');
       return of(undefined);
     }
     return this.http
       .post<void>(`${this.config.apiBaseUrl}/auth/logout-all`, {})
-      .pipe(tap(() => this.finishLogout()));
+      .pipe(finalize(() => void this.termination.terminate('EXPLICIT_LOGOUT')));
   }
 
   routeFor(role: DashboardRole): string {
     return dashboardRouteFor(role);
   }
 
-  loginAsDemoRole(role: DemoWorkspaceRole): DashboardRole {
-    if (!APP_MODE.staticDemo) {
-      throw new Error('Demo authentication is not available in this build.');
+  loginAsWorkspaceRole(role: DashboardRole): DashboardRole {
+    if (!AUTH_MODE.staticDemo || !AUTH_MODE.canSelectWorkspace(role)) {
+      throw new Error('Standalone workspace authentication is not available in this build.');
     }
-    this.tokens.setSession(createDemoSession(role));
+    this.tokens.setSession(AUTH_MODE.createWorkspaceSession(role));
     return role;
   }
 
-  private finishLogout(): void {
-    this.tokens.clear();
-    void this.router.navigateByUrl('/login');
+  private acceptSession(value: unknown): LoginOutcome {
+    const session = requireLoginSession(value);
+    this.tokens.setSession(session);
+    return session.user.mustChangePassword
+      ? { kind: 'PASSWORD_CHANGE_REQUIRED' }
+      : { kind: 'AUTHENTICATED', role: session.user.role };
   }
 }
 
-function devicePayload(): {
-  deviceFingerprint: string;
-  platform: 'WEB';
-  deviceLabel: string;
-  sharedDevice: boolean;
-  rememberDevice: boolean;
-} {
+function requireLoginSession(value: unknown): LoginSession {
+  if (!isLoginSessionPayload(value)) {
+    throw new Error('The server returned an invalid session response.');
+  }
+  return value;
+}
+
+function devicePayload(): DevicePayload {
   return {
     deviceFingerprint: dashboardDeviceFingerprint(),
     platform: 'WEB',

@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
+import { isAmbiguousMutationOutcome, normalizeHttpError } from '../../../core/http/app-http-error';
 import type { ProblemDetail } from './scheduled-care.models';
 
 export type ScheduledCareProblemCode =
@@ -31,8 +32,7 @@ export function scheduledCareProblem(error: unknown): ProblemDetail | null {
 }
 
 export function scheduledCareProblemCode(error: unknown): ScheduledCareProblemCode | null {
-  const problem = scheduledCareProblem(error);
-  const code = problem?.errorCode ?? problem?.code;
+  const code = normalizeHttpError(error).code;
   return typeof code === 'string' && code in SAFE_MESSAGES
     ? (code as ScheduledCareProblemCode)
     : null;
@@ -51,11 +51,7 @@ export function scheduledCareErrorMessage(
 }
 
 export function isUnknownMutationOutcome(error: unknown): boolean {
-  return (
-    (error instanceof HttpErrorResponse &&
-      (error.status === 0 || error.status === 408 || error.status === 504)) ||
-    (error instanceof Error && error.name === 'TimeoutError')
-  );
+  return isAmbiguousMutationOutcome(error);
 }
 
 export function requestMustRefresh(error: unknown): boolean {

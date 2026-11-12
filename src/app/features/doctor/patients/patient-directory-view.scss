@@ -491,7 +491,8 @@
 }
 
 .status-pill,
-.source-pill {
+.source-pill,
+.mrs-pill {
   display: inline-flex;
   max-width: 100%;
   min-height: 24px;
@@ -503,6 +504,16 @@
   white-space: nowrap;
 }
 
+.patient-statuses {
+  display: grid;
+  justify-items: start;
+  gap: var(--oc-space-1);
+}
+
+.patient-statuses small {
+  color: var(--oc-color-text-muted);
+}
+
 .status-pill--linked {
   background: var(--oc-color-success-surface);
   color: var(--oc-color-success);
@@ -511,6 +522,23 @@
 .status-pill--possible {
   background: var(--oc-color-warning-surface);
   color: var(--oc-color-text-primary);
+}
+
+.status-pill--warning,
+.mrs-pill--retrying,
+.mrs-pill--action_required {
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-text-primary);
+}
+
+.mrs-pill--ready {
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-success);
+}
+
+.mrs-pill--preparing {
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-information);
 }
 
 .status-pill--unlinked,

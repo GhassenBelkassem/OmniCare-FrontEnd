@@ -1,0 +1,166 @@
+<form
+  class="patient-form"
+  [formGroup]="form"
+  (ngSubmit)="submit()"
+  (keydown.escape)="onEscape($event)"
+  aria-label="Créer un patient"
+  novalidate
+>
+  @if (phoneConflictId(); as existingId) {
+    <div class="patient-form__notice patient-form__notice--warning" role="alert">
+      <span>Ce numéro est déjà utilisé par un patient de votre pratique.</span>
+      <oc-button size="small" variant="secondary" type="button" (click)="useExisting.emit(existingId)">
+        Utiliser ce patient
+      </oc-button>
+    </div>
+  }
+
+  @if (duplicateCandidates().length > 0) {
+    <section class="patient-form__duplicates" aria-labelledby="patient-form-duplicates-title">
+      <p id="patient-form-duplicates-title" class="patient-form__duplicates-title">
+        {{ duplicateCandidates().length === 1 ? 'Patient similaire trouvé' : 'Patients similaires trouvés' }}
+      </p>
+      <ul>
+        @for (candidate of duplicateCandidates(); track candidate.id) {
+          <li>
+            <span>
+              <strong>{{ candidateLabel(candidate) }}</strong>
+              <small>{{ candidateReasons(candidate) }}</small>
+            </span>
+            <oc-button size="small" variant="secondary" type="button" (click)="useExisting.emit(candidate.id)">
+              Utiliser ce patient
+            </oc-button>
+          </li>
+        }
+      </ul>
+      <div class="patient-form__actions">
+        <oc-button size="small" variant="quiet" type="button" (click)="editDetails()">Modifier</oc-button>
+        <oc-button size="small" variant="primary" type="button" [loading]="saving()" (click)="createAnyway()">
+          Créer quand même
+        </oc-button>
+      </div>
+    </section>
+  } @else {
+    <div class="patient-form__row">
+      <label class="patient-form__field" for="patient-form-last-name">
+        <span>Nom <abbr title="obligatoire">*</abbr></span>
+        <input
+          #lastNameInput
+          id="patient-form-last-name"
+          nz-input
+          formControlName="lastName"
+          autocomplete="family-name"
+          [nzStatus]="showError('lastName') ? 'error' : ''"
+        />
+        @if (showError('lastName')) { <small class="patient-form__error">Le nom est obligatoire.</small> }
+      </label>
+      <label class="patient-form__field" for="patient-form-first-name">
+        <span>Prénom <abbr title="obligatoire">*</abbr></span>
+        <input
+          id="patient-form-first-name"
+          nz-input
+          formControlName="firstName"
+          autocomplete="given-name"
+          [nzStatus]="showError('firstName') ? 'error' : ''"
+        />
+        @if (showError('firstName')) { <small class="patient-form__error">Le prénom est obligatoire.</small> }
+      </label>
+    </div>
+
+    <div class="patient-form__field" role="group" aria-labelledby="patient-form-sex-label">
+      <span id="patient-form-sex-label">Sexe <abbr title="obligatoire">*</abbr></span>
+      <nz-radio-group formControlName="sex" nzButtonStyle="solid" nzSize="default">
+        <label nz-radio-button nzValue="F">Femme</label>
+        <label nz-radio-button nzValue="M">Homme</label>
+        <label nz-radio-button nzValue="autre">Autre</label>
+      </nz-radio-group>
+      @if (showError('sex')) { <small class="patient-form__error">Choisissez le sexe.</small> }
+    </div>
+
+    <div class="patient-form__row patient-form__row--birth">
+      @if (form.controls.approximate.value) {
+        <label class="patient-form__field" for="patient-form-age">
+          <span>Âge approximatif</span>
+          <input id="patient-form-age" nz-input type="number" min="0" max="130" formControlName="approximateAgeYears" />
+          @if (showError('approximateAgeYears')) {
+            <small class="patient-form__error">Indiquez un âge entre 0 et 130 ans.</small>
+          }
+        </label>
+      } @else {
+        <div class="patient-form__field">
+          <label for="patient-form-dob">Date de naissance</label>
+          <oc-date-field
+            controlId="patient-form-dob"
+            formControlName="dateOfBirth"
+            [max]="today"
+            [invalid]="showError('dateOfBirth')"
+            ariaLabel="Date de naissance"
+          />
+          @if (showError('dateOfBirth')) {
+            <small class="patient-form__error">Indiquez la date de naissance ou un âge approximatif.</small>
+          } @else if (recentBirthDate()) {
+            <small class="patient-form__warning" role="status" data-testid="recent-birth-warning">
+              Date de naissance récente — vérifiez la saisie
+            </small>
+          }
+          @if (birthAgeLabel(); as age) {
+            <small class="patient-form__hint" data-testid="birth-age">Âge : {{ age }}</small>
+          }
+        </div>
+      }
+      <label class="patient-form__switch">
+        <nz-switch
+          nzSize="small"
+          [ngModel]="form.controls.approximate.value"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="setApproximate($event)"
+        />
+        <span>Âge approximatif</span>
+      </label>
+    </div>
+
+    <label class="patient-form__field" for="patient-form-phone">
+      <span>Téléphone <small>(facultatif)</small></span>
+      <input
+        id="patient-form-phone"
+        nz-input
+        type="tel"
+        formControlName="phone"
+        autocomplete="tel"
+        placeholder="+216 20 123 456"
+        [nzStatus]="showError('phone') ? 'error' : ''"
+      />
+      @if (showError('phone')) { <small class="patient-form__error">Numéro de téléphone invalide.</small> }
+    </label>
+
+    <button
+      type="button"
+      class="patient-form__more"
+      [attr.aria-expanded]="moreOptions()"
+      aria-controls="patient-form-more-options"
+      (click)="moreOptions.set(!moreOptions())"
+    >
+      {{ moreOptions() ? 'Moins d’options' : 'Plus d’options' }}
+    </button>
+    @if (moreOptions()) {
+      <label id="patient-form-more-options" class="patient-form__field" for="patient-form-identifier">
+        <span>Identifiant de pratique <small>(facultatif)</small></span>
+        <input id="patient-form-identifier" nz-input formControlName="practiceIdentifier" autocomplete="off" />
+        <small>Référence interne à votre pratique. N’y inscrivez aucune donnée médicale.</small>
+      </label>
+    }
+
+    @if (submitError(); as error) {
+      <p class="patient-form__notice patient-form__notice--error" role="alert">{{ error }}</p>
+    }
+
+    <div class="patient-form__actions">
+      <oc-button size="small" variant="secondary" type="button" [disabled]="saving()" (click)="cancelled.emit()">
+        Annuler
+      </oc-button>
+      <oc-button size="small" variant="primary" type="submit" [loading]="saving()">
+        {{ saving() ? 'Vérification…' : submitLabel() }}
+      </oc-button>
+    </div>
+  }
+</form>

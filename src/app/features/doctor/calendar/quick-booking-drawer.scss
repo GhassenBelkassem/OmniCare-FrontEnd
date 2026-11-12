@@ -1,0 +1,678 @@
+:host {
+  display: contents;
+}
+
+.quick-booking {
+  display: grid;
+  gap: var(--oc-space-6);
+  min-width: 0;
+  padding-bottom: var(--oc-space-2);
+  overscroll-behavior: contain;
+}
+
+.quick-booking__section {
+  display: grid;
+  gap: var(--oc-space-3);
+  min-width: 0;
+  padding-bottom: var(--oc-space-5);
+  border-bottom: 1px solid var(--oc-color-border-subtle);
+}
+
+.quick-booking__section-heading,
+.quick-booking__section-heading > div,
+.quick-booking__search-meta,
+.quick-booking__selected-person,
+.quick-booking__preparing,
+.quick-booking__preparing-actions,
+.quick-booking__summary-heading,
+.quick-booking__footer {
+  display: flex;
+  align-items: center;
+}
+
+.quick-booking__section-heading {
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+}
+
+.quick-booking__section-heading > div {
+  min-width: 0;
+  gap: var(--oc-space-2);
+}
+
+.quick-booking__section-heading h3,
+.quick-booking__summary h3,
+.quick-booking__summary p,
+.quick-booking__preparing p,
+.quick-booking__empty p,
+.quick-booking__state,
+.quick-booking__selected-date,
+.quick-booking__booking-error,
+.quick-booking__outcome-note {
+  margin: 0;
+}
+
+.quick-booking__section-heading h3,
+.quick-booking__summary h3 {
+  color: var(--oc-color-text-primary);
+  font-size: 0.9375rem;
+  font-weight: var(--oc-font-weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+.quick-booking__step {
+  display: inline-grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-surface-selected);
+  color: var(--oc-color-brand-primary-active);
+  font-size: 0.75rem;
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.quick-booking__text-action {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: var(--oc-space-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--oc-color-brand-primary-active);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: var(--oc-font-weight-semibold);
+  cursor: pointer;
+}
+
+.quick-booking__text-action:hover {
+  color: var(--oc-color-brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.quick-booking__text-action:focus-visible,
+.quick-booking__patient-results button:focus-visible,
+.quick-booking__date-choices button:focus-visible,
+.quick-booking__slots button:focus-visible,
+.quick-booking__cabinet-list label:focus-within {
+  outline: 3px solid var(--oc-color-brand-primary);
+  outline-offset: 2px;
+}
+
+.quick-booking__text-action:disabled {
+  color: var(--oc-color-text-disabled);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.quick-booking__selected-person {
+  gap: var(--oc-space-3);
+  min-width: 0;
+  padding: var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.quick-booking__selected-person > span:nth-child(2),
+.quick-booking__patient-results button > span:nth-child(2),
+.quick-booking__cabinet-list label > span:nth-of-type(2) {
+  min-width: 0;
+  flex: 1;
+}
+
+.quick-booking__selected-person strong,
+.quick-booking__selected-person small,
+.quick-booking__patient-results strong,
+.quick-booking__patient-results small,
+.quick-booking__cabinet-list strong,
+.quick-booking__cabinet-list small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-booking__selected-person strong,
+.quick-booking__patient-results strong,
+.quick-booking__cabinet-list strong {
+  color: var(--oc-color-text-primary);
+  font-size: 0.875rem;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+.quick-booking__selected-person small,
+.quick-booking__patient-results small,
+.quick-booking__cabinet-list small {
+  margin-top: 0.125rem;
+  color: var(--oc-color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.quick-booking__readiness,
+.quick-booking__primary-label {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--oc-radius-pill);
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-warning);
+  font-size: 0.6875rem;
+  font-weight: var(--oc-font-weight-semibold);
+  white-space: nowrap;
+}
+
+.quick-booking__readiness--ready,
+.quick-booking__primary-label {
+  background: var(--oc-color-success-surface);
+  color: var(--oc-color-success);
+}
+
+.quick-booking__search {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--oc-space-2);
+  padding: 0 var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-muted);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.quick-booking__search:focus-within {
+  border-color: var(--oc-color-brand-primary);
+  box-shadow: 0 0 0 3px var(--oc-color-surface-selected);
+}
+
+.quick-booking__search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 2px solid transparent;
+  background: transparent;
+  color: var(--oc-color-text-primary);
+  font: inherit;
+}
+
+.quick-booking__search input::placeholder {
+  color: var(--oc-color-text-muted);
+}
+
+.quick-booking__inline-spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: 0 0 auto;
+  border: 2px solid var(--oc-color-border-default);
+  border-top-color: var(--oc-color-brand-primary);
+  border-radius: 50%;
+  animation: quick-booking-spin 700ms linear infinite;
+}
+
+.quick-booking__search-meta {
+  min-height: 2rem;
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+  color: var(--oc-color-text-muted);
+  font-size: 0.75rem;
+}
+
+.quick-booking__patient-results {
+  display: grid;
+  gap: var(--oc-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quick-booking__patient-results button {
+  display: flex;
+  width: 100%;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--oc-radius-md);
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.quick-booking__patient-results button:hover {
+  border-color: var(--oc-color-border-subtle);
+  background: var(--oc-color-surface-hover);
+}
+
+.quick-booking__empty {
+  display: grid;
+  min-height: 7rem;
+  place-items: center;
+  align-content: center;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-4);
+  border: 1px dashed var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  color: var(--oc-color-text-muted);
+  text-align: center;
+}
+
+.quick-booking__empty--slots span {
+  font-size: 0.75rem;
+}
+
+.quick-booking__preparing {
+  align-items: flex-start;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-3);
+  border: 1px solid var(--oc-color-information);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-information-surface);
+}
+
+.quick-booking__preparing-icon,
+.quick-booking__cabinet-icon {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-brand-primary-active);
+}
+
+.quick-booking__preparing > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.quick-booking__preparing strong {
+  color: var(--oc-color-text-primary);
+  font-size: 0.8125rem;
+}
+
+.quick-booking__preparing p {
+  margin-top: var(--oc-space-1);
+  color: var(--oc-color-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.quick-booking__preparing-actions {
+  flex-wrap: wrap;
+  gap: var(--oc-space-2);
+  margin-top: var(--oc-space-2);
+}
+
+.quick-booking__cabinet-list {
+  display: grid;
+  gap: var(--oc-space-2);
+}
+
+.quick-booking__cabinet-list label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-3);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-surface-card);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.quick-booking__cabinet-list label:hover {
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-surface-hover);
+}
+
+.quick-booking__cabinet-list label.quick-booking__cabinet--selected {
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-surface-selected);
+  box-shadow: inset 0 0 0 1px var(--oc-color-brand-primary);
+}
+
+.quick-booking__cabinet-list {
+  width: 100%;
+}
+
+.quick-booking__cabinet-list label {
+  margin: 0;
+}
+
+.quick-booking__cabinet-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.quick-booking__cabinet-single {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oc-space-2);
+  margin: 0;
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-subtle);
+  color: var(--oc-color-text-primary);
+  font-size: var(--oc-text-small-size);
+}
+
+.quick-booking__cabinet-single small {
+  color: var(--oc-color-text-muted);
+}
+
+.quick-booking__readiness--failed {
+  background: var(--oc-color-critical-surface);
+  color: var(--oc-color-critical);
+}
+
+.quick-booking__patient-skeleton {
+  display: block;
+  padding: var(--oc-space-2) 0;
+}
+
+#quick-booking-date-section:focus {
+  outline: none;
+}
+
+.quick-booking__date-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--oc-space-2);
+}
+
+.quick-booking__date-choices button,
+.quick-booking__slots button {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  gap: 0.125rem;
+  padding: var(--oc-space-2);
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.quick-booking__date-choices button {
+  min-height: 3.25rem;
+}
+
+.quick-booking__date-choices button:hover:not(:disabled),
+.quick-booking__slots button:hover:not(:disabled) {
+  border-color: var(--oc-color-brand-primary);
+  transform: translateY(-1px);
+}
+
+.quick-booking__date-choices button:disabled,
+.quick-booking__slots button:disabled {
+  color: var(--oc-color-text-disabled);
+  cursor: not-allowed;
+}
+
+.quick-booking__date-choices small,
+.quick-booking__slots small {
+  color: var(--oc-color-text-secondary);
+  font-size: 0.6875rem;
+}
+
+.quick-booking__date-choices .quick-booking__date--selected,
+.quick-booking__slots .quick-booking__slot--selected {
+  border-color: var(--oc-color-brand-primary);
+  background: var(--oc-color-brand-primary);
+  color: var(--oc-color-text-primary);
+  box-shadow: var(--oc-shadow-card);
+}
+
+.quick-booking__date--selected small,
+.quick-booking__slot--selected small {
+  color: currentColor;
+}
+
+.quick-booking__other-date {
+  display: grid;
+  gap: var(--oc-space-1);
+  color: var(--oc-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: var(--oc-font-weight-semibold);
+}
+
+
+
+.quick-booking__selected-date {
+  color: var(--oc-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: var(--oc-font-weight-medium);
+  text-transform: capitalize;
+}
+
+.quick-booking__slots {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--oc-space-2);
+}
+
+.quick-booking__slots button {
+  min-height: 3.5rem;
+}
+
+.quick-booking__slots strong {
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-booking__state {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-surface-subtle);
+  color: var(--oc-color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.quick-booking__state--error,
+.quick-booking__booking-error {
+  border: 1px solid var(--oc-color-critical);
+  background: var(--oc-color-critical-surface);
+}
+
+.quick-booking__error,
+.quick-booking__booking-error {
+  color: var(--oc-color-critical);
+}
+
+.quick-booking__summary {
+  display: grid;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-4);
+  border: 1px solid var(--oc-color-success);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-color-success-surface);
+}
+
+.quick-booking__summary-heading {
+  gap: var(--oc-space-2);
+}
+
+.quick-booking__summary-check {
+  display: inline-grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--oc-color-success);
+  color: var(--oc-color-text-primary);
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.quick-booking__summary p {
+  color: var(--oc-color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.quick-booking__summary dl {
+  display: grid;
+  gap: var(--oc-space-2);
+  margin: 0;
+}
+
+.quick-booking__summary dl > div {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: var(--oc-space-3);
+}
+
+.quick-booking__summary dt {
+  color: var(--oc-color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.quick-booking__summary dd {
+  margin: 0;
+  color: var(--oc-color-text-primary);
+  font-size: 0.8125rem;
+  font-weight: var(--oc-font-weight-semibold);
+  text-align: end;
+}
+
+.quick-booking__booking-error,
+.quick-booking__outcome-note {
+  padding: var(--oc-space-3);
+  border-radius: var(--oc-radius-md);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.quick-booking__outcome-note {
+  border: 1px solid var(--oc-color-warning);
+  background: var(--oc-color-warning-surface);
+  color: var(--oc-color-text-primary);
+}
+
+.quick-booking__footer {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--oc-space-2);
+}
+
+.quick-booking__footer-reason {
+  min-width: 0;
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--oc-color-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.quick-booking__record-status {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-2);
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border: 1px solid var(--oc-color-information);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-color-information-surface);
+  color: var(--oc-color-text-primary);
+  font-size: 0.8125rem;
+}
+
+.quick-booking__record-status > span:not(.quick-booking__inline-spinner):not(.quick-booking__record-check) {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.125rem;
+}
+
+.quick-booking__record-status small {
+  color: var(--oc-color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.quick-booking__record-status--ready {
+  border-color: var(--oc-color-success);
+  background: var(--oc-color-success-surface);
+}
+
+.quick-booking__record-check {
+  color: var(--oc-color-success);
+  font-weight: var(--oc-font-weight-strong);
+}
+
+.quick-booking__record-status--failed {
+  flex-wrap: wrap;
+  border-color: var(--oc-color-critical);
+  background: var(--oc-color-critical-surface);
+}
+
+.quick-booking__record-status--failed oc-icon {
+  color: var(--oc-color-critical);
+}
+
+@keyframes quick-booking-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 36rem) {
+  .quick-booking__date-choices,
+  .quick-booking__slots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick-booking__search-meta,
+  .quick-booking__selected-person {
+    align-items: flex-start;
+  }
+
+  .quick-booking__search-meta {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-booking__search,
+  .quick-booking__patient-results button,
+  .quick-booking__cabinet-list label,
+  .quick-booking__date-choices button,
+  .quick-booking__slots button {
+    transition-duration: 0.01ms;
+  }
+
+  .quick-booking__date-choices button:hover:not(:disabled),
+  .quick-booking__slots button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .quick-booking__inline-spinner {
+    animation: none;
+  }
+}

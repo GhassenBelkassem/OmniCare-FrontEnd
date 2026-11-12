@@ -1,4 +1,4 @@
-@if (auth.authState() === 'unknown') {
+@if (auth.authState() === 'BOOTSTRAPPING') {
   <main class="app-boot" aria-live="polite" aria-busy="true">
     <span class="app-boot__mark" aria-hidden="true">O<span>+</span></span>
     <p>Preparing secure workspace…</p>

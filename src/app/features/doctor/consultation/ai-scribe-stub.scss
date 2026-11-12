@@ -1,9 +1,0 @@
-.scribe { display: grid; gap: 12px; padding: 16px; border: 1px solid #dce2df; border-radius: 8px; background: #fafcfb; }
-.scribe__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.scribe__head h3 { margin: 0 0 2px; font-size: 15px; }
-.scribe__head p { margin: 0; color: #5b6b7a; font-size: 13px; }
-.scribe__recording { margin: 0; padding: 14px; border: 1px solid #b8d2cb; border-radius: 8px; background: #e4eeec; color: #2f6f62; font-weight: 700; text-align: center; }
-.field { display: grid; gap: 6px; }
-.field > span { color: #5b6b7a; font-size: 11px; font-weight: 800; text-transform: uppercase; }
-textarea { width: 100%; min-height: 120px; border: 1px solid #dce2df; border-radius: 6px; padding: 8px 10px; background: #fff; color: #16233d; font: inherit; resize: vertical; }
-textarea:focus-visible { outline: 2px solid #2f6f62; outline-offset: 2px; }

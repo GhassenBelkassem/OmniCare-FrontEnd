@@ -13,6 +13,7 @@ import { AuthTokenStore } from '../../core/auth/auth-token.store';
 import type { DashboardRole } from '../../core/auth/auth.models';
 import { CalendarPage } from './calendar/calendar-page';
 import { DOCTOR_ROUTES } from './doctor.routes';
+import { ProductionUnavailablePage } from './unavailable/production-unavailable-page';
 import { UrgentReadinessPage } from './urgent-readiness/urgent-readiness-page';
 import { unsavedChangesGuard } from './unsaved-changes.guard';
 
@@ -30,7 +31,7 @@ describe('doctor routes', () => {
     expect(DOCTOR_ROUTES).toHaveLength(1);
     const shell = DOCTOR_ROUTES[0];
     expect(shell.path).toBe('');
-    expect(shell.title).toBe('Doctor workspace | OmniCare');
+    expect(shell.title).toBe('Espace médecin | OmniCare');
     expect(shell.canActivate?.[0]).toBe(authenticatedGuard);
     expect(typeof shell.canActivate?.[1]).toBe('function');
     expect(shell.children?.length).toBeGreaterThan(5);
@@ -87,6 +88,16 @@ describe('doctor routes', () => {
     expect(urgentRequests?.title).toBe('Demandes urgentes | OmniCare');
     expect(urgentRequests?.providers).toBeDefined();
   });
+
+  it.each(['waiting-room', 'prescriptions', 'results', 'analytics'])(
+    'resolves %s to an explicit production-unavailable state',
+    async (path) => {
+      const route = DOCTOR_ROUTES[0].children?.find((candidate) => candidate.path === path);
+
+      expect(route?.data?.['featureDescription']).toEqual(expect.any(String));
+      await expect(route?.loadComponent?.()).resolves.toBe(ProductionUnavailablePage);
+    },
+  );
 
   it('allows DOCTOR and SECRETARY sessions into the workspace', async () => {
     const tokens = TestBed.inject(AuthTokenStore);

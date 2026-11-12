@@ -1,5 +1,5 @@
 :root {
-  --oc-shadow-card: 0 1px 2px rgb(23 35 31 / 5%);
-  --oc-shadow-floating: 0 16px 40px rgb(23 35 31 / 14%);
+  --oc-shadow-card: var(--oc-shadow-sm);
+  --oc-shadow-floating: var(--oc-shadow-md);
   --oc-shadow-overlay: 0 24px 64px rgb(23 35 31 / 20%);
 }

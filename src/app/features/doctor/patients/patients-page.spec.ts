@@ -18,8 +18,10 @@ function patientDto(overrides: Partial<PracticePatientDto> = {}): PracticePatien
     firstName: 'Ahmed',
     lastName: 'Ben Salah',
     dateOfBirth: '1990-04-12',
+    approximateAgeYears: null,
     sex: 'M',
     phone: '+216 71 234 567',
+    practiceIdentifier: null,
     email: null,
     address: null,
     source: 'MANUAL',
@@ -27,6 +29,11 @@ function patientDto(overrides: Partial<PracticePatientDto> = {}): PracticePatien
     mrsPatientId: null,
     mrsProvisioned: false,
     possibleOmniCareMatch: false,
+    possibleDuplicate: false,
+    mrsReadiness: 'PREPARING',
+    externalPatientStatus: 'UNCLAIMED',
+    lastConsultationAt: null,
+    nextAppointmentAt: null,
     createdAt: '2026-08-21T09:00:00Z',
     updatedAt: '2026-08-21T09:00:00Z',
     ...overrides,
@@ -169,6 +176,10 @@ describe('PatientsPage', () => {
     http.expectOne((candidate) => candidate.url === '/api/v1/patients').flush(pageResponse([]));
 
     component.componentInstance.handleViewAction({ kind: 'ADD_PATIENT' });
+    expect(component.componentInstance.addMethodDialogOpen()).toBe(true);
+    expect(component.componentInstance.addDialogOpen()).toBe(false);
+
+    component.componentInstance.chooseExternalPatient();
     expect(component.componentInstance.addDialogOpen()).toBe(true);
 
     component.componentInstance.onPatientCreated(

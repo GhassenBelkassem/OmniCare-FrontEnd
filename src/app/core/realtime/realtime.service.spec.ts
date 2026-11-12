@@ -262,6 +262,24 @@ describe('RealtimeService', () => {
     expect(service.status()).toBe('disconnected');
   });
 
+  it('cannot reconnect with cleared credentials after central termination', () => {
+    const { service, tokens } = create({ token: 'token-a' });
+    const first = stomp.MockClient.instances[0];
+
+    service.terminateSession();
+    tokens.clear();
+    TestBed.tick();
+
+    expect(first.deactivated).toBe(true);
+    expect(stomp.MockClient.instances).toHaveLength(1);
+    expect(service.status()).toBe('disconnected');
+
+    tokens.setSession(session('token-b'));
+    TestBed.tick();
+    expect(stomp.MockClient.instances).toHaveLength(2);
+    expect(lastClient()!.config.connectHeaders['Authorization']).toBe('Bearer token-b');
+  });
+
   it('reports down while the socket is not connected', () => {
     const { service } = create({ token: 'token-a' });
 

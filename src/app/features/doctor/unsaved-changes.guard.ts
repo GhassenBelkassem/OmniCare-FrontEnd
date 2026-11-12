@@ -1,7 +1,7 @@
 import { CanDeactivateFn } from '@angular/router';
 
 export interface UnsavedChangesAware {
-  canDeactivate(): boolean;
+  canDeactivate(): boolean | Promise<boolean>;
 }
 
 export const unsavedChangesGuard: CanDeactivateFn<UnsavedChangesAware> = (component) =>

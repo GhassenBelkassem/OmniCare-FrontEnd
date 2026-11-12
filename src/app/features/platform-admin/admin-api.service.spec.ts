@@ -43,9 +43,9 @@ describe('AdminApiService', () => {
     service.createClinic({
       name: 'Clinique Jasmin', contactEmail: 'contact@jasmin.tn', contactPhone: '+21671111111',
       governorate: 'Tunis', address: '1 rue de Tunis', inpdpNumber: 'INPDP-42',
-    }).subscribe();
+    }, 'clinic-attempt-1').subscribe();
     const request = http.expectOne('/api/v1/admin/clinics');
-    expect(request.request.headers.get('Idempotency-Key')).toBeTruthy();
+    expect(request.request.headers.get('Idempotency-Key')).toBe('clinic-attempt-1');
     request.flush({});
   });
 
@@ -58,11 +58,11 @@ describe('AdminApiService', () => {
       professionalLicenseNumber: 'FGJKHFF',
       specialty: 'GENERAL',
       governorate: 'NABEUL',
-    }).subscribe();
+    }, 'doctor-attempt-1').subscribe();
 
     const request = http.expectOne('/api/v1/admin/professionals');
     expect(request.request.headers.get('Authorization')).toBe('Bearer admin-access-token');
-    expect(request.request.headers.get('Idempotency-Key')).toBeTruthy();
+    expect(request.request.headers.get('Idempotency-Key')).toBe('doctor-attempt-1');
     expect(request.request.body).toEqual({
       email: 'doctor@omnicare.local',
       firstName: 'Amira',

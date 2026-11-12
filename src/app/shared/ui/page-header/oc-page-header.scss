@@ -3,10 +3,19 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--oc-space-6);
+  margin-block-end: var(--oc-space-6);
 }
 
 .oc-page-header__main {
   min-width: 0;
+}
+
+.oc-page-header__aside {
+  display: contents;
+}
+
+.oc-page-header__aside:empty {
+  display: none;
 }
 
 .oc-page-header__breadcrumbs {
@@ -20,9 +29,9 @@
 h1 {
   margin: 0;
   color: var(--oc-color-text-primary);
-  font-size: 24px;
-  font-weight: var(--oc-font-weight-strong);
-  line-height: 32px;
+  font-size: var(--oc-text-h1-size);
+  font-weight: var(--oc-text-h1-weight);
+  line-height: var(--oc-text-h1-line-height);
   letter-spacing: -0.02em;
 }
 

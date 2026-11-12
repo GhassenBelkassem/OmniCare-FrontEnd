@@ -1,1 +1,154 @@
-<app-patient-detail-view [model]="viewModel()" (action)="handleViewAction($event)" />
+<section class="patient-chart">
+  @switch (state()) {
+    @case ('loading') {
+      <div class="patient-chart__loading" role="status" aria-live="polite" aria-label="Chargement de la fiche patient">
+        <nz-skeleton [nzActive]="true" [nzAvatar]="{ size: 'large', shape: 'circle' }" [nzParagraph]="{ rows: 1 }" />
+        <div class="chart-grid">
+          <nz-skeleton class="chart-skeleton-card" [nzActive]="true" [nzParagraph]="{ rows: 5 }" />
+          <nz-skeleton class="chart-skeleton-card" [nzActive]="true" [nzParagraph]="{ rows: 5 }" />
+        </div>
+      </div>
+    }
+    @case ('not-found') {
+      <div class="patient-chart__state">
+        <oc-empty-state
+          icon="user"
+          title="Patient introuvable"
+          description="Aucune fiche patient accessible ne correspond à ce lien."
+        >
+          <a class="patient-chart__state-link" routerLink="/doctor/patients">Retour à mes patients</a>
+        </oc-empty-state>
+      </div>
+    }
+    @case ('error') {
+      <div class="patient-chart__state" role="alert">
+        <oc-empty-state
+          icon="warning"
+          title="Impossible de charger la fiche"
+          description="La fiche patient n’a pas pu être chargée. Vérifiez votre connexion puis réessayez."
+        >
+          <oc-button variant="primary" leadingIcon="reload" (click)="retry()">Réessayer</oc-button>
+        </oc-empty-state>
+      </div>
+    }
+    @case ('ready') {
+      @if (chart(); as chart) {
+        <nav class="patient-chart__breadcrumb" aria-label="Fil d’Ariane">
+          <a routerLink="/doctor/patients">Mes patients</a>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{{ chart.identity.fullName }}</span>
+        </nav>
+
+        <header class="chart-header">
+          <span class="chart-header__avatar" aria-hidden="true">{{ initials() }}</span>
+          <div class="chart-header__identity">
+            <h1>{{ chart.identity.fullName }}</h1>
+            @if (metaLine()) {
+              <p class="chart-header__meta">{{ metaLine() }}</p>
+            }
+            <div class="chart-header__tags">
+              <oc-tag tone="care" data-testid="type-tag">{{ chart.patientType === 'EXTERNAL' ? 'Patient externe' : 'Patient OmniCare' }}</oc-tag>
+              @if (grantLabel(); as label) {
+                <oc-tag tone="care" data-testid="grant-tag">{{ label }}</oc-tag>
+              }
+              @if (chart.medicalRecord.status === 'PREPARING') {
+                <oc-tag tone="allergy">Dossier médical en préparation</oc-tag>
+              }
+              @if (chart.access.verificationUnavailable) {
+                <oc-tag tone="allergy">Vérification de l’accès momentanément indisponible</oc-tag>
+              }
+            </div>
+            @if (chart.medicalRecord.status === 'PREPARING' && chart.access.editable) {
+              <p class="chart-header__note">
+                <button type="button" class="chart-link-button" [disabled]="reconciling()" (click)="retryPreparation()">
+                  Relancer la préparation du dossier
+                </button>
+                @if (reconcileMessage(); as message) {
+                  <span role="status">{{ message }}</span>
+                }
+              </p>
+            }
+          </div>
+          <div class="chart-header__actions" role="group" aria-label="Actions de la fiche">
+            @if (canUpload()) {
+              <span [nz-tooltip]="uploadDisabledReason()">
+                <oc-button
+                  variant="outline"
+                  leadingIcon="upload"
+                  [disabled]="uploadDisabledReason() !== null"
+                  data-testid="upload-action"
+                  (click)="uploadOpen.set(true)"
+                >
+                  Ajouter un document
+                </oc-button>
+              </span>
+            }
+            <span [nz-tooltip]="scheduleDisabledReason()">
+              <oc-button
+                [variant]="chart.startableAppointment ? 'secondary' : 'primary'"
+                leadingIcon="calendar"
+                [disabled]="!chart.schedulable"
+                data-testid="schedule-action"
+                (click)="openSchedule()"
+              >
+                Planifier un rendez-vous
+              </oc-button>
+            </span>
+            @if (chart.startableAppointment) {
+              <oc-button
+                variant="primary"
+                leadingIcon="medicine-box"
+                [loading]="starting()"
+                data-testid="start-action"
+                (click)="startConsultation()"
+              >
+                Démarrer la consultation
+              </oc-button>
+            }
+          </div>
+          @if (startError(); as message) {
+            <p class="chart-inline-error chart-header__error" role="alert">{{ message }}</p>
+          }
+        </header>
+
+        @if (accessBanner(); as request) {
+          <app-access-request-panel
+            class="patient-chart__access"
+            [consultationId]="request.consultationId"
+            [state]="request"
+            [revoked]="accessRevoked()"
+            (stateChange)="onAccessRequestChange($event)"
+          />
+        }
+
+        <!-- Practical patient information (patient page only, never in the consultation drawer). -->
+        <div class="patient-chart__practical">
+          <app-chart-contact-card [chart]="chart" (updated)="onContactUpdated($event)" (reloadRequested)="refresh()" />
+          <app-chart-next-appointment-card [chart]="chart" (schedule)="openSchedule()" />
+        </div>
+
+        <app-patient-record-view
+          class="patient-chart__record"
+          [chart]="chart"
+          [showHeader]="false"
+          [initialTab]="activeTab()"
+          [documentsRevision]="documentsRevision()"
+          (tabChange)="selectTab($event)"
+        />
+
+        @if (canUpload()) {
+          <app-chart-document-upload [patientId]="chart.id" [(open)]="uploadOpen" (uploaded)="onDocumentUploaded()" />
+        }
+
+        @if (chart.schedulable) {
+          <app-quick-booking-drawer
+            [open]="drawerOpen()"
+            [preselectedPatientId]="chart.id"
+            (openChange)="drawerOpen.set($event)"
+            (appointmentCreated)="onAppointmentCreated()"
+          />
+        }
+      }
+    }
+  }
+</section>

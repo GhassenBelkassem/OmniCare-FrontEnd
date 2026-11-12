@@ -3,23 +3,42 @@
     <section class="lookup-panel" role="dialog" aria-modal="true" aria-labelledby="lookup-title">
       <div class="lookup-panel__head">
         <div>
-          <h2 id="lookup-title">Rechercher un patient</h2>
-          <p>Trouver un patient par nom ou telephone quand le scan QR n'est pas disponible.</p>
+          <h2 id="lookup-title">{{ title() }}</h2>
+          <p>{{ description() }}</p>
         </div>
-        <button type="button" class="lookup-close" aria-label="Fermer la recherche" (click)="dismiss()">×</button>
+        <button
+          type="button"
+          class="lookup-close"
+          aria-label="Fermer la recherche"
+          (click)="dismiss()"
+        >
+          ×
+        </button>
       </div>
 
       <label class="lookup-field">
         <span>Nom ou telephone</span>
-        <input type="search" placeholder="Ex. Trabelsi ou +216 20 111 222" [value]="query()" (input)="updateQuery($event)" autofocus />
+        <input
+          type="search"
+          placeholder="Ex. Trabelsi ou +216 20 111 222"
+          [value]="query()"
+          (input)="updateQuery($event)"
+          autofocus
+        />
       </label>
 
       <div class="lookup-results" role="listbox" aria-label="Resultats de recherche">
-        @if (query().trim()) {
-          @if (results().length > 0) {
+        @if (query().trim().length >= 2) {
+          @if (loading()) {
+            <p class="empty-note" role="status">Recherche en cours...</p>
+          } @else if (failed()) {
+            <p class="empty-note" role="alert">
+              La recherche patient est temporairement indisponible.
+            </p>
+          } @else if (results().length > 0) {
             @for (match of results(); track match.id) {
               <button type="button" class="lookup-result" role="option" (click)="select(match)">
-                <strong>{{ match.name }}</strong>
+                <strong>{{ patientName(match) }}</strong>
                 <span>{{ match.phone }}</span>
               </button>
             }
@@ -27,7 +46,7 @@
             <p class="empty-note">Aucun patient ne correspond a cette recherche.</p>
           }
         } @else {
-          <p class="empty-note">Saisissez un nom ou un numero de telephone.</p>
+          <p class="empty-note">Saisissez au moins deux caracteres du nom ou du telephone.</p>
         }
       </div>
 

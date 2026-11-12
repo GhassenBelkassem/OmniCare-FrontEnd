@@ -1,0 +1,32 @@
+<nz-modal
+  [nzVisible]="open()"
+  nzTitle="Ajouter un patient"
+  [nzFooter]="null"
+  nzWidth="560px"
+  (nzOnCancel)="close()"
+>
+  <ng-container *nzModalContent>
+    <p class="add-method__intro">Choisissez le type de dossier avant de continuer.</p>
+    <div class="add-method__options">
+      <button type="button" (click)="findOmniCare.emit()">
+        <span class="add-method__icon"><oc-icon name="search" /></span>
+        <span>
+          <strong>Rechercher un patient OmniCare</strong>
+          <small>Retrouver un patient déjà lié et autorisé dans votre pratique.</small>
+        </span>
+        <oc-icon name="chevron-right" />
+      </button>
+      <button type="button" (click)="createExternal.emit()">
+        <span class="add-method__icon"><oc-icon name="plus" /></span>
+        <span>
+          <strong>Créer un patient externe</strong>
+          <small>Créer un dossier non lié avec une identité stable et un MRS dédié.</small>
+        </span>
+        <oc-icon name="chevron-right" />
+      </button>
+    </div>
+    <div class="add-method__actions">
+      <oc-button variant="secondary" (click)="close()">Annuler</oc-button>
+    </div>
+  </ng-container>
+</nz-modal>

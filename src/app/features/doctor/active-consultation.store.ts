@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import { normalizeHttpError } from '../../core/http/app-http-error';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import type { ScheduledCareEvent } from '../../core/realtime/live-event.models';
 import { ActiveConsultationApiService } from './active-consultation-api.service';
@@ -149,11 +150,17 @@ export class ActiveConsultationStore {
         }
         if (active !== null) {
           this.startKeys.delete(identity);
-          this.startError.set('Une consultation est déjà en cours.');
+          this.startError.set(
+            'Une autre consultation est déjà en cours. Le rendez-vous sélectionné n’a pas été démarré.',
+          );
           return { kind: 'ACTIVE_CONFLICT', consultation: active };
         }
         if (!isAmbiguous(failure)) this.startKeys.delete(identity);
-        this.startError.set('Impossible de démarrer la consultation. Réessayez.');
+        this.startError.set(
+          isMedicalRecordNotReady(failure)
+            ? 'Le dossier médical de ce patient est encore en préparation. Réessayez dans un instant.'
+            : 'Impossible de démarrer la consultation. Réessayez.',
+        );
         return { kind: 'FAILED', consultation: null };
       })
       .finally(() => {
@@ -268,6 +275,10 @@ function isSameSource(
   sourceId: string,
 ): consultation is ActiveConsultation {
   return consultation?.sourceType === sourceType && consultation.sourceId === sourceId;
+}
+
+function isMedicalRecordNotReady(error: unknown): boolean {
+  return normalizeHttpError(error).code === 'PATIENT_MEDICAL_RECORD_NOT_READY';
 }
 
 function isAmbiguous(error: unknown): boolean {

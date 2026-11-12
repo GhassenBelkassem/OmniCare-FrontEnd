@@ -6,22 +6,14 @@
     <p id="patient-directory-note" class="oc-sr-only">{{ notice }}</p>
   }
 
-  <header class="directory-heading">
-    <div class="directory-heading__main">
-      <span class="directory-heading__icon" aria-hidden="true"><oc-icon name="staff" /></span>
-      <div>
-        <h1>Mes patients</h1>
-        <p>
-          Base patient de votre pratique
-          <span aria-hidden="true">·</span>
-          <strong>{{ model().headingCount.toLocaleString('fr-FR') }} patients</strong>
-        </p>
-      </div>
-    </div>
-    <oc-button variant="primary" leadingIcon="plus" (click)="action.emit({ kind: 'ADD_PATIENT' })">
+  <oc-page-header
+    title="Mes patients"
+    [subtitle]="'Base patient de votre pratique · ' + model().headingCount.toLocaleString('fr-FR') + ' patients'"
+  >
+    <oc-button ocPrimaryAction variant="primary" leadingIcon="plus" (click)="action.emit({ kind: 'ADD_PATIENT' })">
       Ajouter un patient
     </oc-button>
-  </header>
+  </oc-page-header>
 
   @if (model().createdMessage; as message) {
     <div class="created-message" role="status">
@@ -261,10 +253,10 @@
                     class="sort-button"
                     (click)="action.emit({ kind: 'SORT', value: 'linkage' })"
                   >
-                    Liaison OmniCare <span aria-hidden="true">↕</span>
+                    Statut externe <span aria-hidden="true">↕</span>
                   </button>
                 } @else {
-                  Liaison OmniCare
+                  Statut externe
                 }
               </th>
               <th class="patient-table__source" scope="col" [attr.aria-sort]="ariaSort('source')">
@@ -274,10 +266,10 @@
                     class="sort-button"
                     (click)="action.emit({ kind: 'SORT', value: 'source' })"
                   >
-                    Source <span aria-hidden="true">↕</span>
+                    Dossier médical <span aria-hidden="true">↕</span>
                   </button>
                 } @else {
-                  Source
+                  Dossier médical
                 }
               </th>
               <th class="patient-table__action" scope="col">
@@ -343,14 +335,22 @@
                   }
                 </td>
                 <td>
-                  <span class="status-pill status-pill--{{ patient.linkage }}">
-                    {{ patient.linkageLabel }}
-                  </span>
+                  <div class="patient-statuses">
+                    <span class="status-pill status-pill--{{ patient.linkage }}">
+                      {{ patient.linkageLabel }}
+                    </span>
+                    @if (patient.duplicateWarning) {
+                      <span class="status-pill status-pill--warning">Doublon possible</span>
+                    }
+                  </div>
                 </td>
                 <td>
-                  <span class="source-pill source-pill--{{ patient.source }}">
-                    {{ patient.sourceLabel }}
-                  </span>
+                  <div class="patient-statuses">
+                    <span class="mrs-pill mrs-pill--{{ patient.mrsReadiness }}">
+                      {{ patient.mrsReadinessLabel }}
+                    </span>
+                    <small>{{ patient.sourceLabel }}</small>
+                  </div>
                 </td>
                 <td class="patient-table__action">
                   <a

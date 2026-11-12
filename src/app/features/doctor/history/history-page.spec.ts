@@ -23,7 +23,9 @@ describe('HistoryPage', () => {
       imports: [HistoryPage],
       providers: [
         provideRouter([]),
-        { provide: ActiveConsultationApiService, useValue: { listCompleted: () => of([COMPLETED]) } },
+        { provide: ActiveConsultationApiService, useValue: { listCompleted: () => of({
+          items: [COMPLETED], page: 0, pageSize: 50, totalCount: 1, totalPages: 1, hasNext: false,
+        }) } },
       ],
     });
 

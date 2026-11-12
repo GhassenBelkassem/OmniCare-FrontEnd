@@ -15,5 +15,9 @@ export class PrescriptionApiService {
   finalize(id: string, expectedPrescriptionVersion: number, expectedClinicalRecordVersion: number, key: string): Observable<PrescriptionResponse> {
     return this.http.post<PrescriptionResponse>(`${this.url(id)}/finalize`, { expectedPrescriptionVersion, expectedClinicalRecordVersion, confirmation: true }, { headers: new HttpHeaders({ 'Idempotency-Key': key }) });
   }
+  /** Clears an unsigned draft (DRAFT only). Returns the empty state and the version to send next. */
+  discard(id: string, expectedPrescriptionVersion: number, key: string): Observable<PrescriptionResponse> {
+    return this.http.delete<PrescriptionResponse>(this.url(id), { params: { expectedPrescriptionVersion }, headers: new HttpHeaders({ 'Idempotency-Key': key }) });
+  }
   private url(id: string): string { return `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(id)}/prescription`; }
 }

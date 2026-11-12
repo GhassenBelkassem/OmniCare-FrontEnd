@@ -125,16 +125,16 @@ export function clinicStaffDisplayName(member: ClinicStaffMember): string {
   return value.length > 0 ? value : 'Unnamed professional';
 }
 
-export function canSuspendMembership(status: string): boolean {
+export function canSuspendMembership(status: ClinicMembershipStatus): boolean {
   return status === 'ACTIVE';
 }
 
-export function canReactivateMembership(status: string): boolean {
+export function canReactivateMembership(status: ClinicMembershipStatus): boolean {
   return status === 'SUSPENDED';
 }
 
 /** ENDED is terminal, and an unexpected INVITED row never gains an invented transition. */
-export function canEndMembership(status: string): boolean {
+export function canEndMembership(status: ClinicMembershipStatus): boolean {
   return status === 'ACTIVE' || status === 'SUSPENDED';
 }
 

@@ -1,176 +1,290 @@
-@if (!canonicalRoute) {
-  <main class="consultation-state" role="status">
-    <span class="consultation-state__icon" aria-hidden="true">!</span>
-    <h1>Consultation non disponible</h1>
-    <p>
-      Cet espace accepte uniquement une consultation canonique identifiée par son UUID. Aucun
-      parcours clinique simulé n’est chargé en production.
-    </p>
-    <oc-button variant="secondary" (click)="back()">Retour au tableau de bord</oc-button>
+@if (!validRoute) {
+  <main class="consultation-state">
+    <oc-empty-state icon="warning" title="Consultation introuvable" description="Le lien de cette consultation n’est pas valide.">
+      <a class="consultation-link" routerLink="/doctor/command">Retour à l’accueil</a>
+    </oc-empty-state>
   </main>
-} @else if (finish.consultation(); as current) {
-  <app-consultation-workspace-view
-    [model]="viewModel()"
-    (action)="handleWorkspaceAction($event)"
-  >
-    @if (current.status === 'IN_PROGRESS') {
-      @if (urgentIntake(); as intake) {
-        <aside class="urgent-intake" aria-labelledby="urgent-intake-title">
-          <div>
-            <h2 id="urgent-intake-title">Contexte déclaré avant l’arrivée</h2>
-            <p>Information opérationnelle en lecture seule, non copiée dans le dossier médical.</p>
-          </div>
-          <dl>
-            <div>
-              <dt>Zones</dt>
-              <dd>{{ intake.bodyAreaCodes?.join(', ') || 'Non renseignées' }}</dd>
-            </div>
-            <div>
-              <dt>Douleur</dt>
-              <dd>{{ intake.painScore ?? 'Non renseignée' }}/10</dd>
-            </div>
-            @if (intake.shortDescription) {
-              <div>
-                <dt>Description</dt>
-                <dd>{{ intake.shortDescription }}</dd>
-              </div>
-            }
-          </dl>
-        </aside>
-      }
+} @else if (session.consultation(); as consultation) {
+  <main class="consultation" [attr.aria-busy]="session.loadState() === 'loading' ? 'true' : null">
+    <app-consultation-header />
 
-      <section class="consultation-domain" [hidden]="activeSection() !== 'note'">
-        <app-clinical-authoring [consultationId]="consultationId" />
-      </section>
-
-      <section class="consultation-domain" [hidden]="activeSection() !== 'vitals'">
-        <article class="unsupported-panel" aria-labelledby="vitals-title">
-          <span class="unsupported-panel__icon" aria-hidden="true">—</span>
-          <div>
-            <p class="unsupported-panel__eyebrow">Constantes</p>
-            <h2 id="vitals-title">Saisie canonique indisponible</h2>
-            <p>
-              Aucun contrat de production n’autorise actuellement l’enregistrement des constantes
-              depuis cet espace. Aucun formulaire local ou succès simulé n’est proposé.
-            </p>
-          </div>
-        </article>
-      </section>
-
-      <section class="consultation-domain" [hidden]="activeSection() !== 'prescription'">
-        <app-prescription-authoring
-          [consultationId]="consultationId"
-          [consultationStatus]="current.status"
-        />
-      </section>
-
-      <section class="consultation-domain" [hidden]="activeSection() !== 'orders'">
-        <app-clinical-orders [consultationId]="consultationId" />
-      </section>
-
-      <section class="consultation-domain" [hidden]="activeSection() !== 'documents'">
-        <app-official-artifacts [consultationId]="consultationId" />
-      </section>
-
-      <section class="consultation-domain" [hidden]="activeSection() !== 'finalization'">
-        <article class="finalization-panel" aria-labelledby="finalization-title">
-          <header>
-            <p class="finalization-panel__eyebrow">Vérification avant clôture</p>
-            <h2 id="finalization-title">Finalisation</h2>
-            <p>
-              Le serveur contrôle les décisions cliniques, les versions et les éléments à
-              finaliser. Les domaines restent indépendants jusqu’à la clôture.
-            </p>
-          </header>
-          <ul class="finalization-checklist">
-            <li [class.finalization-checklist__item--ready]="!clinical.dirty()">
-              <span aria-hidden="true">{{ clinical.dirty() ? '!' : '✓' }}</span>
-              <div><strong>Note clinique</strong><small>{{ clinical.dirty() ? 'Modifications non enregistrées' : 'Synchronisée' }}</small></div>
-              @if (clinical.dirty()) { <button type="button" (click)="activeSection.set('note')">Ouvrir</button> }
-            </li>
-            <li [class.finalization-checklist__item--ready]="!prescription.dirty()">
-              <span aria-hidden="true">{{ prescription.dirty() ? '!' : '✓' }}</span>
-              <div><strong>Prescription</strong><small>{{ prescription.dirty() ? 'Modifications non enregistrées' : 'État conservé' }}</small></div>
-              @if (prescription.dirty()) { <button type="button" (click)="activeSection.set('prescription')">Ouvrir</button> }
-            </li>
-            <li [class.finalization-checklist__item--ready]="!orders.dirty()">
-              <span aria-hidden="true">{{ orders.dirty() ? '!' : '✓' }}</span>
-              <div><strong>Ordres cliniques</strong><small>{{ orders.dirty() ? 'Brouillon non enregistré' : 'État conservé' }}</small></div>
-              @if (orders.dirty()) { <button type="button" (click)="activeSection.set('orders')">Ouvrir</button> }
-            </li>
-            <li [class.finalization-checklist__item--ready]="!artifacts.dirty()">
-              <span aria-hidden="true">{{ artifacts.dirty() ? '!' : '✓' }}</span>
-              <div><strong>Documents</strong><small>{{ artifacts.dirty() ? 'Brouillon non enregistré' : 'État conservé' }}</small></div>
-              @if (artifacts.dirty()) { <button type="button" (click)="activeSection.set('documents')">Ouvrir</button> }
-            </li>
-          </ul>
-          @if (finish.failure(); as failure) {
-            <div class="finish-alert" role="alert">
-              @if (failure === 'UNSAVED_CLINICAL_CHANGES') {
-                Enregistrez les modifications de la note clinique avant de terminer.
-              } @else if (failure === 'CONSULTATION_NOT_READY_TO_FINISH') {
-                La consultation n’est pas prête. Vérifiez les décisions et les éléments en brouillon.
-              } @else {
-                La finalisation n’a pas abouti. L’état serveur a été réconcilié ; vous pouvez réessayer.
-              }
+    @if (consultation.status === 'COMPLETED' || flow.phase() === 'done') {
+      <section class="consultation-state consultation-state--done" role="status">
+        <oc-empty-state icon="clinical" title="Consultation terminée" description="La note, l’ordonnance et les documents sont signés et enregistrés dans le dossier du patient.">
+          @if (followUpLine(); as line) {
+            <p class="consultation-follow-up" data-testid="follow-up-outcome">{{ line }}</p>
+          }
+          @if (followUpSlotTaken(); as message) {
+            <div class="c-alert consultation-follow-up__taken" role="alert" data-testid="follow-up-slot-taken">
+              <p>{{ message }}</p>
+              <oc-button variant="primary" size="small" leadingIcon="calendar" (click)="openFollowUpRebooking()">Choisir un autre créneau</oc-button>
             </div>
           }
-        </article>
+          <div class="consultation-state__actions">
+            <a class="consultation-link" routerLink="/doctor/command">Retour à l’accueil</a>
+            @if (consultation.patient?.chartId; as chartId) {
+              <a class="consultation-link" [routerLink]="['/doctor/patient', chartId]">Ouvrir le dossier patient</a>
+            }
+          </div>
+        </oc-empty-state>
       </section>
-    } @else if (current.status === 'FINALIZING') {
-      <section class="consultation-state consultation-state--embedded" role="status" aria-live="polite">
-        <span class="consultation-state__icon consultation-state__icon--pending" aria-hidden="true">…</span>
-        <h2>Finalisation en cours</h2>
-        <p>
-          Les modifications cliniques sont verrouillées. OmniCare peut reprendre les étapes sûres
-          avec les versions et la clé d’idempotence existantes.
-        </p>
-        <oc-button variant="secondary" [disabled]="finish.submitting()" (click)="finish.finish()">
-          Reprendre la finalisation
-        </oc-button>
+    } @else if (consultation.status === 'ABORTED') {
+      <section class="consultation-state" role="status" data-testid="aborted-state">
+        <oc-empty-state icon="warning" title="Consultation annulée" description="Cette consultation a été annulée : elle ne peut plus être modifiée.">
+          <a class="consultation-link" routerLink="/doctor/command">Retour à l’accueil</a>
+        </oc-empty-state>
       </section>
+    } @else if (consultation.status === 'FINALIZING' && flow.closureFailed()) {
+      <section class="consultation-state" role="alert" data-testid="closure-failed">
+        <oc-empty-state icon="warning" title="La clôture n’a pas pu aboutir." description="Le support a été prévenu.">
+          <a class="consultation-link" routerLink="/doctor/command">Retour à l’accueil</a>
+        </oc-empty-state>
+      </section>
+    } @else if (consultation.status === 'FINALIZING') {
+      <section class="consultation-state" role="status" aria-live="polite" data-testid="closure-running">
+        <oc-empty-state icon="waiting" title="Clôture en cours…" description="La consultation est en cours de clôture. Cette page se met à jour automatiquement.">
+          @if (flow.error(); as message) {
+            <p class="c-alert" role="alert">{{ message }}</p>
+          }
+          @if (flow.canResume()) {
+            <oc-button variant="primary" [loading]="flow.busy()" (click)="flow.resumeClosure()">Reprendre la clôture</oc-button>
+          }
+        </oc-empty-state>
+      </section>
+    } @else if (session.loadState() === 'error') {
+      <section class="consultation-state" role="alert">
+        <oc-empty-state icon="warning" title="Consultation indisponible" description="Les informations de la consultation n’ont pas pu être chargées.">
+          <oc-button (click)="session.loadClinical()">Réessayer</oc-button>
+        </oc-empty-state>
+      </section>
+    } @else if (session.loadState() === 'loading') {
+      <div class="consultation-layout">
+        <div class="consultation-main"><nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 8 }" /></div>
+        <div class="consultation-aside"><nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 5 }" /></div>
+      </div>
     } @else {
-      <section class="consultation-state consultation-state--embedded" role="status">
-        <span class="consultation-state__icon consultation-state__icon--complete" aria-hidden="true">✓</span>
-        <h2>{{ current.status === 'COMPLETED' ? 'Consultation terminée' : 'Consultation interrompue' }}</h2>
-        <p>
-          {{ current.status === 'COMPLETED'
-            ? 'Le rendu des documents officiels peut continuer en arrière-plan.'
-            : 'Aucune modification clinique supplémentaire n’est autorisée dans cet épisode.' }}
-        </p>
-        <oc-button variant="secondary" (click)="back()">Retour au tableau de bord</oc-button>
-      </section>
-    }
-  </app-consultation-workspace-view>
+      @if (session.conflict()) {
+        <nz-alert
+          class="consultation-banner"
+          nzType="warning"
+          nzShowIcon
+          nzMessage="Cette consultation a été modifiée ailleurs."
+          nzDescription="Vos dernières modifications sont conservées sur cette page mais ne sont pas enregistrées."
+          [nzAction]="reloadAction"
+        />
+        <ng-template #reloadAction><oc-button size="small" (click)="reload()">Recharger</oc-button></ng-template>
+      }
+      @if (session.finalizedElsewhere()) {
+        <nz-alert
+          class="consultation-banner"
+          nzType="info"
+          nzShowIcon
+          nzMessage="La consultation est terminée : elle ne peut plus être modifiée."
+          [nzAction]="refreshAction"
+        />
+        <ng-template #refreshAction><oc-button size="small" (click)="refreshStatus()">Actualiser</oc-button></ng-template>
+      }
+      @if (session.actionError(); as message) {
+        <nz-alert class="consultation-banner" nzType="error" nzShowIcon [nzMessage]="message" />
+      }
+      @if (session.saveFailure(); as message) {
+        <nz-alert class="consultation-banner" nzType="error" nzShowIcon [nzMessage]="message" />
+      }
 
-  <oc-sheet
-    [open]="mrsDrawerOpen()"
-    title="Dossier médical"
-    description="Accès protégé limité à cette consultation"
-    side="right"
-    width="31rem"
-    [hasFooter]="true"
-    (dismissed)="mrsDrawerOpen.set(false)"
-  >
-    <app-doctor-medical-workspace [consultation]="current" />
-    <div ocSheetFooter>
-      <oc-button variant="secondary" (click)="mrsDrawerOpen.set(false)">Fermer</oc-button>
-    </div>
-  </oc-sheet>
-} @else if (finish.failure()) {
+      <div class="consultation-layout">
+        <div class="consultation-main">
+          <!-- 1. Motif et examen -->
+          <section class="c-card" appConsultationSection="motif" aria-labelledby="motif-title">
+            <header class="c-card__header">
+              <div class="c-card__title">
+                <span class="c-card__number" aria-hidden="true">1</span>
+                <h2 id="motif-title">Motif et examen</h2>
+              </div>
+            </header>
+            <div class="c-card__body">
+              <div class="c-field">
+                <label class="c-field__label" for="consultation-motif">Motif <span class="c-card__required" aria-hidden="true">*</span></label>
+                <input
+                  nz-input
+                  id="consultation-motif"
+                  [value]="session.note().chiefComplaint"
+                  [attr.maxlength]="limits.chiefComplaint"
+                  [attr.aria-invalid]="ui.error(paths.chiefComplaint) ? 'true' : null"
+                  [attr.aria-describedby]="ui.error(paths.chiefComplaint) ? 'motif-error' : null"
+                  (input)="update({ chiefComplaint: text($event) })"
+                />
+                @if (ui.error(paths.chiefComplaint); as message) { <p class="c-field__error" id="motif-error" role="alert">{{ message }}</p> }
+              </div>
+              <div class="c-field">
+                <div class="c-field__row">
+                  <label class="c-field__label" for="consultation-histoire">Histoire de la maladie</label>
+                  <span class="c-field__hint">{{ count(session.note().presentIllness) }} / {{ limits.presentIllness }}</span>
+                </div>
+                <textarea
+                  nz-input
+                  id="consultation-histoire"
+                  rows="4"
+                  [value]="session.note().presentIllness"
+                  [attr.maxlength]="limits.presentIllness"
+                  [attr.aria-invalid]="ui.error(paths.presentIllness) ? 'true' : null"
+                  (input)="update({ presentIllness: text($event) })"
+                ></textarea>
+                @if (ui.error(paths.presentIllness); as message) { <p class="c-field__error" role="alert">{{ message }}</p> }
+              </div>
+              <div class="c-field">
+                <label class="c-field__label" for="consultation-examen">Examen clinique</label>
+                <textarea
+                  nz-input
+                  id="consultation-examen"
+                  rows="3"
+                  [value]="session.note().examination"
+                  [attr.maxlength]="limits.examination"
+                  [attr.aria-invalid]="ui.error(paths.examination) ? 'true' : null"
+                  (input)="update({ examination: text($event) })"
+                ></textarea>
+                @if (ui.error(paths.examination); as message) { <p class="c-field__error" role="alert">{{ message }}</p> }
+              </div>
+            </div>
+          </section>
+
+          <!-- 2. Diagnostic -->
+          <section class="c-card" appConsultationSection="diagnostic" aria-labelledby="diagnostic-title">
+            <header class="c-card__header">
+              <div class="c-card__title">
+                <span class="c-card__number" aria-hidden="true">2</span>
+                <h2 id="diagnostic-title">Diagnostic</h2>
+              </div>
+            </header>
+            <div class="c-card__body">
+              <div class="c-field">
+                <label class="c-field__label" for="consultation-diagnostic">Diagnostic / conclusion <span class="c-card__required" aria-hidden="true">*</span></label>
+                <!-- No maxlength: a longer text must show the error under the field. -->
+                <textarea
+                  nz-input
+                  id="consultation-diagnostic"
+                  rows="2"
+                  [value]="session.note().diagnosis"
+                  [attr.aria-invalid]="ui.error(paths.diagnosis) ? 'true' : null"
+                  (input)="update({ diagnosis: text($event) })"
+                ></textarea>
+                @if (ui.error(paths.diagnosis); as message) { <p class="c-field__error" role="alert">{{ message }}</p> }
+              </div>
+              <div class="c-field">
+                <span class="c-field__label" id="diagnostic-status-label">Statut</span>
+                <nz-segmented
+                  [nzOptions]="diagnosisStatuses"
+                  [ngModel]="session.note().diagnosisStatus"
+                  (ngModelChange)="setDiagnosisStatus($event)"
+                  aria-labelledby="diagnostic-status-label"
+                />
+              </div>
+            </div>
+          </section>
+
+          @if (session.summaryEditable()) {
+            <app-medical-summary-section [number]="numbers().summary" />
+          }
+
+          <app-treatment-section [number]="numbers().treatment" />
+          <app-orders-section [number]="numbers().orders" />
+
+          <!-- 6. Suivi -->
+          <section class="c-card" appConsultationSection="suivi" aria-labelledby="suivi-title">
+            <header class="c-card__header">
+              <div class="c-card__title">
+                <span class="c-card__number" aria-hidden="true">{{ numbers().followUp }}</span>
+                <h2 id="suivi-title">Suivi <span class="c-card__required" aria-hidden="true">*</span></h2>
+              </div>
+            </header>
+            <div class="c-card__body">
+              <div class="c-field" id="consultation-suivi" [attr.data-invalid]="ui.error(paths.followUp) ? 'true' : null">
+                <nz-segmented
+                  [nzOptions]="followUps"
+                  [ngModel]="followUpChoice()"
+                  (ngModelChange)="setFollowUp($event)"
+                  aria-labelledby="suivi-title"
+                />
+                @if (ui.error(paths.followUp); as message) { <p class="c-field__error" role="alert">{{ message }}</p> }
+              </div>
+              @if (session.note().followUp === 'FOLLOW_UP_IN_PERIOD') {
+                <div class="c-field c-field--slot" data-testid="follow-up-slot" [attr.data-invalid]="ui.error(paths.followUpDate) || followUpSlotError() ? 'true' : null">
+                  <span class="c-field__label" id="consultation-suivi-slot-label">Créneau du contrôle <span class="c-card__required" aria-hidden="true">*</span></span>
+                  @if (followUpSlotText(); as text) {
+                    <div class="c-slot" aria-labelledby="consultation-suivi-slot-label">
+                      <span class="c-slot__text" data-testid="follow-up-slot-text">{{ text }}</span>
+                      <oc-button variant="ghost" size="small" [disabled]="followUpSlotSaving()" (click)="openFollowUpPicker()">Modifier</oc-button>
+                    </div>
+                    <p class="c-field__hint">Réservé à la fin de la consultation.</p>
+                  } @else {
+                    <oc-button variant="outline" size="small" leadingIcon="calendar" [loading]="followUpSlotSaving()" (click)="openFollowUpPicker()"
+                      data-testid="follow-up-slot-choose">Choisir un créneau</oc-button>
+                  }
+                  @if (followUpSlotError(); as message) {
+                    <p class="c-field__error" role="alert">{{ message }}</p>
+                  } @else if (ui.error(paths.followUpDate); as message) {
+                    <p class="c-field__error" role="alert">{{ message }}</p>
+                  } @else if (followUpFar()) {
+                    <p class="c-field__warning">Date de suivi éloignée : vérifiez.</p>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+
+          <app-documents-section [number]="numbers().documents" />
+        </div>
+
+        <aside class="consultation-aside" aria-label="Dossier et fin de consultation">
+          <app-medical-context-card />
+          <app-finish-card (finish)="finish()" />
+        </aside>
+      </div>
+      <app-patient-record-drawer />
+    }
+    <app-quick-booking-drawer
+      [open]="followUpPicker() !== null"
+      [followUp]="followUpPicker()"
+      [preselectedStart]="followUpPicker()?.mode === 'choose' ? (followUpSlot()?.start ?? null) : null"
+      [preselectedPracticeLocationId]="followUpPickerLocationId()"
+      (openChange)="$event ? null : closeFollowUpPicker()"
+      (followUpSlotChosen)="onFollowUpSlotChosen($event)"
+      (followUpBooked)="onFollowUpBooked($event)"
+    />
+  </main>
+
+  <oc-confirm-dialog
+    [open]="flow.confirmOpen()"
+    title="Terminer la consultation ?"
+    message="L’ordonnance et les documents seront signés et ne pourront plus être modifiés."
+    confirmLabel="Terminer"
+    cancelLabel="Annuler"
+    (confirm)="flow.confirmFinish()"
+    (cancelled)="flow.cancelConfirm()"
+  />
+} @else if (session.consultationError()) {
   <main class="consultation-state" role="alert">
-    <span class="consultation-state__icon" aria-hidden="true">!</span>
-    <h1>Consultation indisponible</h1>
-    <p>La consultation n’a pas pu être chargée. Vérifiez l’accès ou réessayez.</p>
-    <div class="consultation-state__actions">
-      <oc-button variant="secondary" (click)="back()">Retour</oc-button>
-      <oc-button (click)="finish.refresh()">Réessayer</oc-button>
-    </div>
+    <oc-empty-state icon="warning" title="Consultation indisponible" [description]="consultationErrorText()">
+      <div class="consultation-state__actions">
+        <a class="consultation-link" routerLink="/doctor/command">Retour à l’accueil</a>
+        <oc-button (click)="retryLoad()">Réessayer</oc-button>
+      </div>
+    </oc-empty-state>
   </main>
 } @else {
-  <main class="consultation-state" role="status" aria-live="polite" aria-busy="true">
-    <span class="consultation-state__icon consultation-state__icon--pending" aria-hidden="true">…</span>
-    <h1>Chargement de la consultation</h1>
-    <p>Synchronisation de l’épisode clinique et de ses autorisations.</p>
+  <main class="consultation" aria-busy="true">
+    <nz-skeleton [nzActive]="true" [nzAvatar]="true" [nzParagraph]="{ rows: 2 }" />
   </main>
+}
+
+@if (ui.confirmRequest(); as request) {
+  <oc-confirm-dialog
+    [open]="true"
+    [title]="request.title"
+    [message]="request.message"
+    [confirmLabel]="request.confirmLabel"
+    cancelLabel="Annuler"
+    [destructive]="request.destructive ?? false"
+    (confirm)="ui.answerConfirm(true)"
+    (cancelled)="ui.answerConfirm(false)"
+  />
 }

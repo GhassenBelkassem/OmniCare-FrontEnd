@@ -12,9 +12,9 @@ import { Router, RouterLink } from '@angular/router';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 
-import { OcAvatar, OcButton, OcIcon, OcStatusBadge } from '../../../shared/ui';
+import { OcAvatar, OcButton, OcIcon, OcStatusTag, patientAgeLabel } from '../../../shared/ui';
 import { ActiveConsultationStore } from '../active-consultation.store';
-import type { DoctorReasonCode } from './scheduled-care.models';
+import type { DoctorReasonCode, DoctorScheduledCareItem } from './scheduled-care.models';
 import { ScheduledCareFacade } from './scheduled-care.facade';
 import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-time';
 
@@ -27,7 +27,7 @@ import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-t
     OcAvatar,
     OcButton,
     OcIcon,
-    OcStatusBadge,
+    OcStatusTag,
     RouterLink,
   ],
   template: `
@@ -104,7 +104,7 @@ import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-t
               </div>
             </div>
             <div class="scheduled-appointment-detail__hero-actions">
-              <oc-status-badge [status]="statusBadge()" [customLabel]="statusLabel()" />
+              @if (statusCode()) { <oc-status-tag [status]="statusCode()" /> }
               @if (appointment.practicePatient; as patient) {
                 <a
                   class="scheduled-appointment-detail__profile-link scheduled-appointment-detail__profile-link--button"
@@ -273,6 +273,11 @@ import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-t
           }
           @if (consultations.startError(); as error) {
             <p class="scheduled-detail__error" role="alert">{{ error }}</p>
+          } @else if (hasConflictingConsultation()) {
+            <p class="scheduled-detail__error" role="alert">
+              Une autre consultation est déjà en cours. Ce rendez-vous n’a pas été
+              démarré.
+            </p>
           }
           @if (consultations.error(); as error) {
             <p class="scheduled-detail__error" role="alert">{{ error }}</p>
@@ -285,13 +290,13 @@ import { formatScheduledInstant, formatScheduledRange } from './scheduled-care-t
 
     <ng-template #detailFooter>
       <div class="scheduled-detail__actions">
-        @if (consultations.active(); as active) {
+        @if (activeConsultationForAppointment(); as active) {
           <oc-button
             variant="primary"
             size="small"
             [disabled]="care.commandLoading() || consultations.starting()"
             (click)="continueConsultation(active.consultationId)"
-            >Continuer la consultation</oc-button
+            >Continuer ce rendez-vous</oc-button
           >
         } @else if (canStart()) {
           <oc-button
@@ -351,44 +356,39 @@ export class ScheduledAppointmentDetailPanel {
     { code: 'DOCTOR_UNAVAILABLE', label: 'Médecin indisponible' },
     { code: 'SCHEDULE_CONFLICT', label: 'Conflit d’agenda' },
   ];
-  readonly statusLabel = computed(() => {
-    switch (this.care.activeAppointment()?.status) {
-      case 'CONFIRMED':
-        return 'Confirmé';
-      case 'IN_PROGRESS':
-        return 'En cours';
-      case 'COMPLETED':
-        return 'Terminé';
-      case 'CANCELLED':
-        return 'Annulé';
-      case 'NO_SHOW':
-        return 'Absent';
-      default:
-        return '';
-    }
-  });
-  readonly statusBadge = computed<'pending' | 'confirmed' | 'cancelled' | 'in-progress'>(() => {
-    const status = this.care.activeAppointment()?.status;
-    if (status === 'IN_PROGRESS') return 'in-progress';
-    if (status === 'COMPLETED') return 'confirmed';
-    if (status === 'CANCELLED') return 'cancelled';
-    return 'pending';
-  });
+  readonly statusCode = computed(() => this.care.activeAppointment()?.status ?? '');
   readonly canStart = computed(
     () =>
       this.care.activeAppointment()?.status === 'CONFIRMED' &&
+      this.care.activeAppointment()?.version !== null &&
       this.consultations.active() === null &&
       !this.consultations.loading() &&
       this.consultations.error() === null,
   );
+  readonly activeConsultationForAppointment = computed(() => {
+    const appointment = this.care.activeAppointment();
+    const active = this.consultations.active();
+    return appointment !== null && active?.sourceType === 'SCHEDULED_APPOINTMENT' &&
+      active.sourceId === appointment.appointmentId
+      ? active
+      : null;
+  });
+  readonly hasConflictingConsultation = computed(
+    () => this.consultations.active() !== null && this.activeConsultationForAppointment() === null,
+  );
 
-  openWith(appointmentId: string): void {
+  openWith(appointment: DoctorScheduledCareItem | string): void {
+    const appointmentId = typeof appointment === 'string' ? appointment : appointment.appointmentId;
+    if (appointmentId === null) return;
     this.showCancel.set(false);
     this.cancelReason.set('');
     this.consultations.clearStartError();
     this.appointmentId.set(appointmentId);
     this.open.set(true);
-    this.care.openAppointment(appointmentId);
+    this.care.openAppointment(
+      appointmentId,
+      typeof appointment === 'string' ? null : appointment,
+    );
   }
   close(): void {
     if (this.care.commandLoading() || this.consultations.starting()) return;
@@ -418,7 +418,7 @@ export class ScheduledAppointmentDetailPanel {
   }
   async startConsultation(): Promise<void> {
     const appointment = this.care.activeAppointment();
-    if (appointment?.status !== 'CONFIRMED') return;
+    if (appointment?.status !== 'CONFIRMED' || appointment.version === null) return;
     const outcome = await this.consultations.startScheduledAppointment(
       appointment.appointmentId,
       appointment.version,
@@ -449,44 +449,17 @@ export class ScheduledAppointmentDetailPanel {
     if (!value || value === 'SELF') return 'Patient';
     return value;
   }
-  patientAge(dateOfBirth: string | undefined, at: string, timezone: string): string {
-    if (!dateOfBirth) return 'Âge non renseigné';
-    const parts = dateOfBirth.split('-').map(Number);
-    if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {
-      return 'Âge non renseigné';
-    }
-    const [year, month, day] = parts;
-    const reference = new Date(at);
-    if (Number.isNaN(reference.getTime())) return 'Âge non renseigné';
-    const referenceParts = new Intl.DateTimeFormat('en-CA', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      timeZone: timezone,
-    })
-      .formatToParts(reference)
-      .reduce<Record<string, number>>((result, part) => {
-        if (part.type === 'year' || part.type === 'month' || part.type === 'day') {
-          result[part.type] = Number(part.value);
-        }
-        return result;
-      }, {});
-    let age = referenceParts['year'] - year;
-    if (
-      referenceParts['month'] < month ||
-      (referenceParts['month'] === month && referenceParts['day'] < day)
-    ) {
-      age -= 1;
-    }
-    return age >= 0 && age <= 130 ? `${age} ans` : 'Âge non renseigné';
+  patientAge(dateOfBirth: string | null | undefined, at: string, timezone: string): string {
+    return patientAgeLabel(dateOfBirth, at, timezone) ?? 'Âge non renseigné';
   }
-  formatBirthDate(value: string): string {
+  formatBirthDate(value: string | null | undefined): string {
+    if (!value) return 'Non renseignée';
     const date = new Date(`${value}T00:00:00Z`);
     return Number.isNaN(date.getTime())
       ? 'Non renseignée'
       : new Intl.DateTimeFormat('fr-TN', { dateStyle: 'long', timeZone: 'UTC' }).format(date);
   }
-  sexLabel(value: string): string {
+  sexLabel(value: string | null | undefined): string {
     if (value === 'F') return 'Femme';
     if (value === 'M') return 'Homme';
     return value?.trim() || 'Non renseigné';

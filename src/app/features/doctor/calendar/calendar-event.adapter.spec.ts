@@ -16,6 +16,7 @@ import {
   toUrgentCalendarEvent,
   toUrgentCalendarRecord,
   toAppointmentCalendarEvent,
+  toScheduledAppointmentCalendarEvent,
 } from './calendar-event.adapter';
 
 function appointment(
@@ -30,12 +31,13 @@ function appointment(
     startTime: '2026-10-08T09:17:23.456+01:00',
     endTime: '2026-10-08T10:02:23.456+01:00',
     status,
-    source: 'WEB',
+    source: 'PATIENT_BOOKED',
     notes: null,
     quotedPriceTnd: null,
     startedAt: null,
     completedAt: null,
     createdAt: '2026-10-01T08:00:00.000Z',
+    version: 0,
     ...overrides,
   };
 }
@@ -44,21 +46,21 @@ describe('calendar appointment event adapter', () => {
   it('projects a confirmed appointment as a foreground event', () => {
     expect(toAppointmentCalendarEvent(appointment('CONFIRMED'))).toMatchObject({
       allDay: false,
-      className: 'omnicare-appointment-event--confirmed',
+      className: expect.stringContaining('omnicare-appointment-event--confirmed'),
       extendedProps: { status: 'CONFIRMED', statusLabel: 'Confirmé' },
     });
   });
 
   it('projects an in-progress appointment with its presentation', () => {
     expect(toAppointmentCalendarEvent(appointment('IN_PROGRESS'))).toMatchObject({
-      className: 'omnicare-appointment-event--in-progress',
+      className: expect.stringContaining('omnicare-appointment-event--in-progress'),
       extendedProps: { status: 'IN_PROGRESS', statusLabel: 'En cours' },
     });
   });
 
   it('projects a completed appointment with subdued presentation metadata', () => {
     expect(toAppointmentCalendarEvent(appointment('COMPLETED'))).toMatchObject({
-      className: 'omnicare-appointment-event--completed',
+      className: expect.stringContaining('omnicare-appointment-event--completed'),
       extendedProps: { status: 'COMPLETED', statusLabel: 'Terminé' },
     });
   });
@@ -124,10 +126,17 @@ describe('calendar appointment event adapter', () => {
       appointment('CONFIRMED', { id: 'visible' }),
       appointment('CANCELLED', { id: 'cancelled' }),
       appointment('NO_SHOW', { id: 'no-show' }),
-      appointment('PROPOSED', { id: 'not-a-real-status' }),
+      appointment('PENDING_SOMETHING' as AppointmentStatusDto, { id: 'not-a-real-status' }),
     ]);
 
     expect(events.map((event) => event.id)).toEqual(['appointment:visible']);
+  });
+
+  it('shows a follow-up proposed to an OmniCare patient as « Proposé » (G-1 D4)', () => {
+    const [event] = projectAppointmentEvents([appointment('PROPOSED', { id: 'proposal', source: 'DOCTOR_FOLLOWUP' })]);
+    expect(event?.id).toBe('appointment:proposal');
+    expect(event?.extendedProps.statusLabel).toBe('Proposé');
+    expect(event?.className).toContain('omnicare-appointment-event--proposed');
   });
 });
 
@@ -289,13 +298,16 @@ describe('calendar urgent event adapter', () => {
     });
   });
 
-  it.each(['COMPLETED', 'CANCELLED', 'EXPIRED'])('filters terminal status %s', (status) => {
+  it.each(['CANCELLED', 'EXPIRED'] as const)('filters terminal status %s', (status) => {
     expect(toUrgentCalendarRecord(urgentSummary({ status }), urgentOffer())).toBeNull();
   });
 
   it('filters accepted-but-not-matched state without arrival', () => {
     expect(
-      toUrgentCalendarRecord(urgentSummary({ status: 'OPEN', matchedAt: null }), urgentOffer()),
+      toUrgentCalendarRecord(
+        urgentSummary({ status: 'OPEN' as UrgentRequestSummaryDto['status'], matchedAt: null }),
+        urgentOffer(),
+      ),
     ).toBeNull();
   });
 
@@ -316,5 +328,62 @@ describe('calendar urgent event adapter', () => {
     expect(projectUrgentEvents(record ? [record] : [])[0]?.extendedProps.kind).toBe(
       'urgent-estimate',
     );
+  });
+});
+
+describe('toScheduledAppointmentCalendarEvent (Phase 3)', () => {
+  const item = (status: string, start = '2026-11-12T09:00:00Z', subjectType = 'SELF') =>
+    ({
+      resourceType: 'APPOINTMENT',
+      requestId: null,
+      appointmentId: `apt-${status}`,
+      sourceBookingRequestId: null,
+      version: 0,
+      status,
+      doctor: { displayName: 'Dr Test', specialty: null },
+      subject: { subjectType, displayName: 'Nour Mechergui', relationship: null },
+      cabinet: { name: 'Cabinet Lac', address: null, city: null, governorate: null },
+      start,
+      end: '2026-11-12T09:20:00Z',
+      timezone: 'Africa/Tunis',
+      responseDeadline: null,
+      cancellation: null,
+      intakeStatus: null,
+      availableActions: [],
+      sortAt: start,
+      updatedAt: start,
+    }) as never;
+  const now = new Date('2026-11-10T08:00:00Z');
+
+  it('uses the shared status colours and shows cancelled appointments struck through', () => {
+    const cancelled = toScheduledAppointmentCalendarEvent(item('CANCELLED'), now);
+    expect(cancelled?.extendedProps.statusLabel).toBe('Annulé');
+    expect(cancelled?.extendedProps.struck).toBe(true);
+    expect(cancelled?.extendedProps.statusColor).toBe('var(--oc-error)');
+    const confirmed = toScheduledAppointmentCalendarEvent(item('CONFIRMED'), now);
+    expect(confirmed?.extendedProps.statusColor).toBe('var(--oc-primary)');
+    expect(confirmed?.extendedProps.cabinetLabel).toBe('Cabinet Lac');
+  });
+
+  it('marks an in-progress consultation from a previous day as not closed', () => {
+    const stale = toScheduledAppointmentCalendarEvent(
+      item('IN_PROGRESS', '2026-10-28T09:00:00Z'),
+      now,
+    );
+    expect(stale?.extendedProps.statusLabel).toBe('En cours');
+    expect(stale?.extendedProps.unclosed).toBe(true);
+    const today = toScheduledAppointmentCalendarEvent(
+      item('IN_PROGRESS', '2026-11-10T07:30:00Z'),
+      now,
+    );
+    expect(today?.extendedProps.unclosed).toBe(false);
+  });
+
+  it('labels external patients by type', () => {
+    const external = toScheduledAppointmentCalendarEvent(
+      item('CONFIRMED', undefined, 'PRACTICE_PATIENT'),
+      now,
+    );
+    expect(external?.extendedProps.typeLabel).toBe('Patient externe');
   });
 });

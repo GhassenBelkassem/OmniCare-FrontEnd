@@ -15,7 +15,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { RealtimeService } from '../../../core/realtime/realtime.service';
-import { OcButton, OcDialog, OcEmptyState, OcIcon, OcTabs, type OcTab } from '../../../shared/ui';
+import { OcButton, OcDialog, OcEmptyState, OcIcon,
+  OcPageHeader, OcTabs, type OcTab } from '../../../shared/ui';
 import {
   URGENT_REQUESTS_DATA_SOURCE,
   type UrgentLocationFilter,
@@ -27,6 +28,11 @@ interface FeedbackMessage {
   readonly tone: 'success' | 'error' | 'information';
   readonly text: string;
 }
+
+type UrgentLoadState =
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'loaded' }
+  | { readonly kind: 'error'; readonly message: string };
 
 const TAB_OPTIONS: readonly OcTab[] = [
   { id: 'pending', label: 'À traiter' },
@@ -43,7 +49,7 @@ const REFUSAL_REASONS = [
 
 @Component({
   selector: 'app-urgent-requests-page',
-  imports: [CdkTrapFocus, OcButton, OcDialog, OcEmptyState, OcIcon, OcTabs],
+  imports: [CdkTrapFocus, OcButton, OcDialog, OcEmptyState, OcIcon, OcPageHeader, OcTabs],
   templateUrl: './urgent-requests-page.html',
   styleUrls: ['./urgent-requests-page.scss', './urgent-requests-page.responsive.scss'],
   host: {
@@ -60,6 +66,7 @@ export class UrgentRequestsPage {
   private readonly drawerHeading = viewChild<ElementRef<HTMLHeadingElement>>('drawerHeading');
   private lastDetailTrigger: HTMLElement | null = null;
   private observedConnectionEpoch = this.realtime.connectionEpoch();
+  private loadGeneration = 0;
 
   readonly demo = this.source.demo;
   readonly tabs = TAB_OPTIONS;
@@ -69,8 +76,12 @@ export class UrgentRequestsPage {
   readonly searchTerm = signal(this.route.snapshot.queryParamMap.get('q') ?? '');
   readonly sortOrder = signal<'recent' | 'oldest'>(this.initialSortOrder());
   readonly requests = signal<readonly UrgentRequestQueueItem[]>([]);
-  readonly loading = signal(true);
-  readonly loadError = signal<string | null>(null);
+  private readonly loadState = signal<UrgentLoadState>({ kind: 'loading' });
+  readonly loading = computed(() => this.loadState().kind === 'loading');
+  readonly loadError = computed(() => {
+    const state = this.loadState();
+    return state.kind === 'error' ? state.message : null;
+  });
   readonly selectedOfferId = signal<string | null>(null);
   readonly actionOfferId = signal<string | null>(null);
   readonly feedback = signal<FeedbackMessage | null>(null);
@@ -204,18 +215,12 @@ export class UrgentRequestsPage {
         error: (error: unknown) => {
           this.actionOfferId.set(null);
           if (isUnavailableConflict(error)) {
-            this.requests.update((items) =>
-              items.map((item) =>
-                item.offerId === request.offerId
-                  ? { ...item, status: 'EXPIRED', relativeLabel: 'N’est plus disponible' }
-                  : item,
-              ),
-            );
             this.closeDetail();
             this.feedback.set({
               tone: 'information',
               text: "Cette demande n'est plus disponible.",
             });
+            this.load(true);
             return;
           }
           this.feedback.set({
@@ -346,15 +351,17 @@ export class UrgentRequestsPage {
   }
 
   private load(silent = false): void {
-    if (!silent) this.loading.set(true);
-    this.loadError.set(null);
+    const generation = ++this.loadGeneration;
+    if (!silent) this.loadState.set({ kind: 'loading' });
+    else if (this.loadState().kind === 'error') this.loadState.set({ kind: 'loaded' });
     this.source
       .load()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (requests) => {
+          if (generation !== this.loadGeneration) return;
           this.requests.set(requests);
-          this.loading.set(false);
+          this.loadState.set({ kind: 'loaded' });
           const requestedDrawer = this.route.snapshot.queryParamMap.get('drawer');
           if (requestedDrawer) {
             const requested = requests.find((request) => request.offerId === requestedDrawer);
@@ -364,8 +371,11 @@ export class UrgentRequestsPage {
           }
         },
         error: () => {
-          this.loading.set(false);
-          this.loadError.set('Impossible de charger les demandes urgentes.');
+          if (generation !== this.loadGeneration) return;
+          this.loadState.set({
+            kind: 'error',
+            message: 'Impossible de charger les demandes urgentes.',
+          });
         },
       });
   }

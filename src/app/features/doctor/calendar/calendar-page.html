@@ -11,6 +11,13 @@
   />
 </app-calendar-view>
 
+<app-quick-booking-drawer
+  [open]="quickBookingOpen()"
+  [preselectedStart]="quickBookingStart()"
+  (openChange)="quickBookingOpen.set($event)"
+  (appointmentCreated)="onQuickBookingCreated($event)"
+/>
+
   <nz-modal
     [nzVisible]="selectedException() !== null"
     nzTitle="Détail de l'exception"
@@ -26,7 +33,7 @@
           <dl class="omnicare-exception-panel__grid">
             <div>
               <dt>Date</dt>
-              <dd>{{ exception.exceptionDate }}</dd>
+              <dd>{{ frenchDate(exception.exceptionDate) }}</dd>
             </div>
             <div>
               <dt>Horaire</dt>
@@ -76,21 +83,24 @@
         (ngSubmit)="saveException()"
       >
         <div class="omnicare-exception-form">
-          <label
-            ><span>Type</span
-            ><select formControlName="type">
-              <option value="BLOCK">Bloquer (indisponible)</option>
-              <option value="EXTRA">Ouverture exceptionnelle</option>
-            </select></label
-          >
-          <label><span>Date</span><input type="date" formControlName="date" /></label>
-          <label
-            ><span>Durée</span
-            ><select formControlName="scope">
-              <option value="FULL_DAY">Toute la journée de travail</option>
-              <option value="TIME_WINDOW">Plage horaire</option>
-            </select></label
-          >
+          <div role="group" aria-labelledby="calendarExceptionTypeLabel">
+            <span id="calendarExceptionTypeLabel">Type</span>
+            <nz-radio-group formControlName="type" nzButtonStyle="solid">
+              <label nz-radio-button nzValue="BLOCK">Bloquer (indisponible)</label>
+              <label nz-radio-button nzValue="EXTRA">Ouverture exceptionnelle</label>
+            </nz-radio-group>
+          </div>
+          <label for="calendarExceptionDate"
+            ><span>Date</span
+            ><oc-date-field controlId="calendarExceptionDate" formControlName="date" [allowClear]="false"
+          /></label>
+          <div role="group" aria-labelledby="calendarExceptionScopeLabel">
+            <span id="calendarExceptionScopeLabel">Durée</span>
+            <nz-radio-group formControlName="scope" nzButtonStyle="solid">
+              <label nz-radio-button nzValue="FULL_DAY">Toute la journée de travail</label>
+              <label nz-radio-button nzValue="TIME_WINDOW">Plage horaire</label>
+            </nz-radio-group>
+          </div>
           @if (exceptionForm.controls.scope.value === 'FULL_DAY') {
             <p class="omnicare-exception-panel__hint">
               Le blocage utilisera exactement les heures de travail configurées pour ce jour.
@@ -123,7 +133,7 @@
             }
           }
           <label
-            ><span>Motif</span><input type="text" formControlName="reason" placeholder="Optionnel"
+            ><span>Motif</span><input nz-input type="text" formControlName="reason" placeholder="Optionnel"
           /></label>
         </div>
         @if (exceptionFormError(); as error) {

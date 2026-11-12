@@ -8,251 +8,261 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
-import {
-  Subject,
-  catchError,
-  distinctUntilChanged,
-  map,
-  of,
-  startWith,
-  switchMap,
-  tap,
-} from 'rxjs';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { Subject, catchError, distinctUntilChanged, map, of, startWith, switchMap, tap } from 'rxjs';
 
-import type { PracticePatientDto, PracticePatientSourceDto } from '../practice-patient-api.models';
+import { OcButton, OcEmptyState, OcTag } from '../../../shared/ui';
+import { RealtimeService } from '../../../core/realtime/realtime.service';
+import type { AccessRequestState } from '../active-consultation.models';
+import { ActiveConsultationStore } from '../active-consultation.store';
+import { AccessRequestPanel } from './access-request-panel';
+import { QuickBookingDrawer } from '../calendar/quick-booking-drawer';
 import { PracticePatientApiService } from '../practice-patient-api.service';
-import { PatientDetailView, isPatientDetailTab } from './patient-detail-view';
-import type {
-  PatientDetailAction,
-  PatientDetailLinkage,
-  PatientDetailPerson,
-  PatientDetailSource,
-  PatientDetailState,
-  PatientDetailTab,
-  PatientDetailViewModel,
-} from './patient-detail-view.models';
+import type { PatientChartDto, PatientChartIdentityDto } from './patient-chart-api.models';
+import { PatientChartApiService, newChartIdempotencyKey } from './patient-chart-api.service';
+import { ChartContactCard } from './chart-contact-card';
+import { ChartDocumentUpload } from './chart-document-upload';
+import { ChartNextAppointmentCard } from './chart-next-appointment-card';
+import { PatientRecordView, isRecordTab, type RecordTab } from './record/patient-record-view';
+import {
+  ageLabel,
+  chartShortDate,
+  chartTime,
+  patientInitials,
+  sexLabel,
+} from './patient-chart-format';
 
-const DETAIL_TABS: PatientDetailViewModel['tabs'] = [
-  { id: 'overview', label: 'Vue d’ensemble', icon: 'user' },
-  { id: 'consultations', label: 'Consultations', icon: 'medicine-box' },
-  { id: 'documents', label: 'Documents', icon: 'file-text' },
-  { id: 'timeline', label: 'Timeline', icon: 'history' },
-];
+/** The chart page shows the shared « Dossier patient » view: Résumé / Historique / Documents. */
+export type PatientChartTab = RecordTab;
+type PageState = 'loading' | 'ready' | 'not-found' | 'error';
 
-const SOURCE_LABELS: Record<
-  PracticePatientSourceDto,
-  { readonly source: PatientDetailSource; readonly label: string }
-> = {
-  MANUAL: { source: 'manual', label: 'Saisie manuelle' },
-  IMPORTED: { source: 'imported', label: 'Import' },
-  OMNICARE: { source: 'omnicare', label: 'OmniCare' },
-};
-
-interface PatientLoadResult {
-  readonly state: Exclude<PatientDetailState, 'loading'>;
-  readonly patient: PracticePatientDto | null;
+export function isPatientChartTab(value: string | null): value is PatientChartTab {
+  return isRecordTab(value);
 }
 
 @Component({
   selector: 'app-patient-chart-page',
-  imports: [PatientDetailView],
+  imports: [
+    RouterLink,
+    NzSkeletonModule,
+    NzTooltipModule,
+    OcButton,
+    OcEmptyState,
+    OcTag,
+    QuickBookingDrawer,
+    PatientRecordView,
+    ChartContactCard,
+    ChartNextAppointmentCard,
+    ChartDocumentUpload,
+    AccessRequestPanel,
+  ],
   templateUrl: './patient-chart-page.html',
-  styleUrl: './patient-chart-page.scss',
+  styleUrls: ['./patient-chart-page.scss', './patient-chart-cards.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PatientChartPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly api = inject(PracticePatientApiService);
+  private readonly api = inject(PatientChartApiService);
+  private readonly practicePatients = inject(PracticePatientApiService);
+  private readonly consultations = inject(ActiveConsultationStore);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly retryRequest = new Subject<void>();
+  private readonly reload = new Subject<void>();
+  private readonly realtime = inject(RealtimeService);
 
-  readonly state = signal<PatientDetailState>('loading');
-  readonly patient = signal<PracticePatientDto | null>(null);
-  readonly activeTab = signal<PatientDetailTab>(this.initialTab());
+  readonly state = signal<PageState>('loading');
+  readonly chart = signal<PatientChartDto | null>(null);
+  /** G-1 D2: the patient revoked the access (or it expired) while this page was open. */
+  readonly accessRevoked = signal(false);
+  /** « Demander l'accès » banner: OmniCare patient without access, during this doctor's consultation. */
+  readonly accessBanner = computed(() => {
+    const chart = this.chart();
+    return chart?.access.mode === 'OMNICARE_RESTRICTED' ? (chart.accessRequest ?? null) : null;
+  });
+  readonly activeTab = signal<PatientChartTab>(this.tabFrom(this.route.snapshot.queryParamMap.get('tab')));
+  readonly drawerOpen = signal(false);
+  readonly starting = this.consultations.starting;
+  readonly startError = signal<string | null>(null);
+  readonly reconciling = signal(false);
+  readonly reconcileMessage = signal<string | null>(null);
+  readonly uploadOpen = signal(false);
+  readonly documentsRevision = signal(0);
 
-  readonly viewModel = computed<PatientDetailViewModel>(() => {
-    const patient = this.patient();
-    const state = this.state();
-    return {
-      notice: null,
-      state,
-      stateDescription: stateDescription(state),
-      directoryHref: '/doctor/patients',
-      scheduleHref: patient ? `/doctor/calendar?patientId=${encodeURIComponent(patient.id)}` : null,
-      patient: patient ? productionPatient(patient) : null,
-      tabs: DETAIL_TABS,
-      activeTab: this.activeTab(),
-      appointments: [],
-      timeline: [],
-    };
+  /** « Ajouter un document »: the owner of an external patient only (server-decided access). */
+  readonly canUpload = computed(() => {
+    const access = this.chart()?.access;
+    return access?.mode === 'EXTERNAL_OWNER' && access.editable;
+  });
+  readonly uploadDisabledReason = computed(() =>
+    this.chart()?.medicalRecord.status === 'READY' ? null : 'Le dossier médical est en cours de préparation.');
+
+
+  readonly metaLine = computed(() => {
+    const chart = this.chart();
+    if (!chart) return '';
+    const identity = chart.identity;
+    return [ageLabel(identity), identity.sex ? sexLabel(identity.sex) : null, identity.phone]
+      .filter(Boolean)
+      .join(' · ');
+  });
+
+  readonly initials = computed(() => {
+    const chart = this.chart();
+    return chart ? patientInitials(chart.identity) : '';
+  });
+
+  readonly grantLabel = computed(() => {
+    const access = this.chart()?.access;
+    if (access?.mode !== 'OMNICARE_GRANTED' || !access.grantExpiresAt) return null;
+    return `Accès autorisé jusqu’au ${chartShortDate(access.grantExpiresAt)} ${chartTime(access.grantExpiresAt)}`;
+  });
+
+  readonly scheduleDisabledReason = computed(() => {
+    const chart = this.chart();
+    if (!chart || chart.schedulable) return null;
+    return chart.patientType === 'OMNICARE'
+      ? 'Le patient OmniCare réserve depuis son application.'
+      : 'Planification indisponible.';
   });
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const requested = params.get('tab');
-      this.activeTab.set(isPatientDetailTab(requested) ? requested : 'overview');
+      this.activeTab.set(this.tabFrom(params.get('tab')));
     });
-
     this.route.paramMap
       .pipe(
         map((params) => params.get('id')?.trim() ?? ''),
         distinctUntilChanged(),
         switchMap((id) =>
-          this.retryRequest.pipe(
+          this.reload.pipe(
             startWith(undefined),
             tap(() => {
-              this.patient.set(null);
-              this.state.set('loading');
+              if (this.chart()?.id !== id) this.chart.set(null);
+              if (this.chart() === null) this.state.set('loading');
             }),
-            switchMap(() => this.loadPatient(id)),
+            switchMap(() => this.load(id)),
           ),
         ),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((result) => {
-        this.patient.set(result.patient);
-        this.state.set(result.state);
-      });
-  }
-
-  handleViewAction(action: PatientDetailAction): void {
-    switch (action.kind) {
-      case 'SELECT_TAB':
-        this.setTab(action.value);
-        return;
-      case 'RETRY':
-        this.retryRequest.next();
-        return;
-      case 'NAVIGATE_DIRECTORY':
-        void this.router.navigate(['/doctor/patients']);
-        return;
-      case 'SCHEDULE': {
-        const patient = this.patient();
-        if (patient) {
-          void this.router.navigate(['/doctor/calendar'], {
-            queryParams: { patientId: patient.id },
-          });
+      .subscribe(({ state, chart }) => {
+        const previous = this.chart();
+        if (chart && previous?.id === chart.id) {
+          if (chart.access.mode === 'OMNICARE_GRANTED') this.accessRevoked.set(false);
+          else if (previous.access.mode === 'OMNICARE_GRANTED' && chart.access.mode === 'OMNICARE_RESTRICTED') this.accessRevoked.set(true);
+        } else {
+          this.accessRevoked.set(false);
         }
-        return;
+        this.chart.set(chart);
+        this.state.set(state);
+      });
+    // G-1 D2: the patient's answer, a revoke or an expiry updates the page live (no reload).
+    this.realtime.scheduledCareEvents$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
+      if (event.eventType === 'CLINICAL_ACCESS_CHANGED' && event.resourceType === 'CONSULTATION'
+        && this.chart()?.patientType === 'OMNICARE') {
+        this.refresh();
       }
-    }
+    });
   }
 
-  private loadPatient(id: string) {
-    if (!id) return of<PatientLoadResult>({ state: 'not-found', patient: null });
-    return this.api.getPatient(id).pipe(
-      map((patient): PatientLoadResult => ({ state: 'ready', patient })),
-      catchError((error: unknown) =>
-        of<PatientLoadResult>({ state: stateForError(error), patient: null }),
-      ),
-    );
+  onAccessRequestChange(state: AccessRequestState): void {
+    this.chart.update((chart) => (chart?.accessRequest ? { ...chart, accessRequest: { ...state, consultationId: chart.accessRequest.consultationId } } : chart));
   }
 
-  private setTab(value: PatientDetailTab): void {
-    this.activeTab.set(value);
+  retry(): void {
+    this.chart.set(null);
+    this.state.set('loading');
+    this.reload.next();
+  }
+
+  refresh(): void {
+    this.reload.next();
+  }
+
+  selectTab(tab: string): void {
+    if (!isPatientChartTab(tab)) return;
+    this.activeTab.set(tab);
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { tab: value === 'overview' ? null : value },
+      queryParams: { tab: tab === 'summary' ? null : tab },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
   }
 
-  private initialTab(): PatientDetailTab {
-    const requested = this.route.snapshot.queryParamMap.get('tab');
-    return isPatientDetailTab(requested) ? requested : 'overview';
+  /** Coordonnées saved: the page shows the new identity at once (header line included). */
+  onContactUpdated(identity: PatientChartIdentityDto): void {
+    this.chart.update((chart) => (chart === null ? chart : { ...chart, identity }));
   }
-}
 
-function stateForError(error: unknown): PatientLoadResult['state'] {
-  if (error instanceof HttpErrorResponse && error.status === 404) return 'not-found';
-  if (error instanceof HttpErrorResponse && error.status === 403) return 'forbidden';
-  return 'error';
-}
-
-function stateDescription(state: PatientDetailState): string {
-  switch (state) {
-    case 'loading':
-      return 'Chargement des informations administratives du patient.';
-    case 'not-found':
-      return 'Aucune fiche patient accessible ne correspond à l’identifiant demandé.';
-    case 'forbidden':
-      return 'Vous n’êtes pas autorisé à consulter cette fiche administrative.';
-    case 'error':
-      return 'La fiche administrative n’a pas pu être chargée. Réessayez dans un instant.';
-    case 'ready':
-      return '';
+  /** A document was added: open Documents and reload its list. */
+  onDocumentUploaded(): void {
+    this.documentsRevision.update((value) => value + 1);
+    this.selectTab('documents');
   }
-}
 
-function productionPatient(patient: PracticePatientDto): PatientDetailPerson {
-  const source = SOURCE_LABELS[patient.source];
-  const linkage = productionLinkage(patient);
-  const firstName = patient.firstName.trim();
-  const lastName = patient.lastName.trim();
-  return {
-    id: patient.id,
-    fullName: [firstName, lastName].filter(Boolean).join(' ') || 'Patient sans nom',
-    initials: `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toLocaleUpperCase('fr-FR'),
-    dateOfBirth: patient.dateOfBirth,
-    dateOfBirthLabel: dateLabel(patient.dateOfBirth),
-    age: ageFromDateOfBirth(patient.dateOfBirth),
-    sexLabel:
-      patient.sex === 'F'
-        ? 'Femme'
-        : patient.sex === 'M'
-          ? 'Homme'
-          : patient.sex === 'autre'
-            ? 'Autre'
-            : 'Non renseigné',
-    phone: patient.phone.trim() || 'Non renseigné',
-    email: patient.email?.trim() || null,
-    address: patient.address?.trim() || null,
-    administrativeId: patient.id,
-    insuranceNumber: null,
-    source: source.source,
-    sourceLabel: source.label,
-    linkage,
-    linkageLabel: {
-      linked: 'Lié à OmniCare',
-      possible: 'Correspondance possible',
-      unlinked: 'Non lié',
-    }[linkage],
-  };
-}
+  openSchedule(): void {
+    if (this.chart()?.schedulable) this.drawerOpen.set(true);
+  }
 
-function productionLinkage(patient: PracticePatientDto): PatientDetailLinkage {
-  if (patient.linkedOmniCareUserId) return 'linked';
-  return patient.possibleOmniCareMatch ? 'possible' : 'unlinked';
-}
+  onAppointmentCreated(): void {
+    this.drawerOpen.set(false);
+    this.refresh();
+  }
 
-function dateLabel(value: string | null): string {
-  const date = patientDate(value);
-  if (!date) return 'Non renseignée';
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'Africa/Tunis',
-  }).format(date);
-}
+  async startConsultation(): Promise<void> {
+    const appointment = this.chart()?.startableAppointment;
+    if (!appointment || this.starting()) return;
+    this.startError.set(null);
+    const outcome = await this.consultations.startScheduledAppointment(appointment.id, appointment.version);
+    if (outcome.kind === 'STARTED' || outcome.kind === 'RECOVERED') {
+      await this.router.navigate(['/doctor', 'consultation', outcome.consultation.consultationId]);
+      return;
+    }
+    this.startError.set(this.consultations.startError() ?? 'La consultation n’a pas pu démarrer. Réessayez.');
+  }
 
-function ageFromDateOfBirth(value: string | null): number | null {
-  const date = patientDate(value);
-  if (!date) return null;
-  const now = new Date();
-  let age = now.getFullYear() - date.getUTCFullYear();
-  const birthdayPending =
-    now.getMonth() < date.getUTCMonth() ||
-    (now.getMonth() === date.getUTCMonth() && now.getDate() < date.getUTCDate());
-  if (birthdayPending) age -= 1;
-  return age >= 0 && age <= 130 ? age : null;
-}
+  retryPreparation(): void {
+    const chart = this.chart();
+    if (!chart || chart.patientType !== 'EXTERNAL' || this.reconciling()) return;
+    this.reconciling.set(true);
+    this.reconcileMessage.set(null);
+    this.practicePatients
+      .reconcileMrsPatient(chart.id, newChartIdempotencyKey('chart-record'))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.reconciling.set(false);
+          this.reconcileMessage.set('Préparation relancée. La fiche se mettra à jour dans un instant.');
+          setTimeout(() => this.refresh(), 1500);
+        },
+        error: () => {
+          this.reconciling.set(false);
+          this.reconcileMessage.set('La préparation n’a pas pu être relancée. Réessayez.');
+        },
+      });
+  }
 
-function patientDate(value: string | null): Date | null {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return null;
-  const date = new Date(`${value}T12:00:00Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
+  private load(id: string) {
+    if (!id) return of({ state: 'not-found' as PageState, chart: null });
+    return this.api.getChart(id).pipe(
+      map((chart) => ({ state: 'ready' as PageState, chart })),
+      catchError((error: unknown) =>
+        of({
+          state: (error instanceof HttpErrorResponse && error.status === 404
+            ? 'not-found'
+            : 'error') as PageState,
+          chart: null,
+        }),
+      ),
+    );
+  }
+
+  private tabFrom(value: string | null): PatientChartTab {
+    // Links to the former « Consultations » tab land on Historique.
+    if (value === 'consultations') return 'history';
+    return isPatientChartTab(value) ? value : 'summary';
+  }
 }

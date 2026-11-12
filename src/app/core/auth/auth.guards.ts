@@ -9,9 +9,12 @@ export const authenticatedGuard: CanActivateFn = () => {
   const tokens = inject(AuthTokenStore);
   const bootstrap = inject(AuthBootstrapService);
   const router = inject(Router);
-  return bootstrap.whenResolved().then(() =>
-    tokens.authenticated() ? true : router.createUrlTree(['/login']),
-  );
+  return bootstrap.whenResolved().then(() => {
+    if (tokens.authState() === 'PASSWORD_CHANGE_REQUIRED') {
+      return router.createUrlTree(['/password-change']);
+    }
+    return tokens.authenticated() ? true : router.createUrlTree(['/login']);
+  });
 };
 
 /**
@@ -26,6 +29,9 @@ export function roleGuard(...roles: readonly DashboardRole[]): CanActivateFn {
     const bootstrap = inject(AuthBootstrapService);
     const router = inject(Router);
     return bootstrap.whenResolved().then(() => {
+      if (tokens.authState() === 'PASSWORD_CHANGE_REQUIRED') {
+        return router.createUrlTree(['/password-change']);
+      }
       if (!tokens.authenticated()) return router.createUrlTree(['/login']);
       const role = tokens.user()?.role;
       return role !== undefined && roles.includes(role)
@@ -40,14 +46,33 @@ export const anonymousOnlyGuard: CanMatchFn = () => {
   const tokens = inject(AuthTokenStore);
   const bootstrap = inject(AuthBootstrapService);
   const router = inject(Router);
-  return bootstrap.whenResolved().then(() =>
-    tokens.authenticated() && tokens.user() !== null
-      ? router.createUrlTree([dashboardRouteFor(tokens.user()!.role)])
-      : true,
-  );
+  return bootstrap
+    .whenResolved()
+    .then(() =>
+      tokens.authState() === 'PASSWORD_CHANGE_REQUIRED'
+        ? router.createUrlTree(['/password-change'])
+        : tokens.authenticated() && tokens.user() !== null
+          ? router.createUrlTree([dashboardRouteFor(tokens.user()!.role)])
+          : true,
+    );
+};
+
+export const passwordChangeRequiredGuard: CanActivateFn = () => {
+  const tokens = inject(AuthTokenStore);
+  const bootstrap = inject(AuthBootstrapService);
+  const router = inject(Router);
+  return bootstrap.whenResolved().then(() => {
+    if (tokens.authState() === 'PASSWORD_CHANGE_REQUIRED') return true;
+    const user = tokens.user();
+    return tokens.authenticated() && user !== null
+      ? router.createUrlTree([dashboardRouteFor(user.role)])
+      : router.createUrlTree(['/login']);
+  });
 };
 
 export const landingRedirect: RedirectFunction = () => {
-  const user = inject(AuthTokenStore).user();
+  const tokens = inject(AuthTokenStore);
+  if (tokens.authState() === 'PASSWORD_CHANGE_REQUIRED') return '/password-change';
+  const user = tokens.user();
   return user === null ? '/login' : dashboardRouteFor(user.role);
 };

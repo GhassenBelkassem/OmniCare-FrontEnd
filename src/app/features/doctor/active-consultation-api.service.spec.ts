@@ -71,10 +71,22 @@ describe('ActiveConsultationApiService', () => {
   });
 
   it('uses the completed operational history endpoints', () => {
-    api.listCompleted().subscribe((value) => expect(value).toEqual([]));
-    const list = http.expectOne('/api/v1/doctor/consultations/completed');
+    api.listCompleted().subscribe((value) => expect(value).toEqual({
+      items: [], page: 0, pageSize: 50, totalCount: 125, totalPages: 3, hasNext: true,
+    }));
+    const list = http.expectOne(
+      (request) => request.url === '/api/v1/doctor/consultations/completed'
+        && request.params.get('page') === '0'
+        && request.params.get('size') === '50',
+    );
     expect(list.request.method).toBe('GET');
-    list.flush([]);
+    list.flush([], { headers: {
+      'X-Page': '0',
+      'X-Page-Size': '50',
+      'X-Total-Count': '125',
+      'X-Total-Pages': '3',
+      'X-Has-Next': 'true',
+    } });
 
     api.getCompleted('consultation/unsafe').subscribe();
     const detail = http.expectOne(

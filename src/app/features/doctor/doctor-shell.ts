@@ -15,6 +15,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { filter } from 'rxjs/operators';
 
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
+import { NAVIGATION_FEATURE, isDoctorFeatureEnabled } from './doctor-features';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AuthService } from '../../core/auth/auth.service';
 import {
@@ -27,9 +28,8 @@ import {
 } from '../../shared/ui';
 import { DoctorNotificationApiService } from './doctor-notification-api.service';
 import { PatientLookupDialog } from './patient-lookup-dialog';
-import { MockPatientMatch } from './doctor-mock.models';
-import { DoctorMockService } from './doctor-mock.service';
 import { NotificationItemDto } from './appointment-api.models';
+import type { PracticePatientDto } from './practice-patient-api.models';
 
 import { UrgentAcceptedStore } from './urgent-accepted.store';
 import { ActiveConsultationStore } from './active-consultation.store';
@@ -67,7 +67,6 @@ const DOCTOR_SIDEBAR_LABELS: Partial<SidebarLabels> = {
 })
 export class DoctorShell {
   private readonly router = inject(Router);
-  private readonly mock = inject(DoctorMockService);
   private readonly notificationApi = inject(DoctorNotificationApiService);
   private readonly acceptedStore = inject(UrgentAcceptedStore);
   private readonly realtime = inject(RealtimeService);
@@ -115,7 +114,12 @@ export class DoctorShell {
 
   readonly isSecretary = computed(() => this.tokens.user()?.role === 'SECRETARY');
 
-  readonly navigation = computed<readonly SidebarNavigationItem[]>(() => {
+  /** Navigation without entries whose feature flag is off (see doctor-features.ts). */
+  readonly navigation = computed<readonly SidebarNavigationItem[]>(() =>
+    filterUnavailableFeatures(this.fullNavigation()),
+  );
+
+  private readonly fullNavigation = computed<readonly SidebarNavigationItem[]>(() => {
     if (this.isSecretary()) {
       return [
         {
@@ -262,12 +266,9 @@ export class DoctorShell {
     globalThis.queueMicrotask(() => this.lookupTrigger()?.nativeElement.focus());
   }
 
-  lookupSelected(match: MockPatientMatch): void {
+  lookupSelected(match: PracticePatientDto): void {
     this.lookupOpen.set(false);
-    const consultationId = this.mock.consultationIdForPatient(match.id);
-    void this.router.navigate(['/doctor', 'consultation', consultationId], {
-      queryParams: { source: 'manual' },
-    });
+    void this.router.navigate(['/doctor', 'patient', match.id]);
   }
 
   refreshUnreadCount(): void {
@@ -456,4 +457,16 @@ function initialsFromDisplayName(displayName: string): string {
       ? `${parts[0]?.[0] ?? ''}${parts.at(-1)?.[0] ?? ''}`
       : (parts[0]?.slice(0, 2) ?? '');
   return initials.toLocaleUpperCase('fr-FR') || 'DR';
+}
+
+function filterUnavailableFeatures(
+  items: readonly SidebarNavigationItem[],
+): readonly SidebarNavigationItem[] {
+  return items.flatMap((item) => {
+    const feature = NAVIGATION_FEATURE[item.id];
+    if (feature !== undefined && !isDoctorFeatureEnabled(feature)) return [];
+    if (!item.children) return [item];
+    const children = filterUnavailableFeatures(item.children);
+    return children.length === 0 ? [] : [{ ...item, children }];
+  });
 }

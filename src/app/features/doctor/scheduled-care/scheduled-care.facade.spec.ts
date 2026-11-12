@@ -310,6 +310,24 @@ describe('ScheduledCareFacade', () => {
     expect(facade.projectionInvalidationEpoch()).toBe(before + 1);
   });
 
+  it('refreshes the calendar when a patient accepts a follow-up proposal (G-1 D4)', () => {
+    facade.loadHome();
+    api.getDoctorHomeSummary.mockClear();
+    const before = facade.projectionInvalidationEpoch();
+
+    events.next({
+      eventId: 'event-accept',
+      eventType: 'APPOINTMENT_CONFIRMED',
+      resourceType: 'APPOINTMENT',
+      resourceId: 'appointment-9',
+      version: 1,
+      occurredAt: '2026-11-11T09:00:00Z',
+    });
+
+    expect(api.getDoctorHomeSummary).toHaveBeenCalledOnce();
+    expect(facade.projectionInvalidationEpoch()).toBe(before + 1);
+  });
+
   it('resyncs bounded visible state on reconnect', () => {
     facade.loadHome();
     api.getDoctorHomeSummary.mockClear();

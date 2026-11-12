@@ -14,12 +14,15 @@ import {
 } from '@fullcalendar/angular';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
+import { FormsModule } from '@angular/forms';
+import { NzSegmentedModule, type NzSegmentedOption } from 'ng-zorro-antd/segmented';
+import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+
 import { OcButton } from '../../../shared/ui/button/oc-button';
+import { OcPageHeader } from '../../../shared/ui/page-header/oc-page-header';
 import {
-  OcSegmentedControl,
-  type OcSegmentOption,
-} from '../../../shared/ui/segmented-control/oc-segmented-control';
-import {
+  type CalendarAppointmentPresentationMetadata,
   type CalendarPresentationInput,
   type CalendarPresentationMetadata,
   type CalendarViewAction,
@@ -36,7 +39,16 @@ const VIEW_BY_MODE = {
 
 @Component({
   selector: 'app-calendar-view',
-  imports: [FullCalendarModule, NzIconModule, OcButton, OcSegmentedControl],
+  imports: [
+    FormsModule,
+    FullCalendarModule,
+    NzIconModule,
+    NzSegmentedModule,
+    NzTagModule,
+    NzTooltipModule,
+    OcButton,
+    OcPageHeader,
+  ],
   templateUrl: './calendar-view.html',
   styleUrls: [
     './calendar-page.static-demo.scss',
@@ -54,7 +66,7 @@ export class CalendarView {
   readonly presentation = input.required<CalendarPresentationInput>();
   readonly action = output<CalendarViewAction>();
 
-  readonly viewOptions: readonly OcSegmentOption[] = [
+  readonly viewOptions: NzSegmentedOption[] = [
     { value: 'day', label: 'Jour' },
     { value: 'week', label: 'Semaine' },
     { value: 'month', label: 'Mois' },
@@ -92,8 +104,20 @@ export class CalendarView {
     return info.event.extendedProps as CalendarPresentationMetadata;
   }
 
+  appointmentMeta(info: EventDisplayInfo): CalendarAppointmentPresentationMetadata {
+    return info.event.extendedProps as CalendarAppointmentPresentationMetadata;
+  }
+
   isAppointment(info: EventDisplayInfo): boolean {
     return this.metadata(info).kind === 'appointment';
+  }
+
+  isSelectedAppointment(info: EventDisplayInfo): boolean {
+    const metadata = this.metadata(info);
+    return (
+      metadata.kind === 'appointment' &&
+      metadata.appointmentId === this.model().selectedAppointmentId
+    );
   }
 
   isState(info: EventDisplayInfo): boolean {
@@ -133,6 +157,14 @@ export class CalendarView {
   appointmentAccessibleLabel(info: EventDisplayInfo): string {
     const metadata = this.metadata(info);
     if (metadata.kind !== 'appointment') return '';
-    return `${this.eventTimeRange(info)}, ${metadata.patientLabel}, ${this.appointmentSecondaryLabel(info)}`;
+    return [
+      this.eventTimeRange(info),
+      metadata.patientLabel,
+      metadata.unclosed ? 'Consultation non clôturée' : metadata.statusLabel,
+      metadata.typeLabel ?? '',
+      this.isSelectedAppointment(info) ? 'Sélectionné' : '',
+    ]
+      .filter(Boolean)
+      .join(', ');
   }
 }

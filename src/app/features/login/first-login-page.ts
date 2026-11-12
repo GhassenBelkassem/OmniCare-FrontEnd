@@ -1,18 +1,12 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { RUNTIME_CONFIG } from '../../core/config/runtime-config';
-import { ApiErrorBody, DashboardRole } from '../../core/auth/auth.models';
+import { DashboardRole } from '../../core/auth/auth.models';
+import { normalizeHttpError } from '../../core/http/app-http-error';
 import { OcButton } from '../../shared/ui';
-
-interface InvitationValidation {
-  readonly email: string;
-  readonly role: DashboardRole;
-  readonly expiresAt: string;
-}
+import { InvitationApiService, InvitationValidation } from './invitation-api.service';
 
 /**
  * The backend provisions invitations for every professional role, not just a
@@ -71,9 +65,8 @@ const INVITATION_ROLE_LABELS: Readonly<Record<DashboardRole, string>> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FirstLoginPage {
-  private readonly http = inject(HttpClient);
+  private readonly invitations = inject(InvitationApiService);
   private readonly route = inject(ActivatedRoute);
-  private readonly config = inject(RUNTIME_CONFIG);
   private readonly destroyRef = inject(DestroyRef);
   private readonly token = this.route.snapshot.queryParamMap.get('token') ?? '';
   readonly loading = signal(true);
@@ -92,11 +85,11 @@ export class FirstLoginPage {
       this.errorMessage.set('The invitation link is incomplete.');
       return;
     }
-    this.http.post<InvitationValidation>(`${this.config.apiBaseUrl}/auth/invitations/validate`, { token: this.token })
+    this.invitations.validate(this.token)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (details) => { this.invitation.set(details); this.loading.set(false); },
-        error: (error: HttpErrorResponse) => { this.errorMessage.set(readMessage(error)); this.loading.set(false); },
+        error: (error: unknown) => { this.errorMessage.set(invitationErrorMessage(error)); this.loading.set(false); },
       });
   }
 
@@ -110,15 +103,21 @@ export class FirstLoginPage {
     if (password !== confirmation) { this.errorMessage.set('The passwords do not match.'); return; }
     this.submitting.set(true);
     this.errorMessage.set(null);
-    this.http.post<void>(`${this.config.apiBaseUrl}/auth/invitations/accept`, { token: this.token, newPassword: password })
+    this.invitations.accept(this.token, password)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => { this.completed.set(true); this.submitting.set(false); },
-        error: (error: HttpErrorResponse) => { this.errorMessage.set(readMessage(error)); this.submitting.set(false); },
+        error: (error: unknown) => { this.errorMessage.set(invitationErrorMessage(error)); this.submitting.set(false); },
       });
   }
 }
 
-function readMessage(error: HttpErrorResponse): string {
-  return (error.error as ApiErrorBody | null)?.message ?? 'The invitation could not be processed.';
+function invitationErrorMessage(error: unknown): string {
+  const failure = normalizeHttpError(error);
+  if (failure.status === 410) return 'This invitation has expired. Ask your platform administrator for a new one.';
+  if (failure.status === 429) {
+    const wait = failure.retryAfterSeconds === null ? '' : ` Try again in ${failure.retryAfterSeconds} seconds.`;
+    return `Too many invitation attempts.${wait}`;
+  }
+  return failure.message || 'The invitation could not be processed.';
 }

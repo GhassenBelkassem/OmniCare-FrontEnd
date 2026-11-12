@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "include": [
+    "src/test-setup.ts",
+    "src/polyfills/global.ts",
+    "src/app/app.routes.spec.ts",
+    "src/app/development.routes.production.spec.ts",
+    "src/app/shared/ui/button/oc-button.spec.ts",
+    "src/app/shared/ui/status-badge/oc-status-badge.spec.ts",
+    "src/app/shared/ui/confirm-dialog/oc-confirm-dialog.spec.ts",
+    "src/app/shared/ui/dialog/oc-dialog.spec.ts",
+    "src/app/shared/ui/sheet/oc-sheet.spec.ts",
+    "src/app/shared/ui/page-header/oc-page-header.spec.ts"
+  ]
+}

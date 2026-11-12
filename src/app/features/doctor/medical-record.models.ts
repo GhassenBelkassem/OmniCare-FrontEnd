@@ -17,7 +17,9 @@ export interface DoctorMedicalRecordWorkspace {
   };
   readonly access: {
     readonly state: 'ACTIVE';
-    readonly expiresAt: string;
+    /** EXTERNAL_OWNER (custody, no expiry) or OMNICARE_GRANTED (patient grant). */
+    readonly mode?: 'EXTERNAL_OWNER' | 'OMNICARE_GRANTED' | null;
+    readonly expiresAt: string | null;
     readonly sections: Readonly<Record<MedicalRecordSection, MedicalRecordSectionState>>;
   };
   readonly essentialInformation: EssentialInformation | null;
@@ -32,7 +34,11 @@ export interface DoctorMedicalRecordWorkspace {
 export interface EssentialInformation {
   readonly bloodType: string | null;
   readonly allergies: readonly string[];
+  /** The antécédent items. */
   readonly criticalConditions: readonly string[];
+  /** UNKNOWN « Non renseigné » · NONE_KNOWN « Aucune connue » · LIST = the items. */
+  readonly allergiesStatus?: 'UNKNOWN' | 'NONE_KNOWN' | 'LIST' | null;
+  readonly conditionsStatus?: 'UNKNOWN' | 'NONE_KNOWN' | 'LIST' | null;
 }
 
 export interface CurrentMedication {

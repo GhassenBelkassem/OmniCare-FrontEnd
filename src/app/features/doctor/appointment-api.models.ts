@@ -2,13 +2,18 @@ export type DayOfWeekDto =
   'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 export type AvailabilityExceptionTypeDto = 'BLOCK' | 'EXTRA';
 export type AppointmentStatusDto =
+  | 'PROPOSED'
   | 'CONFIRMED'
   | 'IN_PROGRESS'
   | 'CANCELLED'
   | 'COMPLETED'
-  | 'NO_SHOW'
-  | string;
-export type AppointmentSourceDto = 'WEB' | 'MOBILE' | 'QR' | 'URGENT' | string;
+  | 'NO_SHOW';
+export type AppointmentSourceDto =
+  | 'PATIENT_BOOKED'
+  | 'DOCTOR_FOLLOWUP'
+  | 'DOCTOR_BOOKING_REQUEST'
+  | 'SECRETARY_BOOKED'
+  | 'PRACTICE_PATIENT';
 
 export interface AvailabilityRuleDto {
   readonly id?: string;
@@ -53,6 +58,8 @@ export interface AppointmentDto {
   readonly startedAt: string | null;
   readonly completedAt: string | null;
   readonly createdAt: string;
+  /** Optimistic version, sent back as `expectedVersion` on `POST /appointments/{id}/cancel` (G-1 P3b). */
+  readonly version: number;
 }
 
 export interface DoctorStatsDto {
@@ -88,6 +95,7 @@ export interface UrgentAvailabilityToggleDto {
 
 export type UrgentVisitPreferenceDto = 'HOME_VISIT' | 'CABINET_VISIT' | 'EITHER';
 export type UrgentOfferStatusDto = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+export type UrgentRequestStatusDto = 'PENDING' | 'MATCHED' | 'ARRIVED' | 'CANCELLED' | 'EXPIRED';
 
 export interface UrgentOfferDto {
   readonly offerId: string;
@@ -101,7 +109,7 @@ export interface UrgentOfferDto {
   readonly patientLongitude: number;
   readonly visitPreference: UrgentVisitPreferenceDto | null;
   readonly notes: string | null;
-  readonly requestStatus: string;
+  readonly requestStatus: UrgentRequestStatusDto;
 }
 
 export type P2NotificationType =
