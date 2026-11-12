@@ -30,8 +30,10 @@ import {
   SaveDocumentTemplateDraftRequest,
   detectionWarningLabel,
   formatFileSize,
+  isGraphicFieldType,
   missingRequiredFieldLabels,
 } from './document-template-api.models';
+import { documentTemplateErrorMessage } from './document-template-errors';
 
 export interface TemplateWizardResult {
   readonly id: string;
@@ -428,7 +430,24 @@ export class DocumentTemplateEditorWizard {
     return field.confidence === null ? null : Math.round(field.confidence * 100);
   }
 
+  /** QR code and signature zones hold no typed text: no font, alignment or format settings. */
+  isGraphic(field: Pick<EditorField, 'fieldType'>): boolean {
+    return isGraphicFieldType(field.fieldType);
+  }
+
+  graphicDescription(field: Pick<EditorField, 'fieldType'>): string | null {
+    if (field.fieldType === 'QR_CODE') {
+      return 'Le QR code de vérification est ajouté automatiquement à la signature du document.';
+    }
+    if (field.fieldType === 'SIGNATURE_AREA') {
+      return 'Zone laissée libre pour votre signature et votre cachet. Rien n’y est imprimé.';
+    }
+    return null;
+  }
+
   fieldKind(field: EditorField): string {
+    if (field.fieldType === 'QR_CODE') return 'qr';
+    if (field.fieldType === 'SIGNATURE_AREA') return 'signature';
     if (field.fieldType === 'DATE') return 'date';
     if (field.valueSource === 'AUTOMATIC') return 'verification';
     if (field.fieldKey.startsWith('patient')) return 'patient';
@@ -460,15 +479,21 @@ export class DocumentTemplateEditorWizard {
                   isDefault: activated.isDefault,
                 });
               },
-              error: () =>
+              error: (error: unknown) =>
                 this.saveError.set(
-                  'Le modèle est enregistré en brouillon mais n’a pas pu être activé. Vérifiez les champs obligatoires.',
+                  `Le modèle est enregistré en brouillon mais n’a pas pu être activé. ${documentTemplateErrorMessage(
+                    error,
+                    'Vérifiez les champs obligatoires.',
+                  )}`,
                 ),
             });
         },
-        error: () =>
+        error: (error: unknown) =>
           this.saveError.set(
-            'Impossible d’enregistrer le modèle. Vérifiez votre connexion puis réessayez.',
+            documentTemplateErrorMessage(
+              error,
+              'Impossible d’enregistrer le modèle. Vérifiez votre connexion puis réessayez.',
+            ),
           ),
       });
   }
@@ -558,9 +583,12 @@ export class DocumentTemplateEditorWizard {
           this.loadPageImage(template);
           this.step.set(4);
         },
-        error: () =>
+        error: (error: unknown) =>
           this.saveError.set(
-            'Le PDF n’a pas pu être importé. Vérifiez qu’il s’agit bien d’un PDF valide de moins de 10 Mo.',
+            documentTemplateErrorMessage(
+              error,
+              'Le PDF n’a pas pu être importé. Vérifiez qu’il s’agit bien d’un PDF valide de moins de 10 Mo.',
+            ),
           ),
       });
   }
@@ -588,9 +616,12 @@ export class DocumentTemplateEditorWizard {
           this.step.set(5);
           this.loadPreview(saved);
         },
-        error: () =>
+        error: (error: unknown) =>
           this.saveError.set(
-            'Les champs n’ont pas pu être enregistrés. Vérifiez les positions puis réessayez.',
+            documentTemplateErrorMessage(
+              error,
+              'Les champs n’ont pas pu être enregistrés. Vérifiez les positions puis réessayez.',
+            ),
           ),
       });
   }
@@ -615,7 +646,10 @@ export class DocumentTemplateEditorWizard {
           this.previewObjectUrl = URL.createObjectURL(blob);
           this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.previewObjectUrl));
         },
-        error: () => this.previewError.set('L’aperçu du document n’a pas pu être généré.'),
+        error: (error: unknown) =>
+          this.previewError.set(
+            documentTemplateErrorMessage(error, 'L’aperçu du document n’a pas pu être généré.'),
+          ),
       });
   }
 

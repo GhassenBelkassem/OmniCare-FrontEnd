@@ -54,6 +54,15 @@ function applicationShellRoute(additionalRoutes: Routes = []): Routes[number] {
         loadChildren: () =>
           import('./features/clinic/clinic.routes').then((routes) => routes.CLINIC_ROUTES),
       },
+      {
+        // G-1 D5: public verification of a signed document (QR code). No login, no guard.
+        path: 'verifier/:ref',
+        loadComponent: () =>
+          import('./features/verification/artifact-verification-page').then(
+            (component) => component.ArtifactVerificationPage,
+          ),
+        title: 'Vérification d’un document OmniCare',
+      },
       ...additionalRoutes,
       { path: '', pathMatch: 'full', redirectTo: landingRedirect },
       { path: '**', redirectTo: 'login' },

@@ -225,6 +225,13 @@ export function documentCards(
   });
 }
 
+/** G-1 D5: shown with the download when the chosen template could not be used. */
+export const TEMPLATE_FALLBACK_NOTICE = 'Document généré sur le modèle standard.';
+
+export function templateFallbackNotice(document: RecordConsultationDocument): string | null {
+  return document.templateFallback === true && document.downloadable ? TEMPLATE_FALLBACK_NOTICE : null;
+}
+
 /** IMC from cm and kg, one decimal; null without both. */
 export function bodyMassIndex(heightCm: number | null, weightKg: number | null): string | null {
   if (!heightCm || !weightKg) return null;

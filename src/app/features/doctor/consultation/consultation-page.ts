@@ -12,6 +12,7 @@ import type { UnsavedChangesAware } from '../unsaved-changes.guard';
 import { ConsultationFinishFlow } from './consultation-finish.flow';
 import { ConsultationSectionDirective } from './consultation-section.directive';
 import { ConsultationSessionStore } from './consultation-session.store';
+import { SickLeaveTemplatePicker } from './sick-leave-template-picker';
 import { ConsultationUi } from './consultation-ui';
 import { consultationErrorMessage } from './model/consultation-errors';
 import {
@@ -89,7 +90,7 @@ const FOLLOW_UPS = [
   templateUrl: './consultation-page.html',
   styleUrls: ['./sections/consultation-sections.scss', './consultation-page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [ConsultationSessionStore, ConsultationFinishFlow, ConsultationUi],
+  providers: [ConsultationSessionStore, ConsultationFinishFlow, ConsultationUi, SickLeaveTemplatePicker],
   host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
 })
 export class ConsultationPage implements UnsavedChangesAware {

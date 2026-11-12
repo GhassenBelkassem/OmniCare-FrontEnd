@@ -25,6 +25,7 @@ import {
   currentConsultationLine,
   diagnosisStatusLabel,
   documentCards,
+  templateFallbackNotice,
   followUpLabel,
   medicationTags,
   orderCategoryLabel,
@@ -220,6 +221,11 @@ import {
               />
             }
           </div>
+          @for (card of docCards(data); track card.document.id) {
+            @if (fallbackNotice(card.document); as notice) {
+              <p class="r-state" data-testid="template-fallback-notice">{{ card.title }} : {{ notice }}</p>
+            }
+          }
         </div>
       }
 
@@ -426,6 +432,10 @@ export class RecordHistoryTab {
 
   followUp(detail: RecordConsultationDetail): string {
     return followUpLabel(detail.followUp);
+  }
+
+  fallbackNotice(document: RecordConsultationDocument): string | null {
+    return templateFallbackNotice(document);
   }
 
   docCards(detail: RecordConsultationDetail): readonly DocumentCard[] {

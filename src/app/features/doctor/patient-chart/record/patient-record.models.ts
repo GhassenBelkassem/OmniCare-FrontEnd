@@ -61,6 +61,8 @@ export interface RecordConsultationDocument {
   readonly startDate: string | null;
   readonly endDate: string | null;
   readonly downloadable: boolean;
+  /** G-1 D5: the doctor chose a template, but the document was printed on the standard layout. */
+  readonly templateFallback?: boolean;
 }
 
 /** `GET /consultations/{cid}`. An in-progress consultation carries its status only. */

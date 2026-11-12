@@ -91,3 +91,41 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Graphic zones (D5): no typed text, a distinct look in the editor. */
+.editor-field--qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-style: solid;
+  border-color: var(--oc-color-text-secondary);
+  background: color-mix(in srgb, var(--oc-color-text-secondary) 6%, var(--oc-color-surface-card));
+}
+
+.editor-field > span.editor-field__qr {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--oc-color-border-default);
+  border-radius: 3px;
+  background: var(--oc-color-surface-card);
+  color: var(--oc-color-text-primary);
+  font-size: 18px;
+}
+
+.editor-field--signature {
+  place-items: center;
+  border: 1px dashed var(--oc-color-text-secondary);
+  background: transparent;
+}
+
+.editor-field > span.editor-field__signature {
+  color: var(--oc-color-text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}

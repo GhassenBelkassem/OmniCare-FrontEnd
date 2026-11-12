@@ -1,6 +1,6 @@
 /** Test-only fakes for the consultation page (imported by specs only). */
 import { signal } from '@angular/core';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { ActiveConsultationApiService } from '../../active-consultation-api.service';
@@ -22,6 +22,8 @@ import { MedicalRecordStore } from '../../medical-record.store';
 import { PatientChartApiService } from '../../patient-chart/patient-chart-api.service';
 import type { PatientChartDto } from '../../patient-chart/patient-chart-api.models';
 import { PrescriptionApiService } from '../../prescription-api.service';
+import { DocumentTemplateApiService } from '../../documents/document-template-api.service';
+import type { DocumentTemplate } from '../../documents/document-template-api.models';
 import type { PrescriptionResponse } from '../../prescription.models';
 
 export const CONSULTATION_ID = '1b7c8d96-0000-4000-8000-000000000001';
@@ -123,6 +125,8 @@ export interface Fakes {
   readonly orders: { list: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; finalize: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn> };
   readonly artifacts: { list: ReturnType<typeof vi.fn>; createCertificate: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; finalize: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn> };
   readonly appointments: { getAppointment: ReturnType<typeof vi.fn> };
+  /** The doctor's document templates (G-1 D5 sick-leave « Modèle » picker). */
+  readonly templates: { list: ReturnType<typeof vi.fn> };
   readonly medicalRecord: {
     workspace: ReturnType<typeof signal<DoctorMedicalRecordWorkspace | null>>;
     failure: ReturnType<typeof signal<string | null>>;
@@ -147,6 +151,8 @@ export interface FakeOptions {
   readonly orders?: readonly ClinicalOrder[];
   readonly artifacts?: readonly ArtifactResponse[];
   readonly workspace?: DoctorMedicalRecordWorkspace | null;
+  /** `'error'` makes the template list fail. Defaults to no template. */
+  readonly templates?: readonly DocumentTemplate[] | 'error';
 }
 
 /** A free follow-up slot, two days after the harness's « today » (Thursday 13 Nov 2026, 10:20 in Tunis). */
@@ -235,6 +241,11 @@ export function createFakes(options: FakeOptions = {}): Fakes {
       discard: logged('artifact.discard', () => of(undefined)),
     },
     appointments: { getAppointment: vi.fn(() => of({ startTime: '2026-11-10T09:00:00Z' })) },
+    templates: {
+      list: vi.fn(() => options.templates === 'error'
+        ? throwError(() => new Error('templates unavailable'))
+        : of(options.templates ?? [])),
+    },
     medicalRecord: {
       workspace: signal(options.workspace === undefined ? workspace() : options.workspace),
       failure: signal(null),
@@ -288,6 +299,7 @@ export function fakeProviders(fakes: Fakes) {
     { provide: PrescriptionApiService, useValue: fakes.prescriptions },
     { provide: ClinicalOrderApiService, useValue: fakes.orders },
     { provide: ArtifactApiService, useValue: fakes.artifacts },
+    { provide: DocumentTemplateApiService, useValue: fakes.templates },
     { provide: AppointmentApiService, useValue: fakes.appointments },
     { provide: MedicalRecordStore, useValue: fakes.medicalRecord },
     { provide: ActiveConsultationStore, useValue: fakes.active },
@@ -296,4 +308,17 @@ export function fakeProviders(fakes: Fakes) {
     // The booking drawer's practice-patient path is never used in follow-up mode.
     { provide: PracticePatientApiService, useValue: {} },
   ];
+}
+
+/** A doctor's sick-leave template (G-1 D5). */
+export function sickLeaveTemplate(patch: Partial<DocumentTemplate> = {}): DocumentTemplate {
+  return {
+    id: 'template-1', name: 'Arrêt maladie — Cabinet', type: 'SICK_LEAVE', status: 'ACTIVE', isDefault: false,
+    currentVersionNumber: 1, revision: 1, createdAt: '2026-11-01T08:00:00Z', updatedAt: '2026-11-01T08:00:00Z',
+    currentVersion: {
+      id: 'version-1', versionNumber: 1, originalFilename: 'arret.pdf', sizeBytes: 1000, pageCount: 1,
+      sha256: 'a'.repeat(64), createdAt: '2026-11-01T08:00:00Z',
+    },
+    fields: [], warnings: [], unresolvedKeys: [], ...patch,
+  };
 }

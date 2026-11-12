@@ -10,6 +10,7 @@ import { ArtifactApiService } from '../artifact-api.service';
 import { ClinicalOrderApiService } from '../clinical-order-api.service';
 import { PrescriptionApiService } from '../prescription-api.service';
 import { ConsultationSessionStore } from './consultation-session.store';
+import { SickLeaveTemplatePicker } from './sick-leave-template-picker';
 import {
   CONFLICT_MESSAGE,
   consultationErrorMessage,
@@ -38,6 +39,10 @@ export interface ChecklistItem {
 export const FINISH_POLL_TIMEOUT_MS = 120_000;
 const POLLED_CODES = new Set(['FINISH_IN_PROGRESS', 'MRS_CONTEXT_PENDING', 'FINISH_RECONCILIATION_REQUIRED']);
 const CERTIFICATES: readonly CertificateType[] = ['SICK_LEAVE_CERTIFICATE', 'MEDICAL_CERTIFICATE'];
+/** The chosen sick-leave template was deactivated or deleted meanwhile (G-1 D5). */
+const TEMPLATE_CODES = new Set(['TEMPLATE_NOT_FOUND', 'INVALID_TEMPLATE_STATE']);
+/** G-1 D5: a text the document cannot print (Arabic letters, a text longer than its template zone); nothing was signed. */
+const PRINT_CODES: ReadonlySet<string> = new Set(['UNPRINTABLE_TEXT', 'TEMPLATE_TEXT_OVERFLOW']);
 
 const PHASE_LABELS: Readonly<Record<FinishPhase, string>> = {
   idle: 'Terminer la consultation',
@@ -64,6 +69,7 @@ export class ConsultationFinishFlow {
   private readonly prescriptionApi = inject(PrescriptionApiService);
   private readonly orderApi = inject(ClinicalOrderApiService);
   private readonly artifactApi = inject(ArtifactApiService);
+  private readonly templates = inject(SickLeaveTemplatePicker);
   private readonly keys = new Map<string, string>();
   private destroyed = false;
   private wakeUp: (() => void) | null = null;
@@ -305,8 +311,9 @@ export class ConsultationFinishFlow {
     if (drafts.length === 0) return;
     this.phase.set('signing-documents');
     for (const { type, server } of drafts) {
-      const operation = `artifact:${server!.artifactId}:${server!.artifactVersion}`;
-      const signed = await firstValueFrom(this.artifactApi.finalize(id, server!, this.key(operation)));
+      const templateId = this.templates.templateIdFor(type);
+      const operation = `artifact:${server!.artifactId}:${server!.artifactVersion}:${templateId ?? 'standard'}`;
+      const signed = await firstValueFrom(this.artifactApi.finalize(id, server!, this.key(operation), templateId));
       this.keys.delete(operation);
       this.session.setCertificateServer(type, signed);
     }
@@ -328,6 +335,15 @@ export class ConsultationFinishFlow {
       return;
     }
     this.phase.set('idle');
+    if (error.code !== null && TEMPLATE_CODES.has(error.code)) {
+      this.error.set(consultationErrorMessage(error.code));
+      this.templates.reload();
+      return;
+    }
+    if (error.code !== null && PRINT_CODES.has(error.code)) {
+      this.error.set(consultationErrorMessage(error.code));
+      return;
+    }
     if (error.code === 'CONSULTATION_NOT_READY_TO_FINISH') {
       try {
         if (await this.readinessOk(this.session.requireId())) this.error.set(consultationErrorMessage(error));

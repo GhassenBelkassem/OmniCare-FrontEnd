@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ConsultationFinishFlow, FINISH_POLL_TIMEOUT_MS } from './consultation-finish.flow';
 import { ConsultationSessionStore } from './consultation-session.store';
+import { SickLeaveTemplatePicker } from './sick-leave-template-picker';
 import {
   COMPLETE_NOTE,
   CONSULTATION_ID,
@@ -27,7 +28,7 @@ async function setup(options: FakeOptions = {}): Promise<{ flow: ConsultationFin
     artifacts: [certificate()],
     ...options,
   });
-  TestBed.configureTestingModule({ providers: [...fakeProviders(fakes), ConsultationSessionStore, ConsultationFinishFlow] });
+  TestBed.configureTestingModule({ providers: [...fakeProviders(fakes), ConsultationSessionStore, ConsultationFinishFlow, SickLeaveTemplatePicker] });
   const session = TestBed.inject(ConsultationSessionStore);
   const flow = TestBed.inject(ConsultationFinishFlow);
   await session.load(CONSULTATION_ID);

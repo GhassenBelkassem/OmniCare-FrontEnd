@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 import { OcDateField } from '../../../../shared/ui';
+import { ConsultationFinishFlow } from '../consultation-finish.flow';
 import { ConsultationSessionStore } from '../consultation-session.store';
+import { SickLeaveTemplatePicker } from '../sick-leave-template-picker';
 import { ConsultationSectionDirective } from '../consultation-section.directive';
 import { ConsultationUi, DISCARD_MESSAGE } from '../consultation-ui';
 import { addDays, sickLeaveDays, type CertificateType } from '../model/consultation-form';
@@ -18,7 +21,7 @@ const DOCUMENTS: readonly { readonly type: CertificateType; readonly label: stri
 /** Section 7 (optional): sick leave and medical certificate, each revealed by its toggle. */
 @Component({
   selector: 'app-documents-section',
-  imports: [ConsultationSectionDirective, FormsModule, NzInputModule, NzSwitchModule, OcDateField],
+  imports: [ConsultationSectionDirective, FormsModule, NzInputModule, NzSelectModule, NzSwitchModule, OcDateField],
   template: `
     <section class="c-card" id="consultation-documents" appConsultationSection="documents" aria-labelledby="documents-title">
       <header class="c-card__header">
@@ -44,6 +47,23 @@ const DOCUMENTS: readonly { readonly type: CertificateType; readonly label: stri
               <div class="c-subcard">
                 @if (signed(document.type)) {
                   <p class="c-helper">Document signé.</p>
+                }
+                @if (document.type === 'SICK_LEAVE_CERTIFICATE' && templates.visible() && !signed(document.type)) {
+                  <div class="c-field c-template">
+                    <label class="c-field__label" for="sick-leave-template">Modèle</label>
+                    <nz-select
+                      nzId="sick-leave-template"
+                      nzPlaceHolder="Choisir un modèle"
+                      [ngModel]="templates.selectedId()"
+                      [nzDisabled]="flow.busy()"
+                      (ngModelChange)="templates.select($event)"
+                    >
+                      @for (option of templates.options(); track option.id) {
+                        <nz-option [nzValue]="option.id" [nzLabel]="option.label" />
+                      }
+                    </nz-select>
+                    <p class="c-field__hint">L’arrêt de travail sera imprimé sur ce modèle à la signature.</p>
+                  </div>
                 }
                 @if (document.type === 'SICK_LEAVE_CERTIFICATE') {
                   <div class="c-grid">
@@ -108,13 +128,21 @@ const DOCUMENTS: readonly { readonly type: CertificateType; readonly label: stri
     .c-document { display: grid; gap: var(--oc-space-3); }
     .c-toggle { display: inline-flex; align-items: center; gap: var(--oc-space-3); color: var(--oc-color-text-primary); font-weight: var(--oc-font-weight-semibold); cursor: pointer; }
     .c-duration-value { margin: 0; padding-block: 5px; color: var(--oc-color-text-primary); }
+    .c-template { max-width: 28rem; }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DocumentsSection {
   readonly session = inject(ConsultationSessionStore);
   readonly ui = inject(ConsultationUi);
+  readonly flow = inject(ConsultationFinishFlow);
+  /** G-1 D5: hidden when the doctor has no active sick-leave template or the list failed. */
+  readonly templates = inject(SickLeaveTemplatePicker);
   readonly number = input.required<number>();
+
+  constructor() {
+    this.templates.ensureLoaded();
+  }
 
   readonly documents = DOCUMENTS;
   get maxStatement(): number { return TEXT_LIMITS.statement; }

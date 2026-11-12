@@ -9,6 +9,7 @@ import {
   medicationState,
   medicationTags,
   periodLabel,
+  templateFallbackNotice,
   tunisToday,
   untilLabel,
 } from './record-format';
@@ -80,6 +81,14 @@ describe('record format', () => {
     expect(new Set(cards.map((card) => card.title)).size).toBe(cards.length);
     expect(documentCards([{ id: '1', type: 'PRESCRIPTION', startDate: null, endDate: null, downloadable: true }], { date: null, medicationCount: 1 })[0].subtitle)
       .toBe('1 médicament');
+  });
+
+  it('announces a document printed on the standard layout instead of the chosen template (G-1 D5)', () => {
+    const sickLeave = { id: '2', type: 'SICK_LEAVE_CERTIFICATE', startDate: '2026-11-11', endDate: '2026-11-12', downloadable: true };
+    expect(templateFallbackNotice({ ...sickLeave, templateFallback: true })).toBe('Document généré sur le modèle standard.');
+    expect(templateFallbackNotice(sickLeave)).toBeNull();
+    expect(templateFallbackNotice({ ...sickLeave, templateFallback: false })).toBeNull();
+    expect(templateFallbackNotice({ ...sickLeave, templateFallback: true, downloadable: false })).toBeNull();
   });
 
   it('writes the current consultation line: « Aujourd’hui · commencée à HH:mm » (Tunis time)', () => {

@@ -1,7 +1,7 @@
 export type DocumentTemplateStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE';
 export type DocumentFieldAlignment = 'LEFT' | 'CENTER' | 'RIGHT';
 export type DocumentFieldValueSource = 'MANUAL' | 'CALCULATED' | 'AUTOMATIC';
-export type DocumentFieldType = 'TEXT' | 'DATE' | 'NUMBER';
+export type DocumentFieldType = 'TEXT' | 'DATE' | 'NUMBER' | 'QR_CODE' | 'SIGNATURE_AREA';
 export type DocumentFieldDetectionSource = 'ACROFORM' | 'TEXT' | 'MANUAL';
 
 export interface DocumentTemplateVersion {
@@ -99,6 +99,14 @@ export interface DocumentTemplatePreviewRequest {
 }
 
 export const DOCUMENT_TEMPLATE_TYPE_LABEL = 'Arrêt maladie';
+
+/**
+ * Zones that hold no typed text: the verification QR code (drawn at signature) and the space left
+ * for the handwritten signature / stamp. They have no font, alignment or format settings.
+ */
+export function isGraphicFieldType(fieldType: DocumentFieldType): boolean {
+  return fieldType === 'QR_CODE' || fieldType === 'SIGNATURE_AREA';
+}
 
 export const DOCUMENT_TEMPLATE_STATUS_LABELS: Readonly<Record<DocumentTemplateStatus, string>> = {
   ACTIVE: 'Actif',
