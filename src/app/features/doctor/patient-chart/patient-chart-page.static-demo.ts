@@ -5,13 +5,13 @@ import { type Observable, of, throwError } from 'rxjs';
 import type { DemoPatientRecord } from '../patients/patient-directory-demo.fixtures';
 import { PatientDirectoryDemoStore } from '../patients/patient-directory-demo.store';
 import type {
-  PatientChartConsultationsDto,
   PatientChartDocumentsDto,
   PatientChartDto,
   PatientChartHistoryDto,
   PatientChartMedicalSummaryDto,
 } from './patient-chart-api.models';
 import { PatientChartApiService } from './patient-chart-api.service';
+import type { RecordConsultationPage, RecordMedicationList } from './record/patient-record.models';
 import { PatientChartPage as ProductionPatientChartPage } from './patient-chart-page';
 
 /**
@@ -79,12 +79,16 @@ export class DemoPatientChartApi {
     });
   }
 
-  getConsultations(patientId: string): Observable<PatientChartConsultationsDto> {
+  getConsultationPage(patientId: string): Observable<RecordConsultationPage> {
     const patient = this.store.find(patientId);
     const items = patient?.lastConsultation
-      ? [{ id: `${patient.id}-last`, date: patient.lastConsultation, status: 'COMPLETED' }]
+      ? [{ id: `${patient.id}-last`, date: patient.lastConsultation, status: 'COMPLETED', doctor: null }]
       : [];
-    return of({ view: 'ADMINISTRATIVE', items });
+    return of({ view: 'ADMINISTRATIVE', items, nextCursor: null, total: items.length });
+  }
+
+  getMedications(_patientId: string, state: 'current' | 'past'): Observable<RecordMedicationList> {
+    return of({ state, activeCount: 0, items: [] });
   }
 
   getDocuments(): Observable<PatientChartDocumentsDto> {

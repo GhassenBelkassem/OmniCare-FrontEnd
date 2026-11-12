@@ -31,24 +31,24 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--oc-space-4);
-  align-items: start;
+  align-items: center;
   padding: var(--oc-space-6);
-  border: 1px solid var(--oc-color-border-default);
-  border-radius: var(--oc-radius-lg);
+  border: 1px solid var(--oc-hairline);
+  border-radius: var(--oc-radius-card);
   background: var(--oc-surface);
-  box-shadow: var(--oc-shadow-sm);
+  box-shadow: var(--oc-shadow-soft);
 }
 
 .chart-header__avatar {
   display: inline-grid;
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   place-items: center;
   border-radius: 50%;
-  background: var(--oc-primary-tint);
-  color: var(--oc-primary-dark);
-  font-size: var(--oc-text-h3-size);
-  font-weight: 700;
+  background: var(--oc-info-care-tint);
+  color: var(--oc-info-care-icon);
+  font-size: 20px;
+  font-weight: var(--oc-font-weight-heavy);
 }
 
 .chart-header__identity {
@@ -56,17 +56,18 @@
 
   h1 {
     margin: 0;
-    color: var(--oc-text-strong);
-    font-size: var(--oc-text-h1-size);
-    font-weight: var(--oc-text-h1-weight);
-    line-height: var(--oc-text-h1-line-height);
+    color: var(--oc-ink);
+    font-size: 26px;
+    font-weight: var(--oc-font-weight-heavy);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
     overflow-wrap: anywhere;
   }
 }
 
 .chart-header__meta {
   margin: var(--oc-space-1) 0 0;
-  color: var(--oc-text-muted);
+  color: var(--oc-ink-secondary);
   font-size: var(--oc-text-body-size);
 }
 
@@ -74,7 +75,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--oc-space-2);
-  margin-block-start: var(--oc-space-3);
+  margin-block-start: var(--oc-space-2);
 }
 
 .chart-header__note {
@@ -98,30 +99,6 @@
   grid-column: 1 / -1;
 }
 
-.chart-tag {
-  margin: 0;
-  border-radius: var(--oc-radius-pill);
-  font-weight: 600;
-}
-
-.chart-tag--neutral {
-  border-color: var(--oc-border);
-  background: var(--oc-grey-50);
-  color: var(--oc-text);
-}
-
-.chart-tag--primary {
-  border-color: transparent;
-  background: var(--oc-primary-tint);
-  color: var(--oc-primary-dark);
-}
-
-.chart-tag--amber {
-  border-color: transparent;
-  background: var(--oc-amber-tint);
-  color: var(--oc-amber-dark);
-}
-
 .chart-link-button {
   padding: 0;
   border: 0;
@@ -135,6 +112,13 @@
     color: var(--oc-text-muted);
     cursor: progress;
   }
+}
+
+.patient-chart__practical {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--oc-space-4);
+  align-items: start;
 }
 
 .patient-chart__panel {
@@ -236,6 +220,10 @@
 }
 
 @media (max-width: 1199px) {
+  .patient-chart__practical {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .chart-grid {
     grid-template-columns: minmax(0, 1fr);
   }

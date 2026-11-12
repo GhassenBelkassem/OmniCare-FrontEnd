@@ -48,18 +48,6 @@ export class AppointmentApiService {
     return this.http.get<AppointmentDto>(`${this.baseUrl}/${id}`);
   }
 
-  cancelAppointment(id: string): Observable<AppointmentDto> {
-    return this.http.patch<AppointmentDto>(`${this.baseUrl}/${id}/cancel`, {});
-  }
-
-  startAppointment(id: string): Observable<AppointmentDto> {
-    return this.http.patch<AppointmentDto>(`${this.baseUrl}/${id}/start`, {});
-  }
-
-  completeAppointment(id: string): Observable<AppointmentDto> {
-    return this.http.patch<AppointmentDto>(`${this.baseUrl}/${id}/complete`, {});
-  }
-
   todayStats(): Observable<DoctorStatsDto> {
     return this.http.get<DoctorStatsDto>(`${this.baseUrl}/stats/today`);
   }

@@ -6,6 +6,8 @@ export interface AppHttpError {
   readonly title: string | null;
   readonly message: string;
   readonly fieldErrors: Readonly<Record<string, string>>;
+  /** Stable code per field path (G-1 P2a contract), e.g. `{ "clinicalRecord.chiefComplaint": "TOO_LONG" }`. */
+  readonly fieldErrorCodes: Readonly<Record<string, string>>;
   readonly retryAfterSeconds: number | null;
   readonly requestId: string | null;
   readonly ambiguousMutationOutcome: boolean;
@@ -37,6 +39,7 @@ export function normalizeHttpError(error: unknown): AppHttpError {
       title: null,
       message: error instanceof Error && error.message ? error.message : SAFE_DEFAULT_MESSAGES[0],
       fieldErrors: {},
+      fieldErrorCodes: {},
       retryAfterSeconds: null,
       requestId: null,
       ambiguousMutationOutcome: error instanceof Error && error.name === 'TimeoutError',
@@ -56,6 +59,7 @@ export function normalizeHttpError(error: unknown): AppHttpError {
     title: boundedString(body['title']),
     message,
     fieldErrors: safeFieldErrors(body['fieldErrors']),
+    fieldErrorCodes: safeFieldErrorCodes(body['fieldErrorCodes']),
     retryAfterSeconds: retryAfterSeconds(error.headers),
     requestId: requestId(error.headers.get('X-Request-Id')) ?? requestId(body['requestId']),
     ambiguousMutationOutcome: status === 0 || status === 408 || status === 504,
@@ -86,6 +90,14 @@ function safeFieldErrors(value: unknown): Readonly<Record<string, string>> {
   if (!isRecord(value)) return {};
   const entries = Object.entries(value)
     .filter(([field, message]) => field.length <= 100 && typeof message === 'string' && message.length <= 500)
+    .slice(0, 50) as [string, string][];
+  return Object.fromEntries(entries);
+}
+
+function safeFieldErrorCodes(value: unknown): Readonly<Record<string, string>> {
+  if (!isRecord(value)) return {};
+  const entries = Object.entries(value)
+    .filter(([field, code]) => field.length <= 100 && typeof code === 'string' && /^[A-Z_]{1,40}$/.test(code))
     .slice(0, 50) as [string, string][];
   return Object.fromEntries(entries);
 }

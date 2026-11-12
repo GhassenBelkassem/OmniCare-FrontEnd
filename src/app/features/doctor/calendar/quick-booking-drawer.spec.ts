@@ -13,7 +13,8 @@ import type {
 } from '../practice-patient-api.models';
 import { PracticePatientApiService } from '../practice-patient-api.service';
 import { PracticeLocationApiService } from '../settings/practice-location-api.service';
-import { QuickBookingDrawer } from './quick-booking-drawer';
+import { ActiveConsultationApiService } from '../active-consultation-api.service';
+import { FOLLOW_UP_HORIZON_DAYS, QuickBookingDrawer } from './quick-booking-drawer';
 
 const location = {
   id: 'cabinet-1',
@@ -420,6 +421,28 @@ describe('QuickBookingDrawer medical record readiness', () => {
     expect(patientsApi.reconcileMrsPatient).toHaveBeenCalledWith(patient.id, expect.any(String));
     expect(patientsApi.getPatient).toHaveBeenCalledWith(patient.id);
     expect(drawer.selectedPatientRecordState()).toBe('PREPARING');
+  });
+});
+
+describe('QuickBookingDrawer horizon (G-1 D4)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    TestBed.resetTestingModule();
+  });
+
+  it('« Nouveau rendez-vous » keeps its 21-day horizon; only follow-ups reach 90 days', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T08:00:00Z'));
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: PracticePatientApiService, useValue: {} },
+        { provide: PracticeLocationApiService, useValue: { list: vi.fn(() => of([])) } },
+        { provide: ActiveConsultationApiService, useValue: {} },
+      ],
+    });
+    const drawer = TestBed.runInInjectionContext(() => new QuickBookingDrawer());
+    expect(drawer.maximumDate()).toBe('2026-12-01');
+    expect(FOLLOW_UP_HORIZON_DAYS).toBe(90);
   });
 });
 

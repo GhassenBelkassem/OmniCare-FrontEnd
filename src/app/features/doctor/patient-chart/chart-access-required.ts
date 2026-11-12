@@ -21,29 +21,30 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
       gap: var(--oc-space-3);
       align-items: flex-start;
       padding: var(--oc-space-4);
-      border: 1px dashed var(--oc-border);
-      border-radius: var(--oc-radius-md);
-      background: var(--oc-grey-50);
+      border: 1px solid var(--oc-hairline);
+      border-radius: var(--oc-radius-tile);
+      background: var(--oc-tile);
     }
     .chart-access-required__icon {
       display: inline-grid;
-      flex: 0 0 32px;
-      width: 32px;
-      height: 32px;
+      flex: 0 0 40px;
+      width: 40px;
+      height: 40px;
       place-items: center;
-      border-radius: var(--oc-radius-md);
-      background: var(--oc-surface);
-      color: var(--oc-text-muted);
+      border-radius: var(--oc-radius-icon);
+      background: var(--oc-info-allergy-tint);
+      color: var(--oc-info-allergy-icon);
+      font-size: 18px;
     }
     p { margin: 0; }
     .chart-access-required__title {
-      color: var(--oc-text-strong);
-      font-weight: 600;
-      font-size: var(--oc-text-body-size);
+      color: var(--oc-ink);
+      font-weight: var(--oc-font-weight-strong);
+      font-size: 15px;
     }
     .chart-access-required__text {
       margin-block-start: 2px;
-      color: var(--oc-text-muted);
+      color: var(--oc-ink-secondary);
       font-size: var(--oc-text-small-size);
       line-height: var(--oc-text-small-line-height);
     }

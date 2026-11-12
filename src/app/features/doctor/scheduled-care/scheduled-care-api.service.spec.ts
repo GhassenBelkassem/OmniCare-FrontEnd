@@ -193,7 +193,8 @@ describe('ScheduledCareApiService', () => {
 
   it('uses controlled reasons and versions for decline and cancellation', () => {
     api.declineBookingRequest('request-1', 2, 'SCHEDULE_CONFLICT', 'decline-key').subscribe();
-    api.cancelAppointment('appointment-1', 3, 'DOCTOR_UNAVAILABLE', 'cancel-key').subscribe();
+    let cancelled: { version: number | null; status: string; availableActions: readonly string[] } | null = null;
+    api.cancelAppointment('appointment-1', 3, 'DOCTOR_UNAVAILABLE', 'cancel-key').subscribe((value) => (cancelled = value));
     const decline = http.expectOne('/api/v1/doctor/booking-requests/request-1/decline');
     const cancel = http.expectOne('/api/v1/appointments/appointment-1/cancel');
     expect(decline.request.body).toEqual({ expectedVersion: 2, reasonCode: 'SCHEDULE_CONFLICT' });
@@ -201,7 +202,14 @@ describe('ScheduledCareApiService', () => {
     expect(cancel.request.body).toEqual({ expectedVersion: 3, reasonCode: 'DOCTOR_UNAVAILABLE' });
     expect(cancel.request.headers.get('Idempotency-Key')).toBe('cancel-key');
     decline.flush({});
-    cancel.flush({});
+    // G-1 P3b: an appointment that did not come from a booking request answers with the GET shape.
+    cancel.flush({
+      id: 'appointment-1', doctorId: 'doctor-1', patientId: null, patientName: 'Marwa Mechergui',
+      startTime: '2026-11-12T08:00:00Z', endTime: '2026-11-12T08:30:00Z', status: 'CANCELLED',
+      source: 'PRACTICE_PATIENT', notes: null, quotedPriceTnd: null, startedAt: null, completedAt: null,
+      createdAt: '2026-11-01T08:00:00Z', subjectType: 'PRACTICE_PATIENT', practicePatientId: 'chart-1', version: 4,
+    });
+    expect(cancelled).toEqual(expect.objectContaining({ status: 'CANCELLED', version: 4, availableActions: [] }));
   });
 
   it('requests authoritative cabinet-scoped availability', () => {

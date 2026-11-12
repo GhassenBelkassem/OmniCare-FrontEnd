@@ -327,7 +327,15 @@ export class ScheduledCareFacade {
     const key = this.idempotencyKey(identity);
     this.beginCommand();
     this.api
-      .cancelAppointment(appointment.appointmentId, appointment.version, reasonCode, key)
+      .cancelAppointment(
+        appointment.appointmentId,
+        appointment.version,
+        reasonCode,
+        key,
+        this.activeAppointmentOverview?.appointmentId === appointment.appointmentId
+          ? this.activeAppointmentOverview
+          : null,
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {

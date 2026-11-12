@@ -2,6 +2,7 @@ export type DayOfWeekDto =
   'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 export type AvailabilityExceptionTypeDto = 'BLOCK' | 'EXTRA';
 export type AppointmentStatusDto =
+  | 'PROPOSED'
   | 'CONFIRMED'
   | 'IN_PROGRESS'
   | 'CANCELLED'
@@ -57,6 +58,8 @@ export interface AppointmentDto {
   readonly startedAt: string | null;
   readonly completedAt: string | null;
   readonly createdAt: string;
+  /** Optimistic version, sent back as `expectedVersion` on `POST /appointments/{id}/cancel` (G-1 P3b). */
+  readonly version: number;
 }
 
 export interface DoctorStatsDto {

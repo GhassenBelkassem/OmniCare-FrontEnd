@@ -23,6 +23,11 @@ export class ClinicalOrderApiService {
     return this.http.post<ClinicalOrder>(`${this.base(consultationId)}/${order.clinicalOrderId}/finalize`,
       { expectedClinicalOrderVersion: order.clinicalOrderVersion, category: order.category, definition: order.definition }, { headers: this.headers(key) });
   }
+  /** Discards a DRAFT order (204). A finalized order is refused (409). */
+  discard(consultationId: string, orderId: string, expectedClinicalOrderVersion: number, key: string): Observable<void> {
+    return this.http.delete<void>(`${this.base(consultationId)}/${encodeURIComponent(orderId)}`,
+      { params: { expectedClinicalOrderVersion }, headers: this.headers(key) });
+  }
   private base(id: string): string { return `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(id)}/clinical-orders`; }
   private headers(key: string): HttpHeaders { return new HttpHeaders({ 'Idempotency-Key': key }); }
 }

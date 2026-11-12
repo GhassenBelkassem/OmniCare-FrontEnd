@@ -47,19 +47,15 @@
               <p class="chart-header__meta">{{ metaLine() }}</p>
             }
             <div class="chart-header__tags">
-              @if (chart.patientType === 'EXTERNAL') {
-                <nz-tag class="chart-tag chart-tag--neutral" data-testid="type-tag">Patient externe</nz-tag>
-              } @else {
-                <nz-tag class="chart-tag chart-tag--primary" data-testid="type-tag">Patient OmniCare</nz-tag>
-              }
+              <oc-tag tone="care" data-testid="type-tag">{{ chart.patientType === 'EXTERNAL' ? 'Patient externe' : 'Patient OmniCare' }}</oc-tag>
               @if (grantLabel(); as label) {
-                <nz-tag class="chart-tag chart-tag--primary" data-testid="grant-tag">{{ label }}</nz-tag>
+                <oc-tag tone="care" data-testid="grant-tag">{{ label }}</oc-tag>
               }
               @if (chart.medicalRecord.status === 'PREPARING') {
-                <nz-tag class="chart-tag chart-tag--amber">Dossier médical en préparation</nz-tag>
+                <oc-tag tone="allergy">Dossier médical en préparation</oc-tag>
               }
               @if (chart.access.verificationUnavailable) {
-                <nz-tag class="chart-tag chart-tag--amber">Vérification de l’accès momentanément indisponible</nz-tag>
+                <oc-tag tone="allergy">Vérification de l’accès momentanément indisponible</oc-tag>
               }
             </div>
             @if (chart.medicalRecord.status === 'PREPARING' && chart.access.editable) {
@@ -74,6 +70,19 @@
             }
           </div>
           <div class="chart-header__actions" role="group" aria-label="Actions de la fiche">
+            @if (canUpload()) {
+              <span [nz-tooltip]="uploadDisabledReason()">
+                <oc-button
+                  variant="outline"
+                  leadingIcon="upload"
+                  [disabled]="uploadDisabledReason() !== null"
+                  data-testid="upload-action"
+                  (click)="uploadOpen.set(true)"
+                >
+                  Ajouter un document
+                </oc-button>
+              </span>
+            }
             <span [nz-tooltip]="scheduleDisabledReason()">
               <oc-button
                 [variant]="chart.startableAppointment ? 'secondary' : 'primary'"
@@ -102,156 +111,34 @@
           }
         </header>
 
-        <oc-tabs
-          class="patient-chart__tabs"
-          label="Sections de la fiche patient"
-          [tabs]="tabs()"
-          [selected]="activeTab()"
-          (selectedChange)="selectTab($event)"
+        @if (accessBanner(); as request) {
+          <app-access-request-panel
+            class="patient-chart__access"
+            [consultationId]="request.consultationId"
+            [state]="request"
+            [revoked]="accessRevoked()"
+            (stateChange)="onAccessRequestChange($event)"
+          />
+        }
+
+        <!-- Practical patient information (patient page only, never in the consultation drawer). -->
+        <div class="patient-chart__practical">
+          <app-chart-contact-card [chart]="chart" (updated)="onContactUpdated($event)" (reloadRequested)="refresh()" />
+          <app-chart-next-appointment-card [chart]="chart" (schedule)="openSchedule()" />
+        </div>
+
+        <app-patient-record-view
+          class="patient-chart__record"
+          [chart]="chart"
+          [showHeader]="false"
+          [initialTab]="activeTab()"
+          [documentsRevision]="documentsRevision()"
+          (tabChange)="selectTab($event)"
         />
 
-        <div class="patient-chart__panel" role="tabpanel" [attr.aria-label]="activeTab()">
-          @switch (activeTab()) {
-            @case ('summary') {
-              <div class="chart-grid" data-testid="summary-grid">
-                <div class="chart-grid__column">
-                  <app-chart-medical-summary-card
-                    [patientId]="chart.id"
-                    [access]="chart.access"
-                    [recordStatus]="chart.medicalRecord.status"
-                  />
-                  <oc-section-card title="Coordonnées" icon="solution">
-                    <dl class="contact-list">
-                      <div>
-                        <dt><oc-icon name="user" />Sexe</dt>
-                        <dd>{{ sex(chart.identity.sex) }}</dd>
-                      </div>
-                      <div>
-                        <dt><oc-icon name="calendar" />{{ chart.identity.dateOfBirth ? 'Date de naissance' : 'Âge' }}</dt>
-                        <dd>
-                          @if (chart.identity.dateOfBirth) {
-                            {{ shortDate(chart.identity.dateOfBirth) }}
-                          } @else if (chart.identity.ageYears !== null) {
-                            Environ {{ chart.identity.ageYears }} ans
-                          } @else {
-                            <span class="chart-muted">Non renseigné</span>
-                          }
-                        </dd>
-                      </div>
-                      <div>
-                        <dt><oc-icon name="phone" />Téléphone</dt>
-                        <dd>
-                          @if (chart.identity.phone) {
-                            <a [href]="'tel:' + chart.identity.phone">{{ chart.identity.phone }}</a>
-                          } @else {
-                            <span class="chart-muted">Non renseigné</span>
-                          }
-                        </dd>
-                      </div>
-                      <div>
-                        <dt><oc-icon name="mail" />Email</dt>
-                        <dd>
-                          @if (chart.identity.email) {
-                            <a [href]="'mailto:' + chart.identity.email">{{ chart.identity.email }}</a>
-                          } @else {
-                            <span class="chart-muted">Non renseigné</span>
-                          }
-                        </dd>
-                      </div>
-                      <div>
-                        <dt><oc-icon name="location" />Adresse</dt>
-                        <dd>
-                          @if (chart.identity.address) {
-                            {{ chart.identity.address }}
-                          } @else {
-                            <span class="chart-muted">Non renseignée</span>
-                          }
-                        </dd>
-                      </div>
-                      @if (chart.patientType === 'EXTERNAL') {
-                        <div>
-                          <dt><oc-icon name="file" />Identifiant de pratique</dt>
-                          <dd>
-                            @if (chart.identity.practiceIdentifier) {
-                              {{ chart.identity.practiceIdentifier }}
-                            } @else {
-                              <span class="chart-muted">Non renseigné</span>
-                            }
-                          </dd>
-                        </div>
-                      }
-                    </dl>
-                  </oc-section-card>
-                </div>
-                <div class="chart-grid__column">
-                  <oc-section-card title="Prochain rendez-vous" icon="calendar">
-                    @if (chart.nextAppointment; as next) {
-                      <div class="chart-fact" data-testid="next-appointment">
-                        <div>
-                          <p class="chart-fact__value">{{ dateTime(next.startTime) }}</p>
-                          <p class="chart-muted">Consultation au cabinet</p>
-                        </div>
-                        <oc-status-tag [status]="next.status" />
-                      </div>
-                    } @else {
-                      <div class="chart-compact-empty" data-testid="next-appointment-empty">
-                        <p>Aucun rendez-vous à venir.</p>
-                        @if (chart.schedulable) {
-                          <oc-button size="small" leadingIcon="calendar" (click)="openSchedule()">
-                            Planifier un rendez-vous
-                          </oc-button>
-                        }
-                      </div>
-                    }
-                  </oc-section-card>
-                  <oc-section-card title="Dernière consultation" icon="medicine-box">
-                    @if (chart.lastConsultation; as last) {
-                      <div class="chart-fact">
-                        <div>
-                          <p class="chart-fact__value">{{ longDate(last.date) }}</p>
-                          <p class="chart-muted">{{ consultationStatus(last.status) }}</p>
-                        </div>
-                        <oc-button size="small" variant="ghost" trailingIcon="right" (click)="selectTab('consultations')">
-                          Voir
-                        </oc-button>
-                      </div>
-                    } @else {
-                      <div class="chart-compact-empty">
-                        <p>Aucune consultation pour le moment.</p>
-                      </div>
-                    }
-                  </oc-section-card>
-                  <app-chart-documents-tab
-                    [patientId]="chart.id"
-                    [access]="chart.access"
-                    [recordStatus]="chart.medicalRecord.status"
-                    [compact]="true"
-                    (showAll)="selectTab('documents')"
-                  />
-                </div>
-              </div>
-            }
-            @case ('consultations') {
-              <app-chart-consultations-tab
-                [patientId]="chart.id"
-                [access]="chart.access"
-                [schedulable]="chart.schedulable"
-                (schedule)="openSchedule()"
-              />
-            }
-            @case ('documents') {
-              <app-chart-documents-tab
-                [patientId]="chart.id"
-                [access]="chart.access"
-                [recordStatus]="chart.medicalRecord.status"
-                (uploaded)="refresh()"
-              />
-            }
-            @case ('history') {
-              <app-chart-history-tab [patientId]="chart.id" [access]="chart.access" (openTab)="selectTab($event)" />
-            }
-          }
-        </div>
+        @if (canUpload()) {
+          <app-chart-document-upload [patientId]="chart.id" [(open)]="uploadOpen" (uploaded)="onDocumentUploaded()" />
+        }
 
         @if (chart.schedulable) {
           <app-quick-booking-drawer

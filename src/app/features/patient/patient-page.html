@@ -470,7 +470,7 @@
                 </div>
                 <div class="appointment-actions">
                   @if (item.status === 'CONFIRMED') {
-                    <oc-button variant="destructive" (click)="cancelAppointment(item.id)"
+                    <oc-button variant="destructive" [loading]="cancellingId() === item.id" (click)="cancelAppointment(item)"
                       >Annuler</oc-button
                     >
                   }

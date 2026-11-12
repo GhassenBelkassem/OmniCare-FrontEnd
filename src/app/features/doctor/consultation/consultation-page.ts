@@ -1,399 +1,327 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSegmentedModule } from 'ng-zorro-antd/segmented';
+import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
 
-import { OcButton, OcSheet, type OcStatus, type OcTab } from '../../../shared/ui';
-import { ActiveConsultationStore } from '../active-consultation.store';
+import { OcButton, OcConfirmDialog, OcEmptyState } from '../../../shared/ui';
+import type { UnsavedChangesAware } from '../unsaved-changes.guard';
+import { ConsultationFinishFlow } from './consultation-finish.flow';
+import { ConsultationSectionDirective } from './consultation-section.directive';
+import { ConsultationSessionStore } from './consultation-session.store';
+import { ConsultationUi } from './consultation-ui';
+import { consultationErrorMessage } from './model/consultation-errors';
 import {
-  canReadMedicalContext,
-  isExternalOwner,
-  type ActiveConsultation,
-  type ConsultationStatus,
-} from '../active-consultation.models';
-import { ArtifactStore } from '../artifact.store';
-import { ClinicalOrderStore } from '../clinical-order.store';
-import { ClinicalRecordStore } from '../clinical-record.store';
-import { ConsultationFinishStore } from '../consultation-finish.store';
-import { MedicalRecordStore } from '../medical-record.store';
-import { PrescriptionStore } from '../prescription.store';
-import { UrgentCabinetClinicalStore } from '../urgent-cabinet-clinical.store';
-import { ageLabel, patientInitials, sexLabel } from '../patient-chart/patient-chart-format';
-import { UnsavedChangesAware } from '../unsaved-changes.guard';
-import { ClinicalAuthoring, type ClinicalQuickAction } from './clinical-authoring';
-import { ClinicalOrders } from './clinical-orders';
-import { ConsultationWorkspaceView } from './consultation-workspace-view';
-import type {
-  ConsultationIdentityBadge,
-  ConsultationWorkspaceAction,
-  ConsultationWorkspaceSection,
-  ConsultationWorkspaceViewModel,
-} from './consultation-workspace-view.models';
-import { DoctorMedicalWorkspace } from './doctor-medical-workspace';
-import { OfficialArtifacts } from './official-artifacts';
-import { PrescriptionAuthoring } from './prescription-authoring';
+  NOTE_PATHS,
+  addDays,
+  todayInTunis,
+  type DiagnosisStatus,
+  type FollowUpChoice,
+  type NoteForm,
+} from './model/consultation-form';
+import { TEXT_LIMITS, charCount } from './model/consultation-rules';
+import { ConsultationHeader } from './sections/consultation-header';
+import { DocumentsSection } from './sections/documents-section';
+import { FinishCard } from './sections/finish-card';
+import { MedicalContextCard } from './sections/medical-context-card';
+import { MedicalSummarySection } from './sections/medical-summary-section';
+import { OrdersSection } from './sections/orders-section';
+import { PatientRecordDrawer } from './record/patient-record-drawer';
+import { TreatmentSection } from './sections/treatment-section';
+import { ActiveConsultationApiService } from '../active-consultation-api.service';
+import type { ConsultationFollowUpOutcome } from '../active-consultation.models';
+import { QuickBookingDrawer, type FollowUpBookingContext, type FollowUpSlotChoice } from '../calendar/quick-booking-drawer';
+import {
+  followUpDateKey,
+  followUpOutcomeLine,
+  followUpSlotLabel,
+  followUpSlotSaveError,
+  followUpSlotTakenMessage,
+} from './model/follow-up';
+
+/** While « Terminer » has not scheduled the follow-up yet: re-read every 2 s, 15 times at most. */
+const FOLLOW_UP_POLL_MS = 2_000;
+const FOLLOW_UP_POLL_TRIES = 15;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+const DIAGNOSIS_STATUSES = [
+  { label: 'Provisoire', value: 'PROVISIONAL' },
+  { label: 'Confirmé', value: 'CONFIRMED' },
+];
+
+const FOLLOW_UPS = [
+  { label: 'Aucun suivi', value: 'NO_FOLLOW_UP' },
+  { label: 'Si besoin', value: 'FOLLOW_UP_AS_NEEDED' },
+  { label: 'Contrôle à une date', value: 'FOLLOW_UP_IN_PERIOD' },
+];
+
+/**
+ * The consultation, on one page: numbered section cards that appear with the doctor's
+ * decisions, autosaved per resource, and « Terminer » in the right column.
+ */
 @Component({
   selector: 'app-consultation-page',
   imports: [
+    FormsModule,
+    RouterLink,
+    NzAlertModule,
+    NzInputModule,
+    NzSegmentedModule,
+    NzSkeletonModule,
     OcButton,
-    OcSheet,
-    ConsultationWorkspaceView,
-    ClinicalAuthoring,
-    ClinicalOrders,
-    DoctorMedicalWorkspace,
-    OfficialArtifacts,
-    PrescriptionAuthoring,
+    OcConfirmDialog,
+    OcEmptyState,
+    ConsultationHeader,
+    ConsultationSectionDirective,
+    DocumentsSection,
+    FinishCard,
+    MedicalContextCard,
+    MedicalSummarySection,
+    OrdersSection,
+    PatientRecordDrawer,
+    QuickBookingDrawer,
+    TreatmentSection,
   ],
   templateUrl: './consultation-page.html',
-  styleUrl: './consultation-page.scss',
+  styleUrls: ['./sections/consultation-sections.scss', './consultation-page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [ConsultationFinishStore],
-  host: { '(document:keydown)': 'onDocumentKeydown($event)' },
+  providers: [ConsultationSessionStore, ConsultationFinishFlow, ConsultationUi],
+  host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
 })
 export class ConsultationPage implements UnsavedChangesAware {
-  private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  readonly activeConsultation = inject(ActiveConsultationStore);
-  readonly clinical = inject(ClinicalRecordStore);
-  readonly prescription = inject(PrescriptionStore);
-  readonly orders = inject(ClinicalOrderStore);
-  readonly artifacts = inject(ArtifactStore);
-  readonly finish = inject(ConsultationFinishStore);
-  readonly medicalRecord = inject(MedicalRecordStore);
-  readonly urgentCabinet = inject(UrgentCabinetClinicalStore);
+  readonly session = inject(ConsultationSessionStore);
+  readonly flow = inject(ConsultationFinishFlow);
+  readonly ui = inject(ConsultationUi);
+  private readonly consultationsApi = inject(ActiveConsultationApiService);
+  private readonly destroyRef = inject(DestroyRef);
+  private followUpPollTries = 0;
+  private followUpPollTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The SLOT_TAKEN drawer opens by itself once per consultation; then only on demand. */
+  private slotTakenPrompted = false;
+
+  /** G-1 D4: the booking drawer as the follow-up picker (choose) or SLOT_TAKEN rebooking (book). */
+  readonly followUpPicker = signal<FollowUpBookingContext | null>(null);
+  readonly followUpSlotSaving = signal(false);
+  readonly followUpSlotError = signal<string | null>(null);
+  readonly followUpSlot = computed(() => this.session.consultation()?.followUpSlot ?? null);
+  readonly followUpSlotText = computed(() => {
+    const slot = this.followUpSlot();
+    return slot ? followUpSlotLabel(slot.start, slot.locationName) : null;
+  });
+  readonly followUpOutcome = computed(() => this.session.consultation()?.followUp ?? null);
+  readonly followUpLine = computed(() => followUpOutcomeLine(this.followUpOutcome()));
+  readonly followUpSlotTaken = computed(() => {
+    const outcome = this.followUpOutcome();
+    return outcome?.status === 'SLOT_TAKEN' ? followUpSlotTakenMessage(outcome) : null;
+  });
+  /** Cabinet preselected in the picker: the chosen slot's, else the source appointment's. */
+  readonly followUpPickerLocationId = computed(() =>
+    this.followUpSlot()?.practiceLocationId ?? this.session.consultation()?.sourcePracticeLocationId ?? null);
 
   readonly consultationId = this.route.snapshot.paramMap.get('id') ?? '';
-  readonly canonicalRoute = UUID_PATTERN.test(this.consultationId);
-  readonly activeSection = signal<ConsultationWorkspaceSection>('note');
-  readonly mrsDrawerOpen = signal(false);
-  readonly feedback = signal<string | null>(null);
+  readonly validRoute = UUID_PATTERN.test(this.consultationId);
+  // Getters, not fields: module constants are read when rendering (see the P2b report, §7).
+  get paths(): typeof NOTE_PATHS { return NOTE_PATHS; }
+  get limits(): typeof TEXT_LIMITS { return TEXT_LIMITS; }
+  readonly diagnosisStatuses = DIAGNOSIS_STATUSES;
+  readonly followUps = FOLLOW_UPS;
 
-  /** The patient's medical context may be shown (external owner, or OmniCare grant). */
-  readonly canReadContext = computed(() => canReadMedicalContext(this.finish.consultation()));
-  /** The doctor owns this external patient's record: no access message is ever shown. */
-  readonly externalOwner = computed(() => isExternalOwner(this.finish.consultation()));
-
-  readonly urgentIntake = computed(() => {
-    const active = this.activeConsultation.active();
-    const context = this.urgentCabinet.protectedIntake();
-    return active?.consultationId === this.consultationId &&
-      active.sourceType === 'URGENT_CABINET' &&
-      context?.commitmentId === active.sourceId
-      ? context
-      : null;
+  readonly note = this.session.note;
+  readonly followUpChoice = linkedSignal<FollowUpChoice | null>(() => this.note().followUp);
+  readonly today = computed(() => todayInTunis(new Date(this.session.now())));
+  readonly followUpFar = computed(() => {
+    const date = this.note().followUpDate;
+    return this.note().followUp === 'FOLLOW_UP_IN_PERIOD' && date !== null && date > addDays(this.today(), 365);
   });
 
-  readonly workspaceTabs = computed<readonly OcTab[]>(() => [
-    { id: 'note', label: 'Note clinique', icon: 'file-text', badge: this.domainBadge('note') },
-    { id: 'vitals', label: 'Constantes', icon: 'medicine-box' },
-    {
-      id: 'prescription',
-      label: 'Prescription',
-      icon: 'medicine-box',
-      badge: this.domainBadge('prescription'),
-    },
-    {
-      id: 'orders',
-      label: 'Ordres cliniques',
-      icon: 'solution',
-      badge: this.domainBadge('orders'),
-    },
-    {
-      id: 'documents',
-      label: 'Documents',
-      icon: 'file-text',
-      badge: this.domainBadge('documents'),
-    },
-    { id: 'finalization', label: 'Finalisation', icon: 'check-circle' },
-  ]);
-
-  readonly activeSectionLabel = computed(() =>
-    this.workspaceTabs().find(({ id }) => id === this.activeSection())?.label ?? 'Consultation',
-  );
-
-  readonly hasUnsavedChanges = computed(() =>
-    this.clinical.dirty() ||
-    this.prescription.dirty() ||
-    this.orders.dirty() ||
-    this.artifacts.dirty(),
-  );
-
-  readonly viewModel = computed<ConsultationWorkspaceViewModel>(() => {
-    const consultation = this.finish.consultation();
-    const section = this.activeSection();
-    const status = consultation?.status ?? 'IN_PROGRESS';
-    const activeSave = this.activeSavePresentation(section);
-
-    const patient = consultation?.patient ?? null;
-
-    return {
-      screenReaderDescription: patient
-        ? `Consultation de ${patient.fullName}. Seules les informations auxquelles vous avez accès sont affichées.`
-        : 'Consultation en cours. Seules les informations auxquelles vous avez accès sont affichées.',
-      title: patient?.fullName ?? 'Patient',
-      initials: patient ? patientInitials(patient) : 'P',
-      identityBadges: this.identityBadges(consultation),
-      contextItems: consultation
-        ? [this.sourceLabel(consultation), `Début ${this.formatTime(consultation.startedAt)}`]
-        : ['Chargement de la consultation'],
-      status: this.consultationTone(status),
-      statusLabel: this.consultationLabel(status),
-      tabs: this.workspaceTabs(),
-      activeSection: section,
-      activeSectionLabel: this.activeSectionLabel(),
-      feedback: this.feedback(),
-      patientRecordHref: patient ? `/doctor/patient/${patient.chartId}` : null,
-      activeSaveStatus: activeSave.status,
-      activeSaveLabel: activeSave.label,
-      showSaveAction: ['note', 'prescription', 'orders', 'documents'].includes(section),
-      canSave: activeSave.canSave && status === 'IN_PROGRESS',
-      saving: activeSave.saving,
-      showPdfPreview: true,
-      canPreviewPdf: false,
-      canFinish:
-        status === 'IN_PROGRESS' &&
-        this.clinical.authoritative() !== null &&
-        !this.hasUnsavedChanges() &&
-        !this.clinical.saving() &&
-        !this.prescription.saving() &&
-        !this.prescription.finalizing() &&
-        !this.orders.saving() &&
-        this.orders.finalizingId() === null &&
-        !this.artifacts.saving() &&
-        !this.finish.submitting(),
-      finishing: this.finish.submitting(),
-      finishLabel: status === 'COMPLETED' ? 'Consultation terminée' : 'Terminer la consultation',
-    };
+  /** Section numbers follow what is shown (section 3 exists only for the custodian). */
+  readonly numbers = computed(() => {
+    const summary = this.session.summaryEditable();
+    const base = summary ? 4 : 3;
+    return { summary: 3, treatment: base, orders: base + 1, followUp: base + 2, documents: base + 3 };
   });
+
+  readonly consultationErrorText = computed(() => consultationErrorMessage(this.session.consultationError()));
 
   constructor() {
+    if (this.validRoute) void this.start();
+    // After « Terminer »: wait briefly for the follow-up outcome, and offer rebooking when the slot was taken.
     effect(() => {
-      const consultation = this.finish.consultation();
-      if (consultation && canReadMedicalContext(consultation)) {
-        this.medicalRecord.attach(consultation.consultationId);
-      } else {
-        this.medicalRecord.clear();
+      const consultation = this.session.consultation();
+      const outcome = consultation?.followUp ?? null;
+      if (consultation?.status !== 'COMPLETED') return;
+      if (outcome?.status === 'PENDING') this.scheduleFollowUpPoll();
+      if (outcome?.status === 'SLOT_TAKEN' && !this.slotTakenPrompted) {
+        this.slotTakenPrompted = true;
+        this.openFollowUpRebooking();
       }
     });
-    if (this.canonicalRoute) void this.finish.attach(this.consultationId);
+    this.destroyRef.onDestroy(() => {
+      if (this.followUpPollTimer !== null) clearTimeout(this.followUpPollTimer);
+    });
   }
 
-  handleWorkspaceAction(action: ConsultationWorkspaceAction): void {
-    switch (action.kind) {
-      case 'SET_SECTION':
-        this.activeSection.set(action.section);
-        this.feedback.set(null);
-        break;
-      case 'OPEN_MEDICAL_RECORD':
-        this.mrsDrawerOpen.set(true);
-        break;
-      case 'DISMISS_FEEDBACK':
-        this.feedback.set(null);
-        break;
-      case 'SAVE_ACTIVE':
-        void this.saveActiveDomain();
-        break;
-      case 'PREVIEW_PDF':
-        this.feedback.set('Aucun aperçu PDF global n’est disponible pour cette consultation.');
-        break;
-      case 'FINISH':
-        this.activeSection.set('finalization');
-        void this.finish.review();
-        break;
+  private async start(): Promise<void> {
+    await this.session.load(this.consultationId);
+    const consultation = this.session.consultation();
+    // FINALIZING: poll for the outcome, unless the closure already failed (nothing to wait for).
+    if (consultation?.status === 'FINALIZING' && consultation.finishState !== 'FAILED') await this.flow.pollUntilClosed(2);
+  }
+
+  update(patch: Partial<NoteForm>): void {
+    this.session.updateNote(patch);
+  }
+
+  text(event: Event): string {
+    return (event.target as HTMLInputElement | HTMLTextAreaElement).value;
+  }
+
+  count(value: string): number {
+    return charCount(value);
+  }
+
+  setDiagnosisStatus(value: string | number): void {
+    this.update({ diagnosisStatus: value as DiagnosisStatus });
+  }
+
+  setFollowUp(value: string | number): void {
+    const choice = value as FollowUpChoice;
+    this.followUpChoice.set(choice);
+    this.update({ followUp: choice, followUpDate: choice === 'FOLLOW_UP_IN_PERIOD' ? this.note().followUpDate : null });
+    // « Contrôle à une date » opens the slot picker; any other choice drops a chosen slot.
+    if (choice === 'FOLLOW_UP_IN_PERIOD') {
+      if (this.followUpSlot() === null) this.openFollowUpPicker();
+    } else if (this.followUpSlot() !== null) {
+      this.clearFollowUpSlot();
     }
   }
 
-  onDocumentKeydown(event: KeyboardEvent): void {
-    if (!(event.metaKey || event.ctrlKey) || event.altKey || event.key.toLocaleLowerCase('fr-FR') !== 's') {
-      return;
-    }
+  openFollowUpPicker(): void {
+    const consultation = this.session.consultation();
+    if (!consultation || consultation.status !== 'IN_PROGRESS' || this.followUpSlotSaving()) return;
+    this.followUpSlotError.set(null);
+    this.followUpPicker.set({ consultationId: consultation.consultationId, patientName: this.patientName(), mode: 'choose' });
+  }
+
+  openFollowUpRebooking(): void {
+    const consultation = this.session.consultation();
+    if (!consultation || consultation.followUp?.status !== 'SLOT_TAKEN') return;
+    this.followUpPicker.set({ consultationId: consultation.consultationId, patientName: this.patientName(), mode: 'book' });
+  }
+
+  closeFollowUpPicker(): void {
+    this.followUpPicker.set(null);
+  }
+
+  onFollowUpSlotChosen(choice: FollowUpSlotChoice): void {
+    const consultation = this.session.consultation();
+    if (!consultation) return;
+    this.followUpPicker.set(null);
+    this.followUpSlotSaving.set(true);
+    this.followUpSlotError.set(null);
+    this.consultationsApi
+      .saveFollowUpSlot(consultation.consultationId, {
+        start: choice.start, end: choice.end, practiceLocationId: choice.practiceLocationId,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (slot) => {
+          this.followUpSlotSaving.set(false);
+          this.session.consultation.update((current) =>
+            current ? { ...current, followUpSlot: { ...slot, locationName: slot.locationName ?? choice.locationName } } : current);
+          // The note keeps the date (MRS); the slot itself stays with the consultation (Spring).
+          this.update({ followUpDate: followUpDateKey(slot.start) });
+        },
+        error: (error: unknown) => {
+          this.followUpSlotSaving.set(false);
+          this.followUpSlotError.set(followUpSlotSaveError(error));
+        },
+      });
+  }
+
+  onFollowUpBooked(outcome: ConsultationFollowUpOutcome): void {
+    this.followUpPicker.set(null);
+    this.session.consultation.update((current) => (current ? { ...current, followUp: outcome } : current));
+  }
+
+  private clearFollowUpSlot(): void {
+    const consultation = this.session.consultation();
+    if (!consultation) return;
+    this.followUpSlotError.set(null);
+    this.consultationsApi
+      .clearFollowUpSlot(consultation.consultationId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.session.consultation.update((current) => (current ? { ...current, followUpSlot: null } : current)),
+        error: () => this.followUpSlotError.set('Le créneau du contrôle n’a pas pu être retiré. Réessayez.'),
+      });
+  }
+
+  private patientName(): string {
+    return this.session.consultation()?.patient?.fullName?.trim() || 'Patient';
+  }
+
+  private scheduleFollowUpPoll(): void {
+    if (this.followUpPollTimer !== null || this.followUpPollTries >= FOLLOW_UP_POLL_TRIES) return;
+    this.followUpPollTimer = setTimeout(() => {
+      this.followUpPollTimer = null;
+      this.followUpPollTries += 1;
+      this.consultationsApi
+        .get(this.consultationId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (fresh) => this.session.consultation.update((current) =>
+            current ? { ...current, followUp: fresh.followUp ?? null, followUpSlot: fresh.followUpSlot ?? null } : current),
+          error: () => this.scheduleFollowUpPoll(),
+        });
+    }, FOLLOW_UP_POLL_MS);
+  }
+
+  async finish(): Promise<void> {
+    const ready = await this.flow.requestFinish();
+    // A « Terminer » attempt reveals every section's errors.
+    this.ui.revealAll();
+    if (!ready && this.flow.missing().length > 0) this.ui.scrollToFirstError();
+  }
+
+  async reload(): Promise<void> {
+    const confirmed = await this.ui.confirm({
+      title: 'Recharger la consultation ?',
+      message: 'Vos modifications non enregistrées seront perdues.',
+      confirmLabel: 'Recharger',
+      destructive: true,
+    });
+    if (confirmed) await this.session.loadClinical();
+  }
+
+  async refreshStatus(): Promise<void> {
+    await this.session.loadConsultation();
+  }
+
+  retryLoad(): void {
+    void this.start();
+  }
+
+  canDeactivate(): boolean | Promise<boolean> {
+    if (this.session.consultation()?.status !== 'IN_PROGRESS' || !this.session.hasUnsavedChanges()) return true;
+    void this.session.flushAll();
+    return this.ui.confirm({
+      title: 'Quitter la consultation ?',
+      message: 'Des modifications ne sont pas encore enregistrées. Elles seront perdues si vous quittez maintenant.',
+      confirmLabel: 'Quitter',
+      destructive: true,
+    });
+  }
+
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this.session.consultation()?.status !== 'IN_PROGRESS' || !this.session.hasUnsavedChanges()) return;
+    void this.session.flushAll();
     event.preventDefault();
-    void this.saveActiveDomain();
+    event.returnValue = '';
   }
-
-  canDeactivate(): boolean {
-    if (!this.hasUnsavedChanges()) return true;
-    return globalThis.window?.confirm(
-      'Des modifications cliniques ne sont pas enregistrées. Quitter cette consultation ?',
-    ) ?? true;
-  }
-
-  back(): void {
-    void this.router.navigate(['/doctor']);
-  }
-
-  openAction(action: ClinicalQuickAction): void {
-    if (action === 'prescription') {
-      this.activeSection.set('prescription');
-    } else if (action === 'lab' || action === 'imaging' || action === 'referral') {
-      this.activeSection.set('orders');
-      this.orders.beginCreate(action === 'lab' ? 'LAB' : action === 'imaging' ? 'IMAGING' : 'REFERRAL');
-    } else {
-      this.activeSection.set('documents');
-      this.artifacts.begin(action === 'medical-certificate' ? 'MEDICAL_CERTIFICATE' : 'SICK_LEAVE_CERTIFICATE');
-    }
-    this.feedback.set(null);
-  }
-
-  readinessLabel(code: string): string {
-    const labels: Record<string, string> = {
-      CLINICAL_RECORD_MISSING: 'Enregistrez le dossier clinique.',
-      DIAGNOSIS: 'Diagnostic ou conclusion requis.',
-      MEDICATION_DECISION: 'Décision médicamenteuse requise.',
-      FOLLOW_UP_DECISION: 'Décision de suivi requise.',
-      PRESCRIPTION_NOT_FINALIZED: 'Finalisez et signez la prescription.',
-      PRESCRIPTION_CONTRADICTS_DECISION: 'La prescription contredit la décision médicamenteuse.',
-      ORDER_NOT_FINALIZED: 'Finalisez les ordres cliniques en brouillon.',
-      ARTIFACT_NOT_FINALIZED: 'Finalisez les documents officiels en brouillon.',
-    };
-    return labels[code] ?? 'Un élément doit être vérifié avant la fin.';
-  }
-
-  resolveReadiness(code: string): void {
-    if (code.startsWith('PRESCRIPTION_')) {
-      this.activeSection.set('prescription');
-    } else if (code.startsWith('ORDER_')) {
-      this.activeSection.set('orders');
-    } else if (code.startsWith('ARTIFACT_')) {
-      this.activeSection.set('documents');
-    } else {
-      this.activeSection.set('note');
-    }
-    this.feedback.set(null);
-  }
-
-  private async saveActiveDomain(): Promise<void> {
-    switch (this.activeSection()) {
-      case 'note':
-        await this.clinical.save();
-        break;
-      case 'prescription':
-        await this.prescription.save();
-        break;
-      case 'orders':
-        await this.orders.save();
-        break;
-      case 'documents':
-        await this.artifacts.save();
-        break;
-      case 'vitals':
-        this.feedback.set('La saisie canonique des constantes n’est pas disponible.');
-        break;
-      case 'finalization':
-        break;
-    }
-  }
-
-  private activeSavePresentation(section: ConsultationWorkspaceSection): {
-    readonly status: OcStatus;
-    readonly label: string;
-    readonly saving: boolean;
-    readonly canSave: boolean;
-  } {
-    if (section === 'vitals') {
-      return { status: 'blocked', label: 'Saisie indisponible', saving: false, canSave: false };
-    }
-    if (section === 'finalization') {
-      return {
-        status: this.hasUnsavedChanges() ? 'requires-attention' : 'completed',
-        label: this.hasUnsavedChanges() ? 'Brouillons à enregistrer' : 'État synchronisé',
-        saving: false,
-        canSave: false,
-      };
-    }
-
-    const domain = section === 'note'
-      ? this.clinical
-      : section === 'prescription'
-        ? this.prescription
-        : section === 'orders'
-          ? this.orders
-          : this.artifacts;
-    const saving = domain.saving();
-    const dirty = domain.dirty();
-    const failed = domain.failure() !== null || domain.conflict();
-    return {
-      status: failed ? 'requires-attention' : saving ? 'in-progress' : dirty ? 'pending' : 'completed',
-      label: failed
-        ? 'Action requise'
-        : saving
-          ? 'Enregistrement…'
-          : dirty
-            ? 'Non enregistré'
-            : 'Synchronisé',
-      saving,
-      canSave: dirty && !saving,
-    };
-  }
-
-  private domainBadge(section: 'note' | 'prescription' | 'orders' | 'documents'): string | undefined {
-    const presentation = this.activeSavePresentation(section);
-    if (presentation.status === 'requires-attention') return 'Action';
-    if (presentation.status === 'pending') return 'Modifié';
-    return undefined;
-  }
-
-  private consultationTone(status: ConsultationStatus): OcStatus {
-    if (status === 'IN_PROGRESS') return 'in-progress';
-    if (status === 'FINALIZING') return 'pending';
-    if (status === 'COMPLETED') return 'completed';
-    return 'cancelled';
-  }
-
-  private consultationLabel(status: ConsultationStatus): string {
-    if (status === 'IN_PROGRESS') return 'En cours';
-    if (status === 'FINALIZING') return 'Finalisation en cours';
-    if (status === 'COMPLETED') return 'Terminée';
-    return 'Interrompue';
-  }
-
-  /**
-   * « environ 20 ans », « Homme », « Patient externe » ; an OmniCare patient also keeps the
-   * consultation's access badge. An external owner never sees an access message.
-   */
-  private identityBadges(consultation: ActiveConsultation | null): readonly ConsultationIdentityBadge[] {
-    const patient = consultation?.patient ?? null;
-    const badges: ConsultationIdentityBadge[] = [];
-    if (patient) {
-      const age = ageLabel(patient);
-      if (age) badges.push({ label: age });
-      if (patient.sex) badges.push({ label: sexLabel(patient.sex) });
-    }
-    const external = patient ? patient.patientType === 'EXTERNAL' : isExternalOwner(consultation);
-    if (patient || consultation?.access) {
-      badges.push({ label: external ? 'Patient externe' : 'Patient OmniCare', icon: 'user', emphasis: true });
-    }
-    if (!isExternalOwner(consultation)) badges.push({ label: this.accessLabel(consultation) });
-    return badges;
-  }
-
-  private accessLabel(consultation: ActiveConsultation | null): string {
-    if (consultation === null) return 'Accès médical en vérification';
-    const labels: Record<ActiveConsultation['medicalAccessStatus'], string> = {
-      ACTIVE: 'Accès médical actif',
-      NONE: 'Aucun accès médical',
-      EXPIRED: 'Accès médical expiré',
-      REVOKED: 'Accès médical révoqué',
-      UNAVAILABLE: 'Accès médical indisponible',
-    };
-    return labels[consultation.medicalAccessStatus];
-  }
-
-  private sourceLabel(consultation: ActiveConsultation): string {
-    if (consultation.sourceType === 'SCHEDULED_APPOINTMENT') return 'Rendez-vous planifié';
-    if (consultation.sourceType === 'URGENT_CABINET') return 'Urgence au cabinet';
-    return 'Urgence à domicile';
-  }
-
-  private formatTime(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return 'non renseigné';
-    return new Intl.DateTimeFormat('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(date);
-  }
-
 }

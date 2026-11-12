@@ -65,6 +65,7 @@ interface PatientAppointment {
   readonly source: string;
   readonly notes: string;
   readonly quotedPriceTnd: number | null;
+  readonly version: number;
 }
 
 interface PatientUrgentOffer {
@@ -155,6 +156,9 @@ export class PatientPage {
   readonly directoryError = signal<string | null>(null);
   readonly appointmentsLoading = signal(false);
   readonly appointmentsError = signal<string | null>(null);
+  /** Appointment whose cancellation is in flight (button loading, no double submit). */
+  readonly cancellingId = signal<string | null>(null);
+  private cancelKey: { readonly signature: string; readonly key: string } | null = null;
   readonly profileLoading = signal(false);
   readonly profileError = signal<string | null>(null);
   readonly slotsLoading = signal(false);
@@ -626,13 +630,33 @@ export class PatientPage {
       });
   }
 
-  cancelAppointment(id: string): void {
+  cancelAppointment(item: Pick<PatientAppointment, 'id' | 'version'>): void {
+    if (this.cancellingId()) return;
+    // Same key while the same appointment/version is retried after an ambiguous failure.
+    const signature = `${item.id}:${item.version}`;
+    if (this.cancelKey?.signature !== signature) {
+      this.cancelKey = { signature, key: `patient-cancel:${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}` };
+    }
+    this.cancellingId.set(item.id);
+    this.appointmentsError.set(null);
     this.api
-      .cancelAppointment(id)
+      .cancelAppointment(item.id, item.version, this.cancelKey.key)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.loadAppointments(),
-        error: () => this.appointmentsError.set('Annulation impossible. Reessayez.'),
+        next: () => {
+          this.cancellingId.set(null);
+          this.cancelKey = null;
+          this.loadAppointments();
+        },
+        error: (error: unknown) => {
+          this.cancellingId.set(null);
+          const message = patientCancelErrorMessage(error);
+          if (message.refresh) {
+            this.cancelKey = null;
+            this.loadAppointments();
+          }
+          this.appointmentsError.set(message.text);
+        },
       });
   }
 
@@ -1152,6 +1176,7 @@ function toPatientAppointment(
     source: dto.source,
     notes: dto.notes ?? 'Consultation',
     quotedPriceTnd: dto.quotedPriceTnd ?? null,
+    version: dto.version,
   };
 }
 
@@ -1273,4 +1298,14 @@ function capitalize(value: string): string {
 
 function isPresent(value: string | null): value is string {
   return value !== null && value.length > 0;
+}
+
+/** French message for a failed cancellation; `refresh` when the list is stale and must be reloaded. */
+export function patientCancelErrorMessage(error: unknown): { readonly text: string; readonly refresh: boolean } {
+  const status = error instanceof HttpErrorResponse ? error.status : 0;
+  if (status === 409) {
+    return { text: 'Ce rendez-vous a changé ou ne peut plus être annulé. La liste a été actualisée.', refresh: true };
+  }
+  if (status === 404) return { text: 'Ce rendez-vous n’est plus disponible. La liste a été actualisée.', refresh: true };
+  return { text: 'Annulation impossible. Réessayez.', refresh: false };
 }

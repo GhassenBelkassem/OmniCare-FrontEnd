@@ -108,6 +108,7 @@ function bookedAppointment(id: string, date: string, time: string): Record<strin
     source: 'MANUAL',
     notes: 'Suivi',
     createdAt: '2026-08-01T09:00:00Z',
+    version: 2,
   };
 }
 
@@ -329,8 +330,12 @@ describe('PatientPage', () => {
     const { page, http } = create({ tab: 'appointments' });
     flushInitial(http);
 
-    page.cancelAppointment('a-1');
-    http.expectOne('/api/v1/appointments/a-1/cancel').flush({});
+    page.cancelAppointment(page.appointments().find((item) => item.id === 'a-1')!);
+    const cancel = http.expectOne('/api/v1/appointments/a-1/cancel');
+    expect(cancel.request.method).toBe('POST');
+    expect(cancel.request.body).toEqual({ expectedVersion: 2, reasonCode: null });
+    expect(cancel.request.headers.get('Idempotency-Key')).toMatch(/^patient-cancel:/);
+    cancel.flush({});
     const cancelled = {
       ...APPOINTMENTS[0],
       status: 'CANCELLED',
@@ -340,6 +345,36 @@ describe('PatientPage', () => {
       .flush([cancelled, APPOINTMENTS[1]]);
 
     expect(page.appointments().find((item) => item.id === 'a-1')?.status).toBe('CANCELLED');
+  });
+
+  it('a stale appointment (409) reloads the list with a French message', () => {
+    const { page, http } = create({ tab: 'appointments' });
+    flushInitial(http);
+
+    page.cancelAppointment(page.appointments().find((item) => item.id === 'a-1')!);
+    http.expectOne('/api/v1/appointments/a-1/cancel').flush(
+      { errorCode: 'VERSION_CONFLICT' }, { status: 409, statusText: 'Conflict' });
+    http.expectOne((request) => request.url === '/api/v1/appointments').flush(APPOINTMENTS);
+
+    expect(page.appointmentsError()).toBe('Ce rendez-vous a changé ou ne peut plus être annulé. La liste a été actualisée.');
+  });
+
+  it('retries an ambiguous failure with the same idempotency key', () => {
+    const { page, http } = create({ tab: 'appointments' });
+    flushInitial(http);
+    const item = page.appointments().find((candidate) => candidate.id === 'a-1')!;
+
+    page.cancelAppointment(item);
+    const first = http.expectOne('/api/v1/appointments/a-1/cancel');
+    const key = first.request.headers.get('Idempotency-Key');
+    first.error(new ProgressEvent('error'));
+    expect(page.appointmentsError()).toBe('Annulation impossible. Réessayez.');
+
+    page.cancelAppointment(item);
+    const second = http.expectOne('/api/v1/appointments/a-1/cancel');
+    expect(second.request.headers.get('Idempotency-Key')).toBe(key);
+    second.flush({});
+    http.expectOne((request) => request.url === '/api/v1/appointments').flush(APPOINTMENTS);
   });
 
   it('rejects an invalid location on the urgent form', () => {

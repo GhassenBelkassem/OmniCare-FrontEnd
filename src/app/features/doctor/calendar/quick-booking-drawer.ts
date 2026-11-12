@@ -54,6 +54,8 @@ import { PracticePatientApiService } from '../practice-patient-api.service';
 import type { AvailabilitySlot } from '../scheduled-care/scheduled-care.models';
 import type { PracticeLocationResponse } from '../settings/practice-location-api.models';
 import { PracticeLocationApiService } from '../settings/practice-location-api.service';
+import { ActiveConsultationApiService } from '../active-consultation-api.service';
+import type { ConsultationFollowUpOutcome } from '../active-consultation.models';
 
 /** Patients shown when the search is empty. */
 const RECENT_PATIENTS_LIMIT = 5;
@@ -61,6 +63,12 @@ const RECENT_PATIENTS_LIMIT = 5;
 const PATIENT_SEARCH_LIMIT = 20;
 const PATIENT_SEARCH_MIN_LENGTH = 2;
 const AVAILABILITY_HORIZON_DAYS = 21;
+/**
+ * G-1 D4: follow-ups reach further (« contrôle dans 6 semaines »). The server bounds it with its
+ * own setting (default 90 days) and clamps the request, so a lower server value only leaves
+ * the last days without slots.
+ */
+export const FOLLOW_UP_HORIZON_DAYS = 90;
 const SCHEDULING_TIMEZONE = 'Africa/Tunis';
 const READINESS_FAST_POLL_MS = 1_500;
 const READINESS_FAST_WINDOW_MS = 20_000;
@@ -93,6 +101,25 @@ interface PendingBookingCommand {
   readonly idempotencyKey: string;
 }
 
+/**
+ * G-1 D4: the drawer as the consultation's follow-up slot picker. The patient is the
+ * consultation's (fixed); slots come from the consultation's follow-up availability.
+ * `choose`: « Contrôle à une date » (hands the slot back, nothing is booked);
+ * `book`: rebooking after SLOT_TAKEN (books it with the same rules as « Terminer »).
+ */
+export interface FollowUpBookingContext {
+  readonly consultationId: string;
+  readonly patientName: string;
+  readonly mode: 'choose' | 'book';
+}
+
+export interface FollowUpSlotChoice {
+  readonly start: string;
+  readonly end: string;
+  readonly practiceLocationId: string;
+  readonly locationName: string;
+}
+
 interface PendingMrsCommand {
   readonly patientId: string;
   readonly idempotencyKey: string;
@@ -120,6 +147,7 @@ interface PendingMrsCommand {
 export class QuickBookingDrawer {
   private readonly patientsApi = inject(PracticePatientApiService);
   private readonly locationsApi = inject(PracticeLocationApiService);
+  private readonly consultationsApi = inject(ActiveConsultationApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private preselection: CalendarPreselection = { start: null, practiceLocationId: null };
@@ -140,8 +168,12 @@ export class QuickBookingDrawer {
   readonly preselectedPracticeLocationId = input<string | null>(null);
   /** Practice patient to select when the drawer opens (patient chart « Planifier »). */
   readonly preselectedPatientId = input<string | null>(null);
+  /** G-1 D4: follow-up mode (consultation slot picker or SLOT_TAKEN rebooking). */
+  readonly followUp = input<FollowUpBookingContext | null>(null);
   readonly openChange = output<boolean>();
   readonly appointmentCreated = output<PracticePatientAppointmentDto>();
+  readonly followUpSlotChosen = output<FollowUpSlotChoice>();
+  readonly followUpBooked = output<ConsultationFollowUpOutcome>();
 
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly patients = signal<readonly PracticePatientDto[]>([]);
@@ -185,6 +217,27 @@ export class QuickBookingDrawer {
   readonly outcomeUnknown = signal(false);
   readonly bookingError = signal<string | null>(null);
 
+  /** A patient is known: the selected practice patient, or the consultation's in follow-up mode. */
+  readonly hasSubject = computed(() => this.followUp() !== null || this.selectedPatient() !== null);
+  readonly subjectName = computed(() => {
+    const context = this.followUp();
+    if (context) return context.patientName;
+    const patient = this.selectedPatient();
+    return patient === null ? '' : this.patientName(patient);
+  });
+  readonly sheetTitle = computed(() => {
+    const context = this.followUp();
+    if (!context) return 'Nouveau rendez-vous';
+    return context.mode === 'choose' ? 'Créneau du contrôle' : 'Rendez-vous de contrôle';
+  });
+  readonly sheetDescription = computed(() => {
+    const context = this.followUp();
+    if (!context) return 'Planifiez un créneau confirmé sans quitter le calendrier.';
+    return context.mode === 'choose'
+      ? 'Choisissez le créneau du contrôle : il sera réservé à la fin de la consultation.'
+      : 'Le créneau choisi n’était plus libre. Choisissez-en un autre.';
+  });
+
   readonly singleLocation = computed(() =>
     this.locations().length === 1 ? (this.locations()[0] ?? null) : null,
   );
@@ -203,20 +256,24 @@ export class QuickBookingDrawer {
   // An appointment is a scheduling fact: MRS readiness is enforced at consultation start.
   readonly canSubmit = computed(
     () =>
-      this.selectedPatient() !== null &&
+      this.hasSubject() &&
       this.selectedLocation() !== null &&
       this.selectedSlot() !== null &&
       this.availabilityValidatedForBooking() &&
       !this.slotsLoading() &&
       !this.locationsLoading(),
   );
-  readonly footerActionLabel = computed(() =>
-    this.outcomeUnknown() ? 'Vérifier le résultat' : 'Confirmer le rendez-vous',
-  );
+  readonly footerActionLabel = computed(() => {
+    if (this.outcomeUnknown()) return 'Vérifier le résultat';
+    const context = this.followUp();
+    if (context?.mode === 'choose') return 'Choisir ce créneau';
+    if (context?.mode === 'book') return 'Planifier le contrôle';
+    return 'Confirmer le rendez-vous';
+  });
   /** Visible reason shown next to the primary action whenever it is disabled. */
   readonly submitBlockedReason = computed((): string | null => {
     if (this.submitting() || this.canSubmit()) return null;
-    if (this.selectedPatient() === null) return 'Sélectionnez un patient pour continuer.';
+    if (!this.hasSubject()) return 'Sélectionnez un patient pour continuer.';
     if (this.locationsLoading()) return 'Chargement de vos cabinets…';
     if (this.selectedLocation() === null) return 'Sélectionnez un cabinet actif.';
     if (this.slotsLoading()) return 'Chargement des créneaux disponibles…';
@@ -447,6 +504,11 @@ export class QuickBookingDrawer {
   }
 
   submit(): void {
+    const context = this.followUp();
+    if (context) {
+      this.submitFollowUp(context);
+      return;
+    }
     const patient = this.selectedPatient();
     const location = this.selectedLocation();
     const slot = this.selectedSlot();
@@ -536,6 +598,79 @@ export class QuickBookingDrawer {
       });
   }
 
+  private submitFollowUp(context: FollowUpBookingContext): void {
+    const location = this.selectedLocation();
+    const slot = this.selectedSlot();
+    if (location === null || slot === null || !this.availabilityValidatedForBooking() || this.submitting()) return;
+    const choice: FollowUpSlotChoice = {
+      start: slot.start,
+      end: slot.end,
+      practiceLocationId: location.id,
+      locationName: location.name,
+    };
+    if (context.mode === 'choose') {
+      this.followUpSlotChosen.emit(choice);
+      return;
+    }
+    const fingerprint = `${context.consultationId}|${location.id}|${slot.start}|${slot.end}`;
+    if (this.pendingBookingCommand?.fingerprint !== fingerprint) {
+      if (this.outcomeUnknown()) return;
+      this.pendingBookingCommand = { fingerprint, idempotencyKey: newIdempotencyKey() };
+    }
+    const command = this.pendingBookingCommand;
+    const generation = this.openGeneration;
+    this.submitting.set(true);
+    this.bookingError.set(null);
+    this.consultationsApi
+      .rebookFollowUp(context.consultationId,
+        { start: choice.start, end: choice.end, practiceLocationId: choice.practiceLocationId },
+        `follow-up:${command.idempotencyKey}`)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (outcome) => {
+          if (generation !== this.openGeneration) return;
+          this.submitting.set(false);
+          this.outcomeUnknown.set(false);
+          this.pendingBookingCommand = null;
+          this.followUpBooked.emit(outcome);
+        },
+        error: (failure: unknown) => {
+          if (generation !== this.openGeneration) return;
+          const error = normalizeHttpError(failure);
+          const ambiguous = isAmbiguousMutationOutcome(failure);
+          this.submitting.set(false);
+          this.outcomeUnknown.set(ambiguous);
+          if (ambiguous) {
+            this.bookingError.set(
+              'La réponse a été interrompue. Vérifiez le résultat : la même commande sera rejouée sans créer de doublon.',
+            );
+            return;
+          }
+          this.pendingBookingCommand = null;
+          const code = followUpErrorCode(failure);
+          if (code === 'FOLLOW_UP_SLOT_UNAVAILABLE') {
+            this.selectedSlotKey.set('');
+            this.bookingError.set('Ce créneau vient de changer. Les disponibilités ont été actualisées.');
+            this.loadSlots(false);
+            return;
+          }
+          if (error.status === 400) {
+            this.bookingError.set('Ce créneau ne peut pas être choisi pour le contrôle. Choisissez-en un autre.');
+            return;
+          }
+          if (code === 'FOLLOW_UP_ALREADY_SCHEDULED') {
+            this.bookingError.set('Le rendez-vous de contrôle est déjà planifié.');
+            return;
+          }
+          if (error.status === 409 || error.status === 404 || error.status === 403) {
+            this.bookingError.set('Ce rendez-vous de contrôle ne peut plus être planifié depuis cette consultation.');
+            return;
+          }
+          this.bookingError.set('Le rendez-vous n’a pas été créé. Réessayez dans un instant.');
+        },
+      });
+  }
+
   patientName(patient: PracticePatientDto): string {
     return `${patient.firstName} ${patient.lastName}`.trim();
   }
@@ -607,7 +742,7 @@ export class QuickBookingDrawer {
     this.dateChoice.set('today');
     this.selectedDate.set(today);
     this.otherDate.set(addDays(today, 2));
-    this.maximumDate.set(addDays(today, AVAILABILITY_HORIZON_DAYS - 1));
+    this.maximumDate.set(addDays(today, (this.followUp() ? FOLLOW_UP_HORIZON_DAYS : AVAILABILITY_HORIZON_DAYS) - 1));
     this.horizonSlots.set([]);
     this.autoSelectFirstDay = true;
     this.preselection = {
@@ -630,8 +765,12 @@ export class QuickBookingDrawer {
     this.pendingBookingCommand = null;
     this.pendingMrsCommand = null;
     this.stopReadinessPolling();
-    this.queuePatientSearch('');
     this.loadLocations();
+    if (this.followUp()) {
+      this.patientPickerExpanded.set(false);
+      return;
+    }
+    this.queuePatientSearch('');
     const preselectedPatientId = this.preselectedPatientId();
     if (preselectedPatientId) this.loadPatient(preselectedPatientId);
   }
@@ -709,7 +848,7 @@ export class QuickBookingDrawer {
             activeLocations[0];
           if (initial) {
             this.selectedLocationId.set(initial.id);
-            if (this.selectedPatient() !== null) this.loadSlots();
+            if (this.hasSubject()) this.loadSlots();
           } else {
             this.locationsError.set('Aucun cabinet actif n’est disponible.');
           }
@@ -796,14 +935,15 @@ export class QuickBookingDrawer {
 
   private loadSlots(clearBookingError = true): void {
     const patient = this.selectedPatient();
+    const context = this.followUp();
     const locationId = this.selectedLocationId();
-    if (patient === null || !locationId) {
+    if ((patient === null && context === null) || !locationId) {
       this.horizonSlots.set([]);
       this.slotsLoading.set(false);
       this.availabilityValidatedForBooking.set(false);
       return;
     }
-    const patientId = patient.id;
+    const patientId = patient?.id ?? null;
     const range = horizonRange(this.maximumDate());
     const generation = ++this.slotsGeneration;
     this.slotsLoading.set(true);
@@ -811,14 +951,16 @@ export class QuickBookingDrawer {
     this.availabilityValidatedForBooking.set(false);
     this.horizonSlots.set([]);
     if (clearBookingError) this.bookingError.set(null);
-    this.patientsApi
-      .getAppointmentAvailability(patient.id, locationId, range.from, range.to)
+    const availability = context
+      ? this.consultationsApi.followUpAvailability(context.consultationId, locationId, range.from, range.to)
+      : this.patientsApi.getAppointmentAvailability(patientId ?? '', locationId, range.from, range.to);
+    availability
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
           if (
             generation !== this.slotsGeneration ||
-            patientId !== this.selectedPatient()?.id ||
+            (context === null && patientId !== this.selectedPatient()?.id) ||
             locationId !== this.selectedLocationId()
           ) {
             return;
@@ -918,6 +1060,15 @@ function sameInstant(left: string, right: string): boolean {
   const leftTime = Date.parse(left);
   const rightTime = Date.parse(right);
   return !Number.isNaN(leftTime) && leftTime === rightTime;
+}
+
+/** Machine code of a follow-up command failure (`code` or `errorCode` in the problem body). */
+function followUpErrorCode(failure: unknown): string | null {
+  const body = (failure as { error?: unknown } | null)?.error;
+  if (!body || typeof body !== 'object') return null;
+  const record = body as Record<string, unknown>;
+  const code = record['errorCode'] ?? record['code'];
+  return typeof code === 'string' ? code : null;
 }
 
 function isDefinitiveSlotConflict(message: string): boolean {
