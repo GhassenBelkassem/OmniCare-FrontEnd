@@ -12,6 +12,8 @@ export interface PrescriptionMedication {
   readonly duration: { readonly value: number; readonly unit: 'DAY' | 'WEEK' | 'MONTH' } | null;
   readonly quantity: number | null;
   readonly instructions: string | null;
+  /** v3: true replaces the duration (« traitement au long cours »). */
+  readonly longTerm?: boolean | null;
 }
 
 export interface PrescriptionContent {

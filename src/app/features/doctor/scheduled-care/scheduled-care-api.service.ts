@@ -91,12 +91,15 @@ export class ScheduledCareApiService {
     expectedVersion: number,
     reasonCode: DoctorReasonCode,
     idempotencyKey: string,
+    overview: DoctorScheduledCareItem | null = null,
   ): Observable<Appointment> {
-    return this.http.post<Appointment>(
+    // G-1 P3b: every appointment type is cancelled here; the server answers with the same shape
+    // as GET /appointments/{id} (booking-request projection or plain appointment).
+    return this.http.post<unknown>(
       `${this.config.apiBaseUrl}/appointments/${encodeURIComponent(appointmentId)}/cancel`,
       { expectedVersion, reasonCode },
       { headers: idempotencyHeaders(idempotencyKey) },
-    );
+    ).pipe(map((response) => normalizeAppointment(response, appointmentId, overview)));
   }
 
   getAvailability(
@@ -129,6 +132,7 @@ interface LegacyAppointmentResponse {
   readonly createdAt: string;
   readonly subjectType?: string;
   readonly practicePatientId?: string | null;
+  readonly version?: number;
 }
 
 function normalizeAppointment(
@@ -148,7 +152,7 @@ function normalizeAppointment(
   return {
     appointmentId: response.id,
     sourceBookingRequestId: matchingOverview?.sourceBookingRequestId ?? null,
-    version: matchingOverview?.version ?? null,
+    version: typeof response.version === 'number' ? response.version : matchingOverview?.version ?? null,
     status: response.status,
     doctor: {
       doctorId: response.doctorId,
@@ -183,7 +187,8 @@ function normalizeAppointment(
     updatedAt: matchingOverview?.updatedAt ?? response.createdAt,
     cancellation: matchingOverview?.cancellation ?? null,
     intakeStatus: matchingOverview?.intakeStatus ?? null,
-    availableActions: matchingOverview?.availableActions ?? [],
+    // Overview actions only hold while the appointment is still in the status they were computed for.
+    availableActions: matchingOverview?.status === response.status ? matchingOverview.availableActions : [],
     practicePatient: response.practicePatientId
       ? {
           practicePatientId: response.practicePatientId,

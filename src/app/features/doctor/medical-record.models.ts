@@ -34,7 +34,11 @@ export interface DoctorMedicalRecordWorkspace {
 export interface EssentialInformation {
   readonly bloodType: string | null;
   readonly allergies: readonly string[];
+  /** The antécédent items. */
   readonly criticalConditions: readonly string[];
+  /** UNKNOWN « Non renseigné » · NONE_KNOWN « Aucune connue » · LIST = the items. */
+  readonly allergiesStatus?: 'UNKNOWN' | 'NONE_KNOWN' | 'LIST' | null;
+  readonly conditionsStatus?: 'UNKNOWN' | 'NONE_KNOWN' | 'LIST' | null;
 }
 
 export interface CurrentMedication {

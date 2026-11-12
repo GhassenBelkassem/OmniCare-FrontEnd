@@ -6,7 +6,7 @@ export type BookingRequestStatus =
   | 'CANCELLED_BY_DOCTOR'
   | 'EXPIRED';
 
-export type AppointmentStatus = 'CONFIRMED' | 'IN_PROGRESS' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
+export type AppointmentStatus = 'PROPOSED' | 'CONFIRMED' | 'IN_PROGRESS' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 
 export type ScheduledCareResourceType = 'BOOKING_REQUEST' | 'APPOINTMENT';
 

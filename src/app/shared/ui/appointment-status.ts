@@ -4,6 +4,7 @@
  */
 export type AppointmentStatusKey =
   | 'PENDING'
+  | 'PROPOSED'
   | 'CONFIRMED'
   | 'IN_PROGRESS'
   | 'COMPLETED'
@@ -38,6 +39,17 @@ export const APPOINTMENT_STATUS: Readonly<Record<AppointmentStatusKey, Appointme
   PENDING: {
     key: 'PENDING',
     label: 'En attente',
+    tone: 'amber',
+    color: 'var(--oc-amber)',
+    tint: 'var(--oc-amber-tint)',
+    text: 'var(--oc-amber-dark)',
+    muted: false,
+    struck: false,
+  },
+  /** G-1 D4: follow-up proposed to an OmniCare patient, waiting for their answer. */
+  PROPOSED: {
+    key: 'PROPOSED',
+    label: 'Proposé',
     tone: 'amber',
     color: 'var(--oc-amber)',
     tint: 'var(--oc-amber-tint)',

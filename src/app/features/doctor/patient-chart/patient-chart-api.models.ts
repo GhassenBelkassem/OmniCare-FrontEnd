@@ -1,3 +1,6 @@
+import type { AccessRequestState } from '../active-consultation.models';
+import type { RecordBodyMeasurements } from './record/patient-record.models';
+
 /** Wire contract of `GET/PUT /api/v1/patients/{id}/chart/*`. The server computes `access`. */
 
 export type PatientChartAccessMode = 'EXTERNAL_OWNER' | 'OMNICARE_GRANTED' | 'OMNICARE_RESTRICTED';
@@ -16,6 +19,8 @@ export interface PatientChartIdentityDto {
   readonly email: string | null;
   readonly address: string | null;
   readonly practiceIdentifier: string | null;
+  /** Optimistic version of the contact details (G-1 P3b); 0 for an OmniCare patient. */
+  readonly contactVersion?: number;
 }
 
 export interface PatientChartAccessDto {
@@ -32,6 +37,28 @@ export interface PatientChartAppointmentRefDto {
   readonly endTime: string | null;
   readonly status: string;
   readonly version: number;
+  /** Name of the cabinet (G-1 P3b), null when the appointment has none. */
+  readonly locationName?: string | null;
+}
+
+/**
+ * `PATCH /patients/{id}/contact` body: a present field changes, `null` clears it. At most one of
+ * `dateOfBirth` / `approximateAgeYears` (it replaces the other).
+ */
+export interface PatientContactUpdateRequest {
+  readonly phone?: string | null;
+  readonly email?: string | null;
+  readonly address?: string | null;
+  readonly practiceIdentifier?: string | null;
+  readonly dateOfBirth?: string;
+  readonly approximateAgeYears?: number;
+  readonly expectedVersion: number;
+}
+
+export interface PatientContactUpdateResponse {
+  readonly identity: PatientChartIdentityDto;
+  readonly contactVersion: number;
+  readonly possibleDuplicate: boolean;
 }
 
 export interface PatientChartConsultationRefDto {
@@ -50,6 +77,11 @@ export interface PatientChartDto {
   readonly nextAppointment: PatientChartAppointmentRefDto | null;
   readonly startableAppointment: PatientChartAppointmentRefDto | null;
   readonly lastConsultation: PatientChartConsultationRefDto | null;
+  /**
+   * G-1 D2: access request of this doctor's consultation in progress with this OmniCare patient;
+   * null when there is none (then the chart only explains how the patient can share).
+   */
+  readonly accessRequest?: (AccessRequestState & { readonly consultationId: string }) | null;
   readonly counts: {
     readonly consultations: number | null;
     readonly documents: number | null;
@@ -66,7 +98,10 @@ export interface PatientChartTreatmentDto {
   readonly expectedEndAt: string | null;
 }
 
+export type SummaryStatus = 'UNKNOWN' | 'NONE_KNOWN' | 'LIST';
+
 export interface PatientChartMedicalSummaryDto {
+  /** Always false: the summary is updated through a consultation (G-1 P2a). */
   readonly editable: boolean;
   readonly version: number;
   readonly essentialInformationShared: boolean;
@@ -74,44 +109,14 @@ export interface PatientChartMedicalSummaryDto {
   readonly bloodType: string | null;
   readonly allergies: readonly string[];
   readonly conditions: readonly string[];
+  /** Null when not shared; UNKNOWN « Non renseigné », NONE_KNOWN « Aucune connue », LIST = items. */
+  readonly allergiesStatus?: SummaryStatus | null;
+  readonly conditionsStatus?: SummaryStatus | null;
   readonly treatments: readonly PatientChartTreatmentDto[];
+  /** Patient-written measurements (G-1 P2d), null when none or not shared. */
+  readonly bodyMeasurements?: RecordBodyMeasurements | null;
 }
 
-export interface PatientChartMedicalSummaryUpdateDto {
-  readonly expectedVersion: number;
-  readonly bloodType: string | null;
-  readonly allergies: readonly string[];
-  readonly conditions: readonly string[];
-}
-
-export interface PatientChartArtifactRefDto {
-  readonly id: string;
-  readonly kind: 'PRESCRIPTION' | 'CERTIFICATE';
-}
-
-export interface PatientChartClinicalConsultationDto {
-  readonly id: string;
-  readonly date: string | null;
-  readonly status: string;
-  readonly ownConsultation: boolean;
-  readonly clinicalAvailable: boolean;
-  readonly reason: string | null;
-  readonly diagnosisSummary: string | null;
-  readonly artifacts: readonly PatientChartArtifactRefDto[];
-}
-
-export interface PatientChartAdministrativeConsultationDto {
-  readonly id: string;
-  readonly date: string | null;
-  readonly status: string;
-}
-
-export type PatientChartConsultationsDto =
-  | { readonly view: 'CLINICAL'; readonly items: readonly PatientChartClinicalConsultationDto[] }
-  | {
-      readonly view: 'ADMINISTRATIVE';
-      readonly items: readonly PatientChartAdministrativeConsultationDto[];
-    };
 
 export interface PatientChartDocumentDto {
   readonly id: string;

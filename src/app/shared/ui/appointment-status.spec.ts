@@ -19,6 +19,12 @@ describe('appointment status mapping', () => {
     expect(appointmentStatusLabel('CONFIRMED')).not.toBe('En attente');
   });
 
+  it('shows a follow-up proposed to an OmniCare patient as « Proposé », amber (G-1 D4)', () => {
+    expect(appointmentStatusLabel('PROPOSED')).toBe('Proposé');
+    expect(appointmentStatusPresentation('PROPOSED')?.tone).toBe('amber');
+    expect(appointmentStatusPresentation('PROPOSED')?.struck).toBe(false);
+  });
+
   it('never leaks a raw backend code', () => {
     expect(appointmentStatusLabel('SOMETHING_NEW')).toBe('Statut inconnu');
   });

@@ -4,10 +4,15 @@ import { map, Observable } from 'rxjs';
 
 import { RUNTIME_CONFIG } from '../../core/config/runtime-config';
 import {
+  AccessRequestState,
   ActiveConsultation,
+  ConsultationAbortReason,
+  ConsultationFollowUpOutcome,
+  ConsultationFollowUpSlot,
   ConsultationSourceType,
   StartConsultationRequest,
 } from './active-consultation.models';
+import type { AvailabilityResponse } from './scheduled-care/scheduled-care.models';
 import type {
   CompletedConsultationDetail,
   CompletedConsultationListItem,
@@ -82,11 +87,74 @@ export class ActiveConsultationApiService {
     );
   }
 
+  /**
+   * « Terminer ». `expectedClinicalRecordVersion: null` only resumes an existing closure (page
+   * reopened in FINALIZING): the server then uses the versions it captured at the first call.
+   */
   finish(consultationId: string, expectedConsultationVersion: number,
-         expectedClinicalRecordVersion: number, idempotencyKey: string): Observable<ActiveConsultation> {
+         expectedClinicalRecordVersion: number | null, idempotencyKey: string): Observable<ActiveConsultation> {
     return this.http.post<ActiveConsultation>(
       `${this.config.apiBaseUrl}/doctor/consultations/${consultationId}/finish`,
       { expectedConsultationVersion, expectedClinicalRecordVersion },
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
+  }
+
+  /** G-1 D4: the doctor's free slots for the follow-up (OmniCare patients never get slots under 2 h). */
+  followUpAvailability(consultationId: string, practiceLocationId: string, from: string, to: string): Observable<AvailabilityResponse> {
+    return this.http.get<AvailabilityResponse>(
+      `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(consultationId)}/follow-up/availability`,
+      { params: { practiceLocationId, from, to } },
+    );
+  }
+
+  /** Stores the chosen follow-up slot on the consultation (not reserved until « Terminer »). */
+  saveFollowUpSlot(consultationId: string, slot: { readonly start: string; readonly end: string; readonly practiceLocationId: string }): Observable<ConsultationFollowUpSlot> {
+    return this.http.put<ConsultationFollowUpSlot>(
+      `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(consultationId)}/follow-up-slot`,
+      slot,
+    );
+  }
+
+  clearFollowUpSlot(consultationId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(consultationId)}/follow-up-slot`,
+    );
+  }
+
+  /** After SLOT_TAKEN: books the follow-up on another slot (same rules as « Terminer »). */
+  rebookFollowUp(consultationId: string, slot: { readonly start: string; readonly end: string; readonly practiceLocationId: string },
+                 idempotencyKey: string): Observable<ConsultationFollowUpOutcome> {
+    return this.http.post<ConsultationFollowUpOutcome>(
+      `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(consultationId)}/follow-up`,
+      slot,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
+  }
+
+  /** G-1 D2: « Demander l'accès » (the patient answers in their app). */
+  requestAccess(consultationId: string, idempotencyKey: string): Observable<AccessRequestState> {
+    return this.http.post<AccessRequestState>(
+      `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(consultationId)}/access-requests`,
+      null,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
+  }
+
+  cancelAccessRequest(consultationId: string, requestId: string, expectedVersion: number, idempotencyKey: string): Observable<AccessRequestState> {
+    return this.http.post<AccessRequestState>(
+      `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(consultationId)}/access-requests/${encodeURIComponent(requestId)}/cancel`,
+      { expectedVersion },
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
+  }
+
+  /** « Annuler la consultation »: IN_PROGRESS only, refused once anything is signed. */
+  abort(consultationId: string, reason: ConsultationAbortReason, expectedConsultationVersion: number,
+        idempotencyKey: string): Observable<ActiveConsultation> {
+    return this.http.post<ActiveConsultation>(
+      `${this.config.apiBaseUrl}/doctor/consultations/${consultationId}/abort`,
+      { reason, expectedConsultationVersion },
       { headers: { 'Idempotency-Key': idempotencyKey } },
     );
   }

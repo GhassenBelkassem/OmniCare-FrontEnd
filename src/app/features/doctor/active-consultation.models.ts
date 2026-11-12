@@ -39,7 +39,68 @@ export interface ActiveConsultation {
   readonly completedAt?: string | null;
   readonly access?: ConsultationAccess | null;
   readonly patient?: ConsultationPatient | null;
+  /**
+   * Closure state while FINALIZING: `RUNNING` (in progress or retrying), `FAILED` (stopped after
+   * its retries; support was alerted, only an administrator can resume or cancel it).
+   */
+  readonly finishState?: ConsultationFinishState | null;
+  /** Practice location of the source appointment (preselected in the follow-up slot picker). */
+  readonly sourcePracticeLocationId?: string | null;
+  /** G-1 D4: the follow-up slot chosen during the consultation (stored by Spring, not in the note). */
+  readonly followUpSlot?: ConsultationFollowUpSlot | null;
+  /** G-1 D4: what « Terminer » did with that slot; null when no slot was chosen. */
+  readonly followUp?: ConsultationFollowUpOutcome | null;
+  /** G-1 D2: the doctor's access request (OmniCare patients only; null for an external patient). */
+  readonly accessRequest?: AccessRequestState | null;
 }
+
+/** G-1 D2: PENDING until the patient answers; ENDED at finish or abort. */
+export type AccessRequestStatus = 'PENDING' | 'ACCEPTED' | 'REFUSED' | 'CANCELLED' | 'ENDED';
+
+export interface AccessRequestState {
+  /** The consultation's latest request. */
+  readonly request: {
+    readonly requestId: string;
+    readonly status: AccessRequestStatus;
+    readonly version: number;
+    readonly createdAt: string;
+    readonly respondedAt: string | null;
+  } | null;
+  readonly used: number;
+  readonly max: number;
+  /** Server-decided: in progress, OmniCare patient, no access yet, nothing pending, under the limit. */
+  readonly canRequest: boolean;
+}
+
+export interface ConsultationFollowUpSlot {
+  readonly start: string;
+  readonly end: string;
+  readonly practiceLocationId: string;
+  readonly locationName: string | null;
+}
+
+/**
+ * PENDING: « Terminer » has not scheduled it yet; CONFIRMED: external patient, booked;
+ * PROPOSED: OmniCare patient, waiting for their answer; SLOT_TAKEN: the slot was no longer free.
+ */
+export type ConsultationFollowUpStatus =
+  | 'PENDING' | 'CONFIRMED' | 'PROPOSED' | 'SLOT_TAKEN'
+  // Once the proposal has ended, the server reports the appointment's real status (declined/expired → CANCELLED, …).
+  | 'CANCELLED' | 'COMPLETED' | 'IN_PROGRESS' | 'NO_SHOW';
+
+export interface ConsultationFollowUpOutcome {
+  readonly status: ConsultationFollowUpStatus;
+  readonly appointmentId: string | null;
+  readonly start: string;
+  readonly end: string;
+  readonly locationName: string | null;
+  readonly proposalExpiresAt: string | null;
+}
+
+export type ConsultationFinishState = 'RUNNING' | 'FAILED';
+
+/** « Annuler la consultation » reasons (CTO decision, G-1 P3a). */
+export type ConsultationAbortReason = 'PATIENT_ABSENT' | 'PATIENT_LEFT' | 'STARTED_BY_MISTAKE' | 'TECHNICAL_ISSUE';
 
 /**
  * Whether the patient's medical context may be loaded. The server's access mode decides: the

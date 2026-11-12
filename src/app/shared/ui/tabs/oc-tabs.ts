@@ -81,10 +81,13 @@ export interface OcTab {
     </nav>
   `,
   styleUrl: './oc-tabs.scss',
+  host: { '[class.oc-tabs--prominent]': "variant() === 'prominent'" },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OcTabs {
   readonly label = input('Navigation');
+  /** `prominent`: text tabs, 3px primary underline, 15 / 700 active label, neutral count badge. */
+  readonly variant = input<'default' | 'prominent'>('default');
   readonly tabs = input.required<readonly OcTab[]>();
   readonly selected = model.required<string>();
   private readonly tabElements = viewChildren<ElementRef<HTMLElement>>('tabElement');

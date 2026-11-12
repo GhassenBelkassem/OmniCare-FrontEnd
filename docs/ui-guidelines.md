@@ -74,3 +74,43 @@ The server computes the chart access mode (`EXTERNAL_OWNER`, `OMNICARE_GRANTED`,
 `OMNICARE_RESTRICTED`) and the `access.clinical` / `access.editable` flags. The UI renders those
 flags and never infers access from the patient type. Medical sections without access show the
 compact `app-chart-access-required` block, never a full-page padlock.
+
+## 8. Clinical visual language (medical record and consultation, G-1 P2e)
+Applies to « Dossier patient » (drawer and chart page) and the consultation page. Tokens are in
+`tokens.scss` (« Clinical record visual language »); never write these hex values in a component.
+
+1. **Grey is only the page background** (`--oc-bg` #F4F5F7) and hairline borders
+   (`--oc-hairline` #E8EBF0). Cards are white, `--oc-shadow-soft`, radius `--oc-radius-card`
+   (20px). Inner tiles: radius `--oc-radius-tile` (16px) on `--oc-tile` (#FAFBFC).
+2. **Text:** strong `--oc-ink` (#16202A), secondary `--oc-ink-secondary` (#4A5562, ≥ 4.5:1).
+   **No uppercase labels**: labels are sentence case, 13px / 600.
+3. **Hierarchy:** page or drawer title 26 / 800; section title 18 / 700; key values 16–18 / 700;
+   big facts (blood group) 32 / 800.
+4. **One colour per kind of information**, as a tint background + dark text of the same hue:
+
+   | Information | Tint | Text / icon | Tokens |
+   |---|---|---|---|
+   | Blood group | #FDECEC | #C0362C | `--oc-info-blood(-tint)` |
+   | Allergies / warnings | #FFF4E5 | #7A2E0E / #B54708 | `--oc-info-allergy(-tint, -icon)` |
+   | Antécédents | #F1EDFE | #5B3CC4 | `--oc-info-history(-tint)` |
+   | Medication / positive / primary | #E6F8F2 | #0B4F52 / #0F6F73 | `--oc-info-care(-tint, -icon)` |
+   | Current consultation | #F1EDFE | #3B2A86 | `--oc-info-current(-tint)` |
+
+   Measured contrast (text on its tint): blood 4.83:1, allergy 8.69:1 (icon 4.99:1), antécédents
+   6.33:1, care 8.46:1 (icon 5.39:1), current 9.82:1; secondary text on `--oc-tile` 7.33:1.
+5. **Structured values are tags** (`oc-tag`, default tone `value`): white, 1px hairline,
+   radius 8px, 13 / 600. Never a sentence joined by « · » for prescription data
+   (dose + unité, voie, N× par jour, durée or « Au long cours » = one tag each).
+6. **Not allowed:** left-border accent cards, gradients, emoji, grey pill chips, grey segmented
+   tracks on white cards, grey empty-state illustrations. Segmented controls (global NG-ZORRO
+   style): track #F4F5F7, selected item white with a soft shadow, weight 700. An empty state is one
+   short sentence in secondary text.
+7. **Icons:** the existing icon set, inside a 40–44px tinted square tile, radius 12
+   (`--oc-radius-icon`).
+
+Primitives: `oc-tag` (tones `value`, `neutral`, `care`, `allergy`, `history`, `blood`,
+`current`), `oc-date-block` (day 26 / 800 + « NOV. », `care` for the most recent, `neutral`
+otherwise, `small` for compact rows), `oc-file-card` (format tile, title, subtitle, action icon;
+the whole card is one button), `oc-tabs` `variant="prominent"` (3px primary underline, count
+badge). `npm run check:ui-boundaries` fails on `text-transform: uppercase` or a ≥ 3px left
+border in the record, the consultation and these primitives.

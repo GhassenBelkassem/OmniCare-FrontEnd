@@ -37,6 +37,7 @@ function appointment(
     startedAt: null,
     completedAt: null,
     createdAt: '2026-10-01T08:00:00.000Z',
+    version: 0,
     ...overrides,
   };
 }
@@ -125,10 +126,17 @@ describe('calendar appointment event adapter', () => {
       appointment('CONFIRMED', { id: 'visible' }),
       appointment('CANCELLED', { id: 'cancelled' }),
       appointment('NO_SHOW', { id: 'no-show' }),
-      appointment('PROPOSED' as AppointmentStatusDto, { id: 'not-a-real-status' }),
+      appointment('PENDING_SOMETHING' as AppointmentStatusDto, { id: 'not-a-real-status' }),
     ]);
 
     expect(events.map((event) => event.id)).toEqual(['appointment:visible']);
+  });
+
+  it('shows a follow-up proposed to an OmniCare patient as « Proposé » (G-1 D4)', () => {
+    const [event] = projectAppointmentEvents([appointment('PROPOSED', { id: 'proposal', source: 'DOCTOR_FOLLOWUP' })]);
+    expect(event?.id).toBe('appointment:proposal');
+    expect(event?.extendedProps.statusLabel).toBe('Proposé');
+    expect(event?.className).toContain('omnicare-appointment-event--proposed');
   });
 });
 

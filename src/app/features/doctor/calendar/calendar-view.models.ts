@@ -52,7 +52,7 @@ export interface CalendarAppointmentPresentationMetadata {
   readonly appointmentId: string;
   readonly patientLabel: string;
   readonly statusLabel: string;
-  readonly status?: 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  readonly status?: 'PROPOSED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   readonly categoryLabel?: string;
   readonly detailLabel?: string;
   readonly statusIcon?: 'clock-circle' | 'check-circle';

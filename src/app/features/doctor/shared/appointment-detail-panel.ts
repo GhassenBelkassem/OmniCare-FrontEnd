@@ -1,11 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal, computed, OnInit } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { DestroyRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, computed } from '@angular/core';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 
 import { OcAvatar, OcStatusBadge, OcButton } from '../../../shared/ui';
 import { AppointmentDto } from '../appointment-api.models';
-import { AppointmentApiService } from '../appointment-api.service';
 
 @Component({
   selector: 'app-appointment-detail-panel',
@@ -74,28 +71,8 @@ import { AppointmentApiService } from '../appointment-api.service';
         }
       </ng-template>
       <ng-template nzModalFooter>
-        @if (appointment()?.status === 'CONFIRMED') {
-          <oc-button
-            variant="primary"
-            size="small"
-            [loading]="acting()"
-            (click)="startAppointment()"
-          >
-            Commencer
-          </oc-button>
-          <oc-button variant="secondary" size="small" (click)="cancel.emit()">
-            Annuler
-          </oc-button>
-        } @else if (appointment()?.status === 'IN_PROGRESS') {
-          <oc-button
-            variant="primary"
-            size="small"
-            [loading]="acting()"
-            (click)="completeAppointment()"
-          >
-            Terminer
-          </oc-button>
-        }
+        <!-- Read-only details. Starting and finishing go only through the consultation lifecycle
+             (« Démarrer la consultation » / the consultation page); the legacy appointment routes are retired. -->
         <oc-button variant="secondary" size="small" (click)="open.set(false)">
           Fermer
         </oc-button>
@@ -105,16 +82,10 @@ import { AppointmentApiService } from '../appointment-api.service';
   styleUrl: './appointment-detail-panel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppointmentDetailPanel implements OnInit {
-  private readonly appointmentApi = inject(AppointmentApiService);
-  private readonly destroyRef = inject(DestroyRef);
-
+export class AppointmentDetailPanel {
   readonly open = signal(false);
   readonly appointment = signal<AppointmentDto | null>(null);
-  readonly acting = signal(false);
   readonly actionError = signal<string | null>(null);
-  readonly updated = output<AppointmentDto>();
-  readonly cancel = output<void>();
 
   readonly patientName = computed(() => {
     const apt = this.appointment();
@@ -133,53 +104,9 @@ export class AppointmentDetailPanel implements OnInit {
 
   readonly quotedPrice = computed(() => this.appointment()?.quotedPriceTnd ?? null);
 
-  ngOnInit(): void {}
-
   openWith(appointment: AppointmentDto): void {
     this.appointment.set(appointment);
     this.actionError.set(null);
     this.open.set(true);
-  }
-
-  startAppointment(): void {
-    const apt = this.appointment();
-    if (!apt || this.acting()) return;
-    this.acting.set(true);
-    this.actionError.set(null);
-    this.appointmentApi
-      .startAppointment(apt.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) => {
-          this.acting.set(false);
-          this.appointment.set(updated);
-          this.updated.emit(updated);
-        },
-        error: () => {
-          this.acting.set(false);
-          this.actionError.set("Impossible de démarrer la consultation.");
-        },
-      });
-  }
-
-  completeAppointment(): void {
-    const apt = this.appointment();
-    if (!apt || this.acting()) return;
-    this.acting.set(true);
-    this.actionError.set(null);
-    this.appointmentApi
-      .completeAppointment(apt.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) => {
-          this.acting.set(false);
-          this.appointment.set(updated);
-          this.updated.emit(updated);
-        },
-        error: () => {
-          this.acting.set(false);
-          this.actionError.set("Impossible de terminer la consultation.");
-        },
-      });
   }
 }

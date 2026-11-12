@@ -249,13 +249,6 @@ export class CommandCenterPage {
     this.aptPanel().openWith(appointment);
   }
 
-  onAppointmentUpdated(updated: AppointmentDto): void {
-    this.appointments.update((list) =>
-      list.map((item) => (item.id === updated.id ? updated : item)),
-    );
-    this.loadData();
-  }
-
   async startScheduledConsultation(appointment: DoctorScheduledCareItem): Promise<void> {
     if (appointment.appointmentId === null || appointment.status !== 'CONFIRMED') return;
     const outcome = await this.activeConsultation.startScheduledAppointment(

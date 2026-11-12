@@ -19,7 +19,7 @@ import {
   toLocalDateOnly,
 } from './calendar-time.adapter';
 
-export type ProjectedAppointmentStatus = 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED';
+export type ProjectedAppointmentStatus = 'PROPOSED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED';
 
 export type ScheduledCalendarStatus = ProjectedAppointmentStatus | 'CANCELLED' | 'NO_SHOW';
 
@@ -96,6 +96,10 @@ const CLOSED_URGENT_STATUSES: ReadonlySet<string> = new Set(['COMPLETED', 'CANCE
 const STATUS_PRESENTATION: Readonly<
   Record<ProjectedAppointmentStatus, { readonly label: string; readonly className: string }>
 > = {
+  PROPOSED: {
+    label: APPOINTMENT_STATUS.PROPOSED.label,
+    className: 'omnicare-appointment-event--proposed',
+  },
   CONFIRMED: {
     label: APPOINTMENT_STATUS.CONFIRMED.label,
     className: 'omnicare-appointment-event--confirmed',
@@ -286,6 +290,7 @@ export function projectAppointmentEvents(
 }
 
 const SCHEDULED_STATUS_CLASS: Readonly<Record<ScheduledCalendarStatus, string>> = {
+  PROPOSED: 'omnicare-appointment-event--proposed',
   CONFIRMED: 'omnicare-appointment-event--confirmed',
   IN_PROGRESS: 'omnicare-appointment-event--in-progress',
   COMPLETED: 'omnicare-appointment-event--completed',
@@ -377,5 +382,5 @@ function isScheduledCalendarStatus(status: string): status is ScheduledCalendarS
 }
 
 function isProjectedStatus(status: string): status is ProjectedAppointmentStatus {
-  return status === 'CONFIRMED' || status === 'IN_PROGRESS' || status === 'COMPLETED';
+  return status === 'PROPOSED' || status === 'CONFIRMED' || status === 'IN_PROGRESS' || status === 'COMPLETED';
 }

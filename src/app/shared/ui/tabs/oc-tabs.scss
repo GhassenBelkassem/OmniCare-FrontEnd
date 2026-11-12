@@ -71,3 +71,35 @@
   font-size: 11px;
   font-weight: var(--oc-font-weight-semibold);
 }
+
+// Prominent variant (« Dossier patient »): 3px primary underline and a quiet count badge.
+:host(.oc-tabs--prominent) {
+  .oc-tabs {
+    border-block-end-color: var(--oc-hairline);
+  }
+
+  .oc-tabs ul {
+    gap: var(--oc-space-4);
+  }
+
+  .oc-tabs__item {
+    padding: var(--oc-space-3) var(--oc-space-1);
+    border-block-end-width: 3px;
+    color: var(--oc-ink-secondary);
+    font-size: 15px;
+    font-weight: var(--oc-font-weight-semibold);
+  }
+
+  .oc-tabs__item--active {
+    border-block-end-color: var(--oc-tab-underline);
+    color: var(--oc-ink);
+    font-weight: var(--oc-font-weight-strong);
+  }
+
+  .oc-tabs__badge {
+    background: var(--oc-info-care-tint);
+    color: var(--oc-info-care);
+    font-size: 12px;
+    font-weight: var(--oc-font-weight-strong);
+  }
+}

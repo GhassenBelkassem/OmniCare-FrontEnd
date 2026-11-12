@@ -4,33 +4,55 @@
 
 // Keep the production baseline lean: include NG-ZORRO's core plus only the
 // components currently imported by OmniCare. Add a component stylesheet here
-// when its Angular module is introduced.
+// when its Angular module is introduced, WITH its patch.less when it has one:
+// `index.less` alone is the raw ant-design CSS, and NG-ZORRO's `patch.less` holds
+// the overrides its components depend on (e.g. select and date-picker dropdowns are
+// `top: -9999px` until the patch repositions them under the CDK overlay).
 @import '../../../node_modules/ng-zorro-antd/style/entry.less';
 @import '../../../node_modules/ng-zorro-antd/alert/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/alert/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/button/style/index.less';
 @import '../../../node_modules/ng-zorro-antd/checkbox/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/checkbox/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/date-picker/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/date-picker/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/drawer/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/drawer/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/empty/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/empty/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/icon/style/index.less';
 @import '../../../node_modules/ng-zorro-antd/input/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/input/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/pagination/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/pagination/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/radio/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/radio/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/select/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/select/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/segmented/style/index.less';
 @import '../../../node_modules/ng-zorro-antd/skeleton/style/index.less';
 @import '../../../node_modules/ng-zorro-antd/spin/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/spin/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/table/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/table/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/tooltip/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/tooltip/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/tabs/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/tabs/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/card/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/card/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/modal/style/index.less';
 @import '../../../node_modules/ng-zorro-antd/timeline/style/index.less';
 @import '../../../node_modules/ng-zorro-antd/tag/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/tag/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/badge/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/badge/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/divider/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/divider/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/switch/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/switch/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/form/style/index.less';
+@import '../../../node_modules/ng-zorro-antd/form/style/patch.less';
 @import '../../../node_modules/ng-zorro-antd/time-picker/style/index.less';
 
 // Mirrors src/styles/tokens.scss. NG-ZORRO's compile-time Less theme cannot read CSS
@@ -70,4 +92,48 @@
 @select-item-selected-bg: #e6f8f3;
 @picker-basic-cell-hover-with-range-color: #e6f8f3;
 @segmented-selected-bg: #ffffff;
+// Segmented controls (docs/ui-guidelines.md §8 rule 6): #F4F5F7 track, white selected item with a
+// soft shadow and 700 weight, secondary/strong text (--oc-bg, --oc-ink-secondary, --oc-ink).
+@segmented-bg: #f4f5f7;
+@segmented-hover-bg: #f4f5f7;
+@segmented-label-color: #4a5562;
+@segmented-label-hover-color: #16202a;
 @tooltip-bg: #17231f;
+
+// ── Segmented control: rule 6 of the clinical visual language (G-1 P2e) ──
+.ant-segmented {
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.ant-segmented-item,
+.ant-segmented-thumb {
+  border-radius: 9px;
+}
+
+.ant-segmented-item-label {
+  min-height: 32px;
+  padding: 0 14px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.ant-segmented-item-selected,
+.ant-segmented-thumb {
+  box-shadow: 0 1px 2px rgba(16, 32, 42, 0.08), 0 1px 1px rgba(16, 32, 42, 0.04);
+}
+
+.ant-segmented-item-selected {
+  color: #16202a;
+  font-weight: 700;
+
+  .ant-segmented-item-label {
+    font-weight: 700;
+  }
+}
+
+.ant-segmented:focus-visible,
+.ant-segmented:has(.ant-segmented-item-input:focus-visible) {
+  outline: 2px solid #17231f;
+  outline-offset: 2px;
+}

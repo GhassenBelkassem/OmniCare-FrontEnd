@@ -100,10 +100,12 @@ describe('PatientApiService', () => {
     request.flush([]);
   });
 
-  it('cancels an appointment', () => {
-    service.cancelAppointment('appt-1').subscribe();
+  it('cancels an appointment with the versioned POST (legacy PATCH retired, G-1 P3b)', () => {
+    service.cancelAppointment('appt-1', 4, 'patient-cancel:k1').subscribe();
     const request = http.expectOne('/api/v1/appointments/appt-1/cancel');
-    expect(request.request.method).toBe('PATCH');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ expectedVersion: 4, reasonCode: null });
+    expect(request.request.headers.get('Idempotency-Key')).toBe('patient-cancel:k1');
     request.flush({});
   });
 

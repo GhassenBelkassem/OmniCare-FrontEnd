@@ -2,9 +2,14 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
+import type {
+  RecordConsultationDetail,
+  RecordConsultationPage,
+  RecordMedicationList,
+} from './record/patient-record.models';
+
 import { RUNTIME_CONFIG } from '../../../core/config/runtime-config';
 import type {
-  PatientChartConsultationsDto,
   PatientChartDocumentDto,
   PatientChartDocumentPreviewDto,
   PatientChartDocumentType,
@@ -12,7 +17,8 @@ import type {
   PatientChartDto,
   PatientChartHistoryDto,
   PatientChartMedicalSummaryDto,
-  PatientChartMedicalSummaryUpdateDto,
+  PatientContactUpdateRequest,
+  PatientContactUpdateResponse,
 } from './patient-chart-api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -28,21 +34,25 @@ export class PatientChartApiService {
     return this.http.get<PatientChartMedicalSummaryDto>(this.url(patientId, '/medical-summary'));
   }
 
-  updateMedicalSummary(
-    patientId: string,
-    update: PatientChartMedicalSummaryUpdateDto,
-    idempotencyKey: string,
-  ): Observable<PatientChartMedicalSummaryDto> {
-    return this.http.put<PatientChartMedicalSummaryDto>(
-      this.url(patientId, '/medical-summary'),
-      update,
-      { headers: { 'Idempotency-Key': idempotencyKey } },
+
+  /** Keyset-paginated consultation history (G-1 P2d). */
+  getConsultationPage(patientId: string, cursor: string | null, size = 20): Observable<RecordConsultationPage> {
+    const params: Record<string, string | number> = { size };
+    if (cursor) params['cursor'] = cursor;
+    return this.http.get<RecordConsultationPage>(this.url(patientId, '/consultations'), { params });
+  }
+
+  /** One consultation's finalized clinical content, fetched when its card is expanded. */
+  getConsultationDetail(patientId: string, consultationId: string): Observable<RecordConsultationDetail> {
+    return this.http.get<RecordConsultationDetail>(
+      this.url(patientId, `/consultations/${encodeURIComponent(consultationId)}`),
     );
   }
 
-  getConsultations(patientId: string): Observable<PatientChartConsultationsDto> {
-    return this.http.get<PatientChartConsultationsDto>(this.url(patientId, '/consultations'));
+  getMedications(patientId: string, state: 'current' | 'past'): Observable<RecordMedicationList> {
+    return this.http.get<RecordMedicationList>(this.url(patientId, '/medications'), { params: { state } });
   }
+
 
   downloadArtifact(patientId: string, consultationId: string, artifactId: string): Observable<Blob> {
     return this.http.get(
@@ -56,6 +66,15 @@ export class PatientChartApiService {
 
   getDocuments(patientId: string): Observable<PatientChartDocumentsDto> {
     return this.http.get<PatientChartDocumentsDto>(this.url(patientId, '/documents'));
+  }
+
+  /** Owner of an external patient only (server-decided); 409 PATIENT_CONTACT_VERSION_CONFLICT on a stale version. */
+  updateContact(patientId: string, request: PatientContactUpdateRequest, idempotencyKey: string): Observable<PatientContactUpdateResponse> {
+    return this.http.patch<PatientContactUpdateResponse>(
+      `${this.config.apiBaseUrl}/patients/${encodeURIComponent(patientId)}/contact`,
+      request,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
   }
 
   uploadDocument(
