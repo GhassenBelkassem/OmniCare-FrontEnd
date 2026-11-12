@@ -34,6 +34,8 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   PAGE_TOO_LARGE:
     'Une page de ce PDF est trop volumineuse pour être affichée. Utilisez un PDF plus léger.',
   FILE_TOO_LARGE: 'Ce fichier dépasse la taille maximale autorisée de 10 Mo.',
+  TOO_MANY_PAGES: 'Le modèle ne peut pas dépasser 10 pages.',
+  PAGE_ROTATED: 'Une page de ce PDF est pivotée. Enregistrez le PDF avec les pages à l’endroit, puis réessayez.',
   TOO_MANY_REQUESTS: 'Trop de demandes en peu de temps. Patientez quelques secondes.',
 };
 

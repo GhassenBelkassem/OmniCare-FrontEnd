@@ -27,6 +27,8 @@ const D5_CODES = [
   'TEMPLATE_INFECTED',
   'SCANNER_UNAVAILABLE',
   'PAGE_TOO_LARGE',
+  'TOO_MANY_PAGES',
+  'PAGE_ROTATED',
   'FILE_TOO_LARGE',
 ];
 const ENGLISH = /(?<!\p{L})(the|template|file|error|invalid|failed|not found|unavailable|request|please|try)(?!\p{L})/iu;
