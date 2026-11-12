@@ -1,0 +1,204 @@
+<div class="page-stack">
+  <a class="back-link" routerLink="/doctor/team">&larr; Back to my team</a>
+
+  @if (loading()) {
+    <p class="team-detail__state" role="status">Loading...</p>
+  } @else if (loadError(); as message) {
+    <div class="team-detail__error" role="alert">
+      <span>{{ message }}</span>
+      <oc-button variant="secondary" (click)="load()">Try again</oc-button>
+    </div>
+  } @else if (member(); as item) {
+    <oc-page-header
+      [title]="hasName() ? displayName() : item.email"
+      [description]="hasName() ? item.email : 'Delegated agenda access'"
+    >
+      @if (canResend(item.status)) {
+        <oc-button
+          ocPrimaryAction
+          variant="secondary"
+          leadingIcon="send"
+          [loading]="actingOn()"
+          (click)="requestAction('resend')"
+        >
+          Resend invitation
+        </oc-button>
+      }
+    </oc-page-header>
+
+    @if (notice(); as message) {
+      <p class="team-detail__notice" role="status">{{ message }}</p>
+    }
+    @if (actionError(); as message) {
+      <p class="team-detail__error" role="alert">{{ message }}</p>
+    }
+
+    <section class="panel" aria-labelledby="identity-title">
+      <h2 id="identity-title">Identity</h2>
+      <dl class="definition-grid">
+        <div>
+          <dt>First name</dt>
+          <dd>{{ item.firstName || 'Not provided' }}</dd>
+        </div>
+        <div>
+          <dt>Last name</dt>
+          <dd>{{ item.lastName || 'Not provided' }}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd>{{ item.email }}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <oc-status-badge
+              [status]="statusTone(item.status)"
+              [customLabel]="statusLabel(item.status)"
+            />
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="permissions-title">
+      <h2 id="permissions-title">Permissions</h2>
+
+      @if (!editingPermissions()) {
+        <!-- Every permission is listed. The list view truncated this to a single joined
+             string, which made a five-permission grant unreadable and hid what was
+             actually delegated. -->
+        <ul class="team-detail__permissions">
+          @for (entry of permissionEntries(); track entry.permission) {
+            <li class="team-detail__permission">{{ entry.label }}</li>
+          } @empty {
+            <li class="team-detail__permission team-detail__permission--empty">
+              No permissions granted
+            </li>
+          }
+        </ul>
+
+        @if (canEditPermissions(item.status)) {
+          <oc-button variant="secondary" (click)="startEditing()">
+            Manage permissions
+          </oc-button>
+        } @else {
+          <p class="team-detail__hint">
+            This delegation has ended, so its permissions can no longer be changed.
+          </p>
+        }
+      } @else {
+        <form
+          class="team-detail__permission-form"
+          [formGroup]="permissionForm"
+          (ngSubmit)="savePermissions()"
+        >
+          <div class="oc-field">
+            <label id="edit-permissions-label">Permissions</label>
+            <oc-secretary-permission-select
+              aria-labelledby="edit-permissions-label"
+              formControlName="permissions"
+              placeholder="Select permissions"
+            />
+            <small class="team-detail__hint">
+              Saving replaces the current set. Anything you clear is revoked.
+            </small>
+          </div>
+
+          @if (permissionsError(); as message) {
+            <p class="team-detail__error" role="alert">{{ message }}</p>
+          }
+
+          <div class="team-detail__actions">
+            <oc-button
+              variant="primary"
+              type="submit"
+              [loading]="savingPermissions()"
+              [disabled]="savingPermissions()"
+            >
+              Save permissions
+            </oc-button>
+            <oc-button
+              variant="secondary"
+              [disabled]="savingPermissions()"
+              (click)="cancelEditing()"
+            >
+              Cancel
+            </oc-button>
+          </div>
+        </form>
+      }
+    </section>
+
+    <section class="panel" aria-labelledby="history-title">
+      <h2 id="history-title">History</h2>
+      <dl class="definition-grid">
+        <div>
+          <dt>Invited</dt>
+          <dd>{{ formatDateTime(item.invitedAt) }}</dd>
+        </div>
+        @if (item.status === 'INVITED' && item.invitationExpiresAt) {
+          <div>
+            <dt>Invitation expires</dt>
+            <dd>{{ formatDateTime(item.invitationExpiresAt) }}</dd>
+          </div>
+        }
+        <div>
+          <dt>Activated</dt>
+          <dd>{{ item.activatedAt ? formatDateTime(item.activatedAt) : 'Not yet' }}</dd>
+        </div>
+        @if (item.suspendedAt) {
+          <div>
+            <dt>Suspended</dt>
+            <dd>{{ formatDateTime(item.suspendedAt) }}</dd>
+          </div>
+        }
+        @if (item.endedAt) {
+          <div>
+            <dt>Ended</dt>
+            <dd>{{ formatDateTime(item.endedAt) }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="actions-title">
+      <h2 id="actions-title">Access</h2>
+      <div class="team-detail__actions">
+        @if (canSuspend(item.status)) {
+          <oc-button
+            variant="secondary"
+            [disabled]="actingOn()"
+            (click)="requestAction('suspend')"
+          >
+            Suspend
+          </oc-button>
+        }
+        @if (canEnd(item.status)) {
+          <oc-button
+            variant="destructive"
+            [disabled]="actingOn()"
+            (click)="requestAction('end')"
+          >
+            End access
+          </oc-button>
+        }
+        @if (!canSuspend(item.status) && !canEnd(item.status)) {
+          <p class="team-detail__hint">
+            No further action is available on this delegation.
+          </p>
+        }
+      </div>
+    </section>
+  }
+</div>
+
+<oc-confirm-dialog
+  [open]="pending() !== null"
+  [title]="pendingDialogTitle()"
+  [message]="pendingDialogMessage()"
+  [confirmLabel]="pendingDialogConfirmLabel()"
+  [destructive]="pending() !== 'resend'"
+  [loading]="actingOn()"
+  (confirm)="confirmAction()"
+  (cancelled)="cancelAction()"
+/>

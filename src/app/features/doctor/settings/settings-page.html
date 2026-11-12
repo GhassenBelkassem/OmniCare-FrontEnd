@@ -192,6 +192,10 @@
       @if (activeTab() === 'notifications') {
         <app-notification-settings-section />
       }
+
+      @if (activeTab() === 'team') {
+    <app-team-page [embedded]="true" />
+  }
     </section>
   </div>
 

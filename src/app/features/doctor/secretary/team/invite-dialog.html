@@ -1,0 +1,92 @@
+<nz-modal
+  [nzVisible]="open()"
+  nzTitle="Inviter une secrétaire"
+  [nzFooter]="null"
+  [nzClosable]="!inviting()"
+  [nzMaskClosable]="!inviting()"
+  nzWidth="520px"
+  (nzOnCancel)="cancel()"
+>
+  <ng-template nzModalContent>
+    <form class="wizard-form" [formGroup]="inviteForm" (ngSubmit)="submitInvite()">
+      <p class="wizard-form__context">
+        <strong>Adresse e-mail de la secrétaire</strong>
+      </p>
+
+      <div class="wizard-form__row">
+        <label class="wizard-form__field" for="invite-email">
+          <span>Adresse e-mail</span>
+          <input
+            id="invite-email"
+            type="email"
+            formControlName="email"
+            autocomplete="off"
+            placeholder="assistant@cabinet.tn"
+          />
+          @if (emailError(); as message) {
+            <small class="wizard-form__field-error">{{ message }}</small>
+          } @else if (emailInvalidForDisplay()) {
+            <small class="wizard-form__field-error">Entrez une adresse e-mail valide.</small>
+          }
+        </label>
+      </div>
+
+      <div class="wizard-form__row">
+        <label class="wizard-form__field" for="invite-first-name">
+          <span>Prénom <span class="wizard-form__optional">(facultatif)</span></span>
+        </label>
+        <input
+          id="invite-first-name"
+          type="text"
+          formControlName="firstName"
+          autocomplete="off"
+          placeholder="Amira"
+        />
+      </div>
+
+      <div class="wizard-form__row">
+        <label class="wizard-form__field" for="invite-last-name">
+          <span>Nom <span class="wizard-form__optional">(facultatif)</span></span>
+        </label>
+        <input
+          id="invite-last-name"
+          type="text"
+          formControlName="lastName"
+          autocomplete="off"
+          placeholder="Ben Salah"
+        />
+      </div>
+
+      <small class="wizard-form__hint">
+        Ajouter un nom rend la délégation plus facile à identifier. Vous pouvez laisser les deux
+        champs vides et inviter maintenant.
+      </small>
+
+      <div class="wizard-form__row">
+        <label id="invite-permissions-label">Permissions</label>
+        <oc-secretary-permission-select
+          aria-labelledby="invite-permissions-label"
+          formControlName="permissions"
+          placeholder="Sélectionner des permissions"
+        />
+        <small class="wizard-form__hint">
+          Laissez vide pour accorder l'ensemble d'agenda par défaut. Une secrétaire ne peut
+          recevoir que l'accès à un agenda délégué.
+        </small>
+      </div>
+
+      @if (inviteError(); as message) {
+        <p class="wizard-form__error" role="alert">{{ message }}</p>
+      }
+
+      <div class="wizard-form__actions">
+        <oc-button variant="secondary" [disabled]="inviting()" (click)="cancel()">
+          Annuler
+        </oc-button>
+        <oc-button variant="primary" type="submit" [loading]="inviting()" [disabled]="inviting()">
+          Envoyer l'invitation
+        </oc-button>
+      </div>
+    </form>
+  </ng-template>
+</nz-modal>
