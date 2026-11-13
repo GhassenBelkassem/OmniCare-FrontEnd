@@ -12,6 +12,7 @@ import type { UnsavedChangesAware } from '../unsaved-changes.guard';
 import { ConsultationFinishFlow } from './consultation-finish.flow';
 import { ConsultationSectionDirective } from './consultation-section.directive';
 import { ConsultationSessionStore } from './consultation-session.store';
+import { SickLeaveTemplatePicker } from './sick-leave-template-picker';
 import { ConsultationUi } from './consultation-ui';
 import { consultationErrorMessage } from './model/consultation-errors';
 import {
@@ -30,6 +31,7 @@ import { MedicalContextCard } from './sections/medical-context-card';
 import { MedicalSummarySection } from './sections/medical-summary-section';
 import { OrdersSection } from './sections/orders-section';
 import { PatientRecordDrawer } from './record/patient-record-drawer';
+import { ContactCompletionDrawer } from './contact-completion-drawer';
 import { TreatmentSection } from './sections/treatment-section';
 import { ActiveConsultationApiService } from '../active-consultation-api.service';
 import type { ConsultationFollowUpOutcome } from '../active-consultation.models';
@@ -83,13 +85,14 @@ const FOLLOW_UPS = [
     MedicalSummarySection,
     OrdersSection,
     PatientRecordDrawer,
+    ContactCompletionDrawer,
     QuickBookingDrawer,
     TreatmentSection,
   ],
   templateUrl: './consultation-page.html',
   styleUrls: ['./sections/consultation-sections.scss', './consultation-page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [ConsultationSessionStore, ConsultationFinishFlow, ConsultationUi],
+  providers: [ConsultationSessionStore, ConsultationFinishFlow, ConsultationUi, SickLeaveTemplatePicker],
   host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
 })
 export class ConsultationPage implements UnsavedChangesAware {
@@ -227,7 +230,7 @@ export class ConsultationPage implements UnsavedChangesAware {
     this.consultationsApi
       .saveFollowUpSlot(consultation.consultationId, {
         start: choice.start, end: choice.end, practiceLocationId: choice.practiceLocationId,
-      })
+      }, consultation.followUpSlot?.version ?? 0, `follow-up-slot:${globalThis.crypto.randomUUID()}`)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (slot) => {
@@ -254,7 +257,8 @@ export class ConsultationPage implements UnsavedChangesAware {
     if (!consultation) return;
     this.followUpSlotError.set(null);
     this.consultationsApi
-      .clearFollowUpSlot(consultation.consultationId)
+      .clearFollowUpSlot(consultation.consultationId, consultation.followUpSlot?.version ?? 0,
+        `follow-up-slot-clear:${globalThis.crypto.randomUUID()}`)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => this.session.consultation.update((current) => (current ? { ...current, followUpSlot: null } : current)),

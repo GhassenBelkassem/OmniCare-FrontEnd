@@ -33,11 +33,18 @@ export class PracticePatientApiService {
   private readonly baseUrl = `${this.config.apiBaseUrl}/patients`;
 
   listPatients(options: PracticePatientListOptions = {}): Observable<PageDto<PracticePatientDto>> {
-    let params = new HttpParams();
     const query = options.query?.trim();
     if (query) {
-      params = params.set('query', query);
+      // G-1 pass 2: the search text (name, phone…) goes in the body, never in the URL.
+      return this.http.post<PageDto<PracticePatientDto>>(`${this.baseUrl}/search`, {
+        query,
+        filter: options.filter ?? null,
+        page: options.page ?? null,
+        size: options.size ?? null,
+        limit: options.limit ?? null,
+      });
     }
+    let params = new HttpParams();
     if (options.filter) {
       params = params.set('filter', options.filter);
     }

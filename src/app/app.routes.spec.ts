@@ -29,9 +29,13 @@ describe('application routes', () => {
       'platform-admin',
       'doctor',
       'clinic',
+      'verifier/:ref',
       '',
       '**',
     ]);
+    const verifier = children.find((route) => route.path === 'verifier/:ref');
+    expect(verifier?.canActivate).toBeUndefined();
+    expect(verifier?.canMatch).toBeUndefined();
     expect(children.find((route) => route.path === 'platform-admin')?.redirectTo).toBe('admin');
     expect(children.find((route) => route.path === '')?.redirectTo).toEqual(expect.any(Function));
     expect(children.find((route) => route.path === '**')?.redirectTo).toBe('login');

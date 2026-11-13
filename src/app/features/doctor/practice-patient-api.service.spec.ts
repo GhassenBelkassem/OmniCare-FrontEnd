@@ -34,17 +34,12 @@ describe('PracticePatientApiService', () => {
 
   afterEach(() => http.verify());
 
-  it('lists patients with search, filter and pagination params', () => {
+  it('searches with the text in the body, never in the URL (G-1 pass 2)', () => {
     service.listPatients({ query: 'ben ', filter: 'LINKED', page: 2, size: 20 }).subscribe();
-    const request = http.expectOne(
-      (candidate) =>
-        candidate.url === '/api/v1/patients' &&
-        candidate.params.get('query') === 'ben' &&
-        candidate.params.get('filter') === 'LINKED' &&
-        candidate.params.get('page') === '2' &&
-        candidate.params.get('size') === '20',
-    );
-    expect(request.request.method).toBe('GET');
+    const request = http.expectOne((candidate) => candidate.url === '/api/v1/patients/search');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.urlWithParams).not.toContain('ben');
+    expect(request.request.body).toEqual({ query: 'ben', filter: 'LINKED', page: 2, size: 20, limit: null });
     expect(request.request.headers.get('Authorization')).toBe('Bearer doctor-access-token');
     request.flush({ content: [], totalElements: 0 });
   });

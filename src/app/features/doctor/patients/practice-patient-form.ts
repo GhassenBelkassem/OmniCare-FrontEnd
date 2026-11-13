@@ -27,6 +27,8 @@ import type {
 import { PracticePatientApiService } from '../practice-patient-api.service';
 
 const PHONE_PATTERN = /^[+0-9 ()./-]{6,32}$/;
+/** Same limit as the « Coordonnées » card (CONTACT_LIMITS.address). */
+export const ADDRESS_MAX = 2000;
 
 export interface PatientFormPrefill {
   readonly lastName: string;
@@ -98,6 +100,8 @@ export class PracticePatientForm {
     dateOfBirth: this.fb.control<string | null>(null),
     approximateAgeYears: this.fb.control<number | null>(null),
     phone: ['', [Validators.maxLength(32), Validators.pattern(PHONE_PATTERN)]],
+    /** Same limit as « Coordonnées » (2000); printed on the arrêt de travail when placed (G-1 D5). */
+    address: ['', [Validators.maxLength(ADDRESS_MAX)]],
     practiceIdentifier: ['', [Validators.maxLength(128)]],
   });
 
@@ -229,7 +233,8 @@ export class PracticePatientForm {
     birthControl.setErrors(null);
     if (this.form.controls.lastName.invalid || this.form.controls.firstName.invalid) return null;
     if (this.form.controls.sex.invalid || value.sex === '') return null;
-    if (this.form.controls.phone.invalid || this.form.controls.practiceIdentifier.invalid) {
+    if (this.form.controls.phone.invalid || this.form.controls.address.invalid
+      || this.form.controls.practiceIdentifier.invalid) {
       if (this.form.controls.practiceIdentifier.invalid) this.moreOptions.set(true);
       return null;
     }
@@ -254,6 +259,8 @@ export class PracticePatientForm {
     }
     const phone = value.phone.trim();
     if (phone) request = { ...request, phone };
+    const address = value.address.trim();
+    if (address) request = { ...request, address };
     const practiceIdentifier = value.practiceIdentifier.trim();
     if (practiceIdentifier) request = { ...request, practiceIdentifier };
     return request;

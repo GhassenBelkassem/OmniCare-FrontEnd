@@ -333,6 +333,23 @@ export class ConsultationSessionStore {
     }
   }
 
+  /**
+   * G-1 D5: re-reads the patient's administrative identity after « Coordonnées » were completed
+   * from the consultation. Nothing else is taken.
+   */
+  async refreshPatient(): Promise<void> {
+    const before = this.consultation();
+    if (!before) return;
+    try {
+      const fresh = await firstValueFrom(this.consultations.get(before.consultationId));
+      const current = this.consultation();
+      if (!current || current.consultationId !== fresh.consultationId) return;
+      this.consultation.set({ ...current, patient: fresh.patient ?? current.patient });
+    } catch {
+      // The warning keeps what is shown; the doctor can still finish.
+    }
+  }
+
   /** G-1 D2: a request sent or cancelled from the page. */
   applyAccessRequest(state: AccessRequestState): void {
     this.consultation.update((current) => (current ? { ...current, accessRequest: state } : current));

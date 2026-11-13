@@ -109,16 +109,20 @@ export class ActiveConsultationApiService {
   }
 
   /** Stores the chosen follow-up slot on the consultation (not reserved until « Terminer »). */
-  saveFollowUpSlot(consultationId: string, slot: { readonly start: string; readonly end: string; readonly practiceLocationId: string }): Observable<ConsultationFollowUpSlot> {
+  /** G-1 pass 2: Idempotency-Key and the slot's current version (0 when none) are required. */
+  saveFollowUpSlot(consultationId: string, slot: { readonly start: string; readonly end: string; readonly practiceLocationId: string },
+                   expectedVersion: number, idempotencyKey: string): Observable<ConsultationFollowUpSlot> {
     return this.http.put<ConsultationFollowUpSlot>(
       `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(consultationId)}/follow-up-slot`,
       slot,
+      { params: { expectedVersion }, headers: { 'Idempotency-Key': idempotencyKey } },
     );
   }
 
-  clearFollowUpSlot(consultationId: string): Observable<void> {
+  clearFollowUpSlot(consultationId: string, expectedVersion: number, idempotencyKey: string): Observable<void> {
     return this.http.delete<void>(
       `${this.config.apiBaseUrl}/doctor/consultations/${encodeURIComponent(consultationId)}/follow-up-slot`,
+      { params: { expectedVersion }, headers: { 'Idempotency-Key': idempotencyKey } },
     );
   }
 

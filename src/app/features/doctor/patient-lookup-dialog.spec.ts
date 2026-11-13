@@ -33,12 +33,12 @@ describe('PatientLookupDialog', () => {
 
     const request = TestBed.inject(HttpTestingController).expectOne(
       (candidate) =>
-        candidate.url === '/api/v1/patients' &&
-        candidate.params.get('query') === 'Trabelsi' &&
-        candidate.params.get('page') === '0' &&
-        candidate.params.get('size') === '8',
+        candidate.url === '/api/v1/patients/search' &&
+        candidate.body?.query === 'Trabelsi' &&
+        candidate.body?.page === 0 &&
+        candidate.body?.size === 8,
     );
-    expect(request.request.method).toBe('GET');
+    expect(request.request.method).toBe('POST');
     request.flush({
       content: [
         {

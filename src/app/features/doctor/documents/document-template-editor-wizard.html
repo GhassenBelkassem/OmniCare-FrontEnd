@@ -270,8 +270,20 @@
                     (keydown)="onFieldKeydown($event, field)"
                     (pointerdown)="startPointerOperation($event, field, 'move')"
                   >
-                    <span>{{ field.label }}</span>
-                    <strong>{{ field.sampleValue }}</strong>
+                    @switch (field.fieldType) {
+                      @case ('QR_CODE') {
+                        <span class="editor-field__qr" aria-hidden="true"
+                          ><oc-icon name="qr-code"
+                        /></span>
+                      }
+                      @case ('SIGNATURE_AREA') {
+                        <span class="editor-field__signature">Signature / cachet</span>
+                      }
+                      @default {
+                        <span>{{ field.label }}</span>
+                        <strong>{{ field.sampleValue }}</strong>
+                      }
+                    }
                     <span
                       class="editor-field__resize"
                       aria-hidden="true"
@@ -292,7 +304,7 @@
                 <span class="field-kind field-kind--patient" aria-hidden="true"></span>
                 <span
                   ><h4>{{ field.label }}</h4>
-                  <p>{{ field.sampleValue }}</p></span
+                  <p>{{ isGraphic(field) ? graphicDescription(field) : field.sampleValue }}</p></span
                 >
               </header>
 
@@ -389,6 +401,7 @@
                 </div>
               </div>
 
+              @if (!isGraphic(field)) {
               <div class="inspector-group">
                 <strong>Texte</strong>
                 <label class="inspector-font"
@@ -429,6 +442,7 @@
                   </button>
                 </div>
               </div>
+              }
 
               <oc-button
                 variant="destructive"

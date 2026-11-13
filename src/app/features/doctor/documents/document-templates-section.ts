@@ -37,6 +37,7 @@ import {
   DocumentTemplateEditorWizard,
   TemplateWizardResult,
 } from './document-template-editor-wizard';
+import { documentTemplateErrorMessage } from './document-template-errors';
 
 type PageState = 'ready' | 'loading' | 'error' | 'empty';
 type ConfirmationAction =
@@ -230,9 +231,11 @@ export class DocumentTemplatesSection {
           this.statusMessage.set(`« ${template.name} » est maintenant le modèle par défaut.`);
           this.load();
         },
-        error: () => {
+        error: (error: unknown) => {
           this.busyTemplateId.set(null);
-          this.actionError.set('Le modèle par défaut n’a pas pu être modifié.');
+          this.actionError.set(
+            documentTemplateErrorMessage(error, 'Le modèle par défaut n’a pas pu être modifié.'),
+          );
         },
       });
   }
@@ -250,10 +253,13 @@ export class DocumentTemplatesSection {
           this.statusMessage.set(`Le modèle « ${updated.name} » est maintenant actif.`);
           this.load();
         },
-        error: () => {
+        error: (error: unknown) => {
           this.busyTemplateId.set(null);
           this.actionError.set(
-            'Le modèle ne peut pas être activé. Vérifiez que les champs obligatoires sont placés.',
+            documentTemplateErrorMessage(
+              error,
+              'Le modèle ne peut pas être activé. Vérifiez que les champs obligatoires sont placés.',
+            ),
           );
         },
       });
@@ -292,11 +298,13 @@ export class DocumentTemplatesSection {
         );
         this.load();
       },
-      error: () => {
+      error: (error: unknown) => {
         this.busyTemplateId.set(null);
         this.confirmationOpen.set(false);
         this.confirmationAction.set(null);
-        this.actionError.set('Cette action n’a pas pu être effectuée.');
+        this.actionError.set(
+          documentTemplateErrorMessage(error, 'Cette action n’a pas pu être effectuée.'),
+        );
       },
     });
   }
@@ -324,7 +332,7 @@ export class DocumentTemplatesSection {
     this.busyTemplateId.set(template.id);
     this.actionError.set(null);
     this.api
-      .createVersion(template.id, file)
+      .createVersion(template.id, file, template.revision)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -336,10 +344,12 @@ export class DocumentTemplatesSection {
           );
           this.openWizard(4, updated);
         },
-        error: () => {
+        error: (error: unknown) => {
           this.busyTemplateId.set(null);
           input.value = '';
-          this.actionError.set('Le nouveau PDF n’a pas pu être importé.');
+          this.actionError.set(
+            documentTemplateErrorMessage(error, 'Le nouveau PDF n’a pas pu être importé.'),
+          );
         },
       });
   }
@@ -359,7 +369,10 @@ export class DocumentTemplatesSection {
           anchor.remove();
           setTimeout(() => URL.revokeObjectURL(url), 0);
         },
-        error: () => this.actionError.set('Le PDF source n’a pas pu être téléchargé.'),
+        error: (error: unknown) =>
+          this.actionError.set(
+            documentTemplateErrorMessage(error, 'Le PDF source n’a pas pu être téléchargé.'),
+          ),
       });
   }
 
@@ -370,6 +383,8 @@ export class DocumentTemplatesSection {
   }
 
   fieldKind(field: DocumentTemplateField): string {
+    if (field.fieldType === 'QR_CODE') return 'verification';
+    if (field.fieldType === 'SIGNATURE_AREA') return 'signature';
     if (field.fieldType === 'DATE') return 'date';
     if (field.valueSource === 'AUTOMATIC') return 'verification';
     if (field.fieldKey.startsWith('patient')) return 'patient';

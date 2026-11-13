@@ -60,6 +60,12 @@
   color: var(--oc-color-text-secondary);
 }
 
+.preview-field--signature {
+  border-color: var(--oc-color-text-secondary);
+  background: transparent;
+  color: var(--oc-color-text-secondary);
+}
+
 .preview-field--required {
   border-style: solid;
 }

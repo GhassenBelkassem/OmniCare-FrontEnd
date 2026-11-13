@@ -44,6 +44,7 @@ export const OC_ICON_NAMES = [
   'eye',
   'edit',
   'lock',
+  'qr-code',
 ] as const;
 
 export type OcIconName = (typeof OC_ICON_NAMES)[number];
@@ -221,6 +222,12 @@ export function isOcIconName(value: string): value is OcIconName {
         @case ('lock') {
           <rect x="5" y="11" width="14" height="10" rx="2" />
           <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+        }
+        @case ('qr-code') {
+          <rect x="4" y="4" width="6" height="6" rx="1" />
+          <rect x="14" y="4" width="6" height="6" rx="1" />
+          <rect x="4" y="14" width="6" height="6" rx="1" />
+          <path d="M14 14h2v2h-2zM18 14h2M14 18v2h2M18 18h2v2" />
         }
         @default {
           <rect x="4" y="4" width="16" height="16" rx="3" />
