@@ -1,0 +1,542 @@
+// Day view (canvas « Agenda médecin » v3.3, board « Jour »). Colours of the level chips and of the timeline are
+// the canvas values of the month view, kept in one place so no hex appears further down.
+:host {
+  display: block;
+  --cal-ring: #1fbf9a;
+  --cal-available-bg: #e3f8ef;
+  --cal-available-border: #a9e5cb;
+  --cal-available-bar: #0f826d;
+  --cal-busy-bg: #fef0c7;
+  --cal-full-bg: #fee4e2;
+  --cal-full-border: #fdb0a8;
+  --cal-closed-bg: #f2f4f7;
+  --cal-closed-hatch: #d0d5dd;
+  --cal-now: #d92d20;
+  --cal-next-bg: #0d473d;
+}
+
+.cal-day {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--oc-space-4, 16px);
+  align-items: start;
+}
+
+.cal-day__main,
+.cal-day__aside {
+  min-width: 0;
+}
+
+.cal-day__aside {
+  display: grid;
+  gap: 12px;
+}
+
+// ---- header ----
+.cal-day__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.cal-day__date {
+  margin: 0;
+  font-size: 18px;
+  color: var(--oc-text-strong, #16202a);
+}
+
+.cal-day__slots {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--oc-text, #344054);
+}
+
+.cal-day__level,
+.cal-day__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cal-day__level--available {
+  background: var(--cal-available-bg);
+  color: var(--cal-available-bar);
+}
+
+.cal-day__level--busy {
+  background: var(--cal-busy-bg);
+  color: #93370d;
+}
+
+.cal-day__level--full {
+  background: var(--cal-full-bg);
+  color: #b42318;
+}
+
+.cal-day__level--closed {
+  background: var(--cal-closed-bg);
+  color: var(--oc-text-muted, #4a5562);
+}
+
+// CAL-FIX-2 fix 6: a past day's chip is neutral grey « Passé ».
+.cal-day__level--past {
+  background: var(--cal-closed-bg);
+  color: #475467;
+}
+
+.cal-day__chip--request {
+  background: #fef0c7;
+  color: #93370d;
+}
+
+.cal-day__chip--state {
+  background: var(--oc-cal-chip, var(--cal-closed-bg));
+  color: var(--oc-cal-fg, var(--oc-text, #344054));
+  font-weight: 600;
+}
+
+// ---- timeline (14 px) ----
+.cal-day__timeline {
+  margin-bottom: 14px;
+}
+
+.cal-day__track {
+  position: relative;
+  height: 14px;
+  border-radius: 6px;
+  background: var(--cal-closed-bg);
+  overflow: hidden;
+
+  > span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+  }
+}
+
+.cal-day__seg {
+  background: var(--cal-available-border);
+}
+
+.cal-day__break-bar {
+  background: repeating-linear-gradient(135deg, var(--cal-closed-bg) 0 3px, var(--cal-closed-hatch) 3px 4px);
+}
+
+.cal-day__blocked-bar {
+  background: repeating-linear-gradient(135deg, var(--cal-full-bg) 0 3px, var(--cal-full-border) 3px 4px);
+}
+
+.cal-day__booked {
+  top: 2px !important;
+  bottom: 2px !important;
+  border-radius: 3px;
+  background: var(--oc-cal-bar, var(--cal-available-bar));
+}
+
+.cal-day__now-marker {
+  width: 2px;
+  background: var(--cal-now);
+  z-index: 2;
+}
+
+// Fix 6: the time before now is grey (the whole day once it is over); the marker stays above it.
+.cal-day__past {
+  left: 0;
+  z-index: 1;
+  background: #d0d5dd;
+  pointer-events: none;
+}
+
+.cal-day__ticks {
+  position: relative;
+  height: 16px;
+  margin-top: 2px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-day__tick {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+// ---- states ----
+.cal-day__banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--cal-full-bg);
+  color: #b42318;
+  font-size: 13px;
+}
+
+.cal-day__inline-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.cal-day__empty,
+.cal-day__muted {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-day__closed-day {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: repeating-linear-gradient(135deg, var(--cal-closed-bg) 0 6px, #ffffff 6px 12px);
+  border: 1px solid var(--cal-closed-hatch);
+}
+
+.cal-day__skeleton {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eef0f3 25%, #f7f8fa 50%, #eef0f3 75%);
+  background-size: 200% 100%;
+  animation: cal-day-shimmer 1.4s infinite linear;
+}
+
+.cal-day__skeleton--header {
+  width: 280px;
+  height: 22px;
+}
+
+.cal-day__skeleton--row {
+  flex: 1;
+  height: 52px;
+}
+
+@keyframes cal-day-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+// ---- list ----
+.cal-day__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.cal-day__row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-day__time {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-day__time--now {
+  color: var(--cal-now);
+}
+
+.cal-day__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 4px;
+  border-radius: 12px;
+  background: var(--oc-cal-bg, #ffffff);
+  border: var(--oc-cal-border, 1px solid #e4e7ec);
+  border-left: 4px solid var(--oc-cal-bar, #98a2b3);
+  color: var(--oc-cal-fg, var(--oc-text, #344054));
+}
+
+.cal-day__item--dim {
+  opacity: 0.35;
+}
+
+.cal-day__item--selected {
+  box-shadow: 0 0 0 2px var(--cal-ring);
+}
+
+.cal-day__item--struck .cal-day__name {
+  text-decoration: line-through;
+}
+
+.cal-day__open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cal-day__who {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.cal-day__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-day__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cal-day__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.cal-day__btn {
+  min-height: 28px;
+  padding: 2px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--oc-text, #344054);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.cal-day__btn--primary {
+  border-color: var(--cal-available-bar);
+  background: var(--cal-available-bar);
+  color: #ffffff;
+}
+
+.cal-day__btn--icon {
+  min-width: 28px;
+  padding: 2px 6px;
+}
+
+.cal-day__btn--light {
+  border-color: transparent;
+  background: #ffffff;
+  color: var(--cal-next-bg);
+}
+
+.cal-day__free,
+.cal-day__break,
+.cal-day__closed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 12px;
+}
+
+.cal-day__free {
+  justify-content: space-between;
+  border: 1.5px dashed var(--cal-available-border);
+  background: #ffffff;
+}
+
+.cal-day__free-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cal-available-bar);
+}
+
+.cal-day__break {
+  background: var(--cal-closed-bg);
+  color: var(--oc-text, #344054);
+}
+
+.cal-day__break-range {
+  flex: 1;
+  font-size: 12px;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-day__closed {
+  justify-content: space-between;
+  background: repeating-linear-gradient(135deg, var(--cal-closed-bg) 0 6px, #ffffff 6px 12px);
+  border: 1px solid var(--cal-closed-hatch);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+// ---- now marker ----
+.cal-day__now {
+  display: flex;
+  align-items: center;
+  height: 10px;
+}
+
+.cal-day__now-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cal-now);
+}
+
+.cal-day__now-line {
+  flex: 1;
+  height: 2px;
+  background: var(--cal-now);
+}
+
+// ---- aside ----
+.cal-day__next {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--cal-next-bg);
+  color: #ffffff;
+  display: grid;
+  gap: 4px;
+}
+
+.cal-day__next-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.85;
+  color: inherit;
+}
+
+.cal-day__next-name {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.cal-day__next-time {
+  margin: 0 0 8px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+// Fix 8: « Nouveau rendez-vous » card (canvas: white card, 1 px #1FBF9A border). No type or duration (parked).
+.cal-day__new {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #1fbf9a;
+  background: #ffffff;
+}
+
+.cal-day__new-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #101828;
+}
+
+.cal-day__new-slot {
+  margin: 0;
+  font-size: 13px;
+  color: #475467;
+}
+
+.cal-day__new-btn {
+  justify-self: start;
+}
+
+.cal-day__card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #e4e7ec;
+  background: #ffffff;
+}
+
+.cal-day__card-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--oc-text-strong, #16202a);
+}
+
+.cal-day__summary {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.cal-day__summary-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+
+  dt {
+    color: var(--oc-text, #344054);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// ---- keyboard focus and motion ----
+.cal-day__open:focus-visible,
+.cal-day__btn:focus-visible {
+  outline: 2px solid var(--cal-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+  .cal-day {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-day__skeleton {
+    animation: none;
+  }
+}

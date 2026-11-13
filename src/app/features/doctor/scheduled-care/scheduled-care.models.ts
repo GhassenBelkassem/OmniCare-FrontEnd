@@ -134,6 +134,8 @@ export interface DoctorScheduledCareItem {
   readonly availableActions: readonly ScheduledCareAction[];
   readonly sortAt: string;
   readonly updatedAt: string;
+  /** Follow-up appointment booked by the doctor (backend G4-1); absent on older answers. */
+  readonly followUp?: boolean;
 }
 
 export interface DoctorScheduledCareAgenda {

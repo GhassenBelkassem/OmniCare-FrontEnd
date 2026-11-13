@@ -9,15 +9,26 @@ import type {
 } from '../appointment-api.models';
 import type { UrgentRequestSummaryDto } from '../doctor-urgent-api.service';
 import type { DoctorScheduledCareItem } from '../scheduled-care/scheduled-care.models';
-import type { CalendarAppointmentPresentationMetadata } from './calendar-view.models';
+import { presentCalendarItem } from './calendar-presentation';
+import type {
+  CalendarAppointmentPresentationMetadata,
+  CalendarRequestPresentationMetadata,
+} from './calendar-view.models';
 import {
   addEstimatedMinutesToInstant,
   exceptionWallClockDateTime,
   formatCalendarTime,
   formatCalendarTimeRange,
+  hasValidPause,
   preserveAppointmentInstant,
-  toLocalDateOnly,
+  toFullCalendarWeekday,
 } from './calendar-time.adapter';
+import {
+  addDaysToKey,
+  tunisDayKey,
+  weekdayOfDayKey,
+} from './calendar-time';
+import type { AvailabilityRuleDto } from '../appointment-api.models';
 
 export type ProjectedAppointmentStatus = 'PROPOSED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED';
 
@@ -322,7 +333,10 @@ export function toScheduledAppointmentCalendarEvent(
   }
   const presentation = appointmentStatusPresentation(item.status) ?? APPOINTMENT_STATUS.CONFIRMED;
   const patientLabel = item.subject.displayName.trim() || 'Patient';
-  const typeKind = item.subject.subjectType === 'PRACTICE_PATIENT' ? 'external' : 'cabinet';
+  // Calendar-only state (label, dashed, css hook, type icon). The follow-up marker comes from the
+  // agenda item; when the API does not send it, the appointment is simply not a follow-up.
+  const state = presentCalendarItem(item, { isFollowUp: isFollowUpItem(item), nowMs: now.getTime() });
+  const typeKind = state.typeIcon;
   const type = TYPE_PRESENTATION[typeKind];
   const toneClass =
     typeKind === 'external'
@@ -330,7 +344,7 @@ export function toScheduledAppointmentCalendarEvent(
       : APPOINTMENT_TONE_CLASS.omnicarePatient;
   const start = new Date(item.start);
   const unclosed =
-    item.status === 'IN_PROGRESS' && toLocalDateOnly(start) < toLocalDateOnly(now);
+    item.status === 'IN_PROGRESS' && tunisDayKey(start) < tunisDayKey(now);
   return {
     id: `appointment:${item.appointmentId}`,
     title: patientLabel,
@@ -341,7 +355,8 @@ export function toScheduledAppointmentCalendarEvent(
     className: [
       SCHEDULED_STATUS_CLASS[item.status],
       toneClass,
-      presentation.muted ? 'oc-calendar-event--muted' : '',
+      state.cssClass,
+      presentation.muted || state.notClosed ? 'oc-calendar-event--muted' : '',
       presentation.struck ? 'oc-calendar-event--struck' : '',
     ]
       .filter(Boolean)
@@ -355,23 +370,142 @@ export function toScheduledAppointmentCalendarEvent(
       statusColor: presentation.color,
       statusTint: presentation.tint,
       statusText: presentation.text,
-      muted: presentation.muted,
+      muted: presentation.muted || state.notClosed,
       struck: presentation.struck,
+      notClosed: state.notClosed,
       typeKind,
       typeLabel: type.label,
       typeIcon: type.icon,
       cabinetLabel: item.cabinet.name?.trim() || 'Cabinet non renseigné',
       timeRangeLabel: formatCalendarTimeRange(start, new Date(item.end)),
       unclosed,
+      calendarState: state.state,
+      stateLabel: state.labelFr,
+      dashed: state.dashed,
+      cssClass: state.cssClass,
     },
   };
 }
 
+/**
+ * Number of appointments of one Tunis day (`YYYY-MM-DD`). Cancelled appointments no longer take the
+ * slot, so they are not counted; appointments of another day (for example data still loaded from the
+ * previous period) are ignored.
+ */
+export function countAppointmentsOfDay(
+  items: readonly DoctorScheduledCareItem[],
+  dayKey: string,
+): number {
+  if (dayKey === '') return 0;
+  return items.filter(
+    (item) =>
+      item.resourceType === 'APPOINTMENT' &&
+      item.status !== 'CANCELLED' &&
+      tunisDayKey(item.start) === dayKey,
+  ).length;
+}
+
+/** `followUp` arrives from the agenda (backend G4-1); absent or not `true` means « not a follow-up ». */
+export function isFollowUpItem(item: DoctorScheduledCareItem): boolean {
+  return item.followUp === true;
+}
+
+const PLACED_REQUEST_STATUSES: ReadonlySet<string> = new Set([
+  'PENDING_DOCTOR',
+  'PENDING_PATIENT_TIME_CONFIRMATION',
+]);
+
+export interface RequestCalendarEvent extends EventInput {
+  readonly id: string;
+  readonly title: string;
+  readonly start: string;
+  readonly end: string;
+  readonly allDay: false;
+  readonly interactive: true;
+  readonly className: string;
+  readonly extendedProps: CalendarRequestPresentationMetadata;
+}
+
+/** A request is placed on the grid only with an exact, ordered start and end. */
+export function hasExactTime(item: DoctorScheduledCareItem): boolean {
+  const start = Date.parse(item.start ?? '');
+  const end = Date.parse(item.end ?? '');
+  return Number.isFinite(start) && Number.isFinite(end) && start < end;
+}
+
+/** True for a pending request that cannot be drawn because it has no exact time. */
+export function isUnplacedRequest(item: DoctorScheduledCareItem): boolean {
+  return (
+    item.resourceType === 'BOOKING_REQUEST' &&
+    PLACED_REQUEST_STATUSES.has(item.status) &&
+    !hasExactTime(item)
+  );
+}
+
+/**
+ * Calendar projection of a pending booking request: « Demande » (waiting for the doctor) or
+ * « En attente du patient » (another time was proposed). Closed requests and requests without an
+ * exact time are not drawn.
+ */
+export function toRequestCalendarEvent(item: DoctorScheduledCareItem): RequestCalendarEvent | null {
+  if (
+    item.resourceType !== 'BOOKING_REQUEST' ||
+    item.requestId === null ||
+    !PLACED_REQUEST_STATUSES.has(item.status) ||
+    !hasExactTime(item)
+  ) {
+    return null;
+  }
+  const presentation = appointmentStatusPresentation(item.status) ?? APPOINTMENT_STATUS.PENDING;
+  const state = presentCalendarItem(item);
+  const type = TYPE_PRESENTATION[state.typeIcon];
+  const patientLabel = item.subject.displayName.trim() || 'Patient';
+  return {
+    id: `request:${item.requestId}`,
+    title: patientLabel,
+    start: preserveAppointmentInstant(item.start),
+    end: preserveAppointmentInstant(item.end),
+    allDay: false,
+    interactive: true,
+    className: ['omnicare-request-event', state.cssClass].join(' '),
+    extendedProps: {
+      kind: 'request',
+      requestId: item.requestId,
+      requestStatus: item.status,
+      patientLabel,
+      statusLabel: presentation.label,
+      statusColor: presentation.color,
+      statusTint: presentation.tint,
+      statusText: presentation.text,
+      muted: false,
+      struck: false,
+      typeKind: state.typeIcon,
+      typeLabel: type.label,
+      typeIcon: type.icon,
+      cabinetLabel: item.cabinet?.name?.trim() || 'Cabinet non renseigné',
+      timeRangeLabel: formatCalendarTimeRange(new Date(item.start), new Date(item.end)),
+      calendarState: state.state,
+      stateLabel: state.labelFr,
+      dashed: state.dashed,
+      cssClass: state.cssClass,
+    },
+  };
+}
+
+export function projectRequestEvents(items: readonly DoctorScheduledCareItem[]): RequestCalendarEvent[] {
+  return items.reduce<RequestCalendarEvent[]>((events, item) => {
+    const event = toRequestCalendarEvent(item);
+    if (event !== null) events.push(event);
+    return events;
+  }, []);
+}
+
 export function projectScheduledAppointmentEvents(
   items: readonly DoctorScheduledCareItem[],
+  now: Date = new Date(),
 ): AppointmentCalendarEvent[] {
   return items.reduce<AppointmentCalendarEvent[]>((events, item) => {
-    const event = toScheduledAppointmentCalendarEvent(item);
+    const event = toScheduledAppointmentCalendarEvent(item, now);
     if (event !== null) events.push(event);
     return events;
   }, []);
@@ -383,4 +517,65 @@ function isScheduledCalendarStatus(status: string): status is ScheduledCalendarS
 
 function isProjectedStatus(status: string): status is ProjectedAppointmentStatus {
   return status === 'PROPOSED' || status === 'CONFIRMED' || status === 'IN_PROGRESS' || status === 'COMPLETED';
+}
+
+export interface BreakEventMetadata {
+  readonly kind: 'break';
+  readonly title: string;
+  readonly timeLabel: string;
+}
+
+export interface BreakCalendarEvent extends EventInput {
+  readonly id: string;
+  readonly title: string;
+  readonly start: string;
+  readonly end: string;
+  readonly allDay: false;
+  readonly display: 'block';
+  readonly interactive: false;
+  readonly className: string;
+  readonly extendedProps: BreakEventMetadata;
+}
+
+export const BREAK_TITLE = 'Pause déjeuner';
+
+/**
+ * One calm « Pause déjeuner » block per visible day, from each active weekly rule's valid
+ * pauseStart/pauseEnd. Times are wall-clock values, like exceptions. Not produced in month view.
+ */
+export function projectBreakEvents(
+  rules: readonly AvailabilityRuleDto[],
+  range: { readonly startMs: number; readonly endMs: number } | null,
+  view: 'day' | 'week' | 'month',
+): BreakCalendarEvent[] {
+  if (view === 'month' || range === null) return [];
+
+  const pauseByWeekday = new Map<number, AvailabilityRuleDto & { pauseStart: string; pauseEnd: string }>();
+  for (const rule of rules) {
+    if (rule.active && hasValidPause(rule)) pauseByWeekday.set(toFullCalendarWeekday(rule.dayOfWeek), rule);
+  }
+  if (pauseByWeekday.size === 0) return [];
+
+  const events: BreakCalendarEvent[] = [];
+  // Every Tunis day of the range; the break times are Tunis wall clocks, read by FullCalendar in Tunis.
+  const lastKey = tunisDayKey(range.endMs - 1);
+  for (let date = tunisDayKey(range.startMs); date !== '' && date <= lastKey; date = addDaysToKey(date, 1)) {
+    const weekday = weekdayOfDayKey(date);
+    const rule = weekday === null ? undefined : pauseByWeekday.get(weekday);
+    if (rule === undefined) continue;
+    const from = rule.pauseStart.slice(0, 5);
+    const to = rule.pauseEnd.slice(0, 5);
+    events.push({
+      id: `break:${date}`,
+      title: BREAK_TITLE,
+      start: exceptionWallClockDateTime(date, from),
+      end: exceptionWallClockDateTime(date, to),
+      allDay: false,
+      display: 'block',
+      interactive: false,
+      className: 'oc-cal-break',
+      extendedProps: { kind: 'break', title: BREAK_TITLE, timeLabel: `${from} – ${to}` },
+    });
+  }
+  return events;
 }

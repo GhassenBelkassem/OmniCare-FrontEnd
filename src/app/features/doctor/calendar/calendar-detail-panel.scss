@@ -1,0 +1,162 @@
+// Side panel of the doctor calendar (CAL-3). Global (ViewEncapsulation.None) because the drawer renders in
+// the overlay; every selector is prefixed `cal-panel`. The state chip reuses the CAL-1 status tokens, which
+// match under the `omnicare-calendar` wrap class set on the drawer.
+.cal-panel {
+  display: grid;
+  gap: 16px;
+  font-size: 13px;
+  color: #101828;
+}
+
+.cal-panel__hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cal-panel__identity {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cal-panel__name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-panel__meta {
+  margin: 2px 0 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.cal-panel__chip {
+  flex: 0 0 auto;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--oc-cal-chip, #f2f4f7);
+  color: var(--oc-cal-fg, #475467);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cal-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+}
+
+.cal-panel__grid dt {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.cal-panel__grid dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.cal-panel__wide {
+  grid-column: 1 / -1;
+}
+
+.cal-panel__masked {
+  color: #667085;
+  font-style: italic;
+}
+
+.cal-panel__choice {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.cal-panel__choice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cal-panel__choice label {
+  display: grid;
+  gap: 4px;
+}
+
+.cal-panel__choice select {
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  font: inherit;
+}
+
+.cal-panel__label {
+  color: #344054;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cal-panel__hint {
+  margin: 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.cal-panel__state {
+  margin: 0;
+  color: #667085;
+}
+
+.cal-panel__error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.cal-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+// « Voir le dossier » and « Appeler » are links styled like the secondary buttons.
+.cal-panel__link-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cal-panel__link-button:hover {
+  background: #f9fafb;
+}
+
+.cal-panel__link-button:focus-visible {
+  outline: 2px solid #0f826d;
+  outline-offset: 2px;
+}

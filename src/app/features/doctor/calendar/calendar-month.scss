@@ -1,0 +1,672 @@
+// Month view (canvas « Agenda médecin » v3.3, board « Mois »). The level colours below are the canvas
+// values, kept in one place so no hex appears further down.
+:host {
+  display: block;
+  --cal-ring: #1fbf9a;
+  --cal-today: #0f826d;
+  --cal-available-bg: #e3f8ef;
+  --cal-available-border: #a9e5cb;
+  --cal-available-bar: #0f826d;
+  --cal-busy-bg: #fef0c7;
+  --cal-busy-border: #fbd48a;
+  --cal-busy-bar: #dc6803;
+  --cal-full-bg: #fee4e2;
+  --cal-full-border: #fdb0a8;
+  --cal-full-bar: #d92d20;
+  --cal-closed-bg: #f2f4f7;
+  --cal-closed-border: #e4e7ec;
+  --cal-closed-hatch: #d0d5dd;
+}
+
+.cal-month {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: var(--oc-space-4, 16px);
+  align-items: start;
+}
+
+.cal-month__main {
+  min-width: 0;
+}
+
+// ---- aside ----
+.cal-month__aside {
+  display: grid;
+  gap: var(--oc-space-3, 12px);
+}
+
+.cal-card {
+  background: var(--oc-surface, #fff);
+  border: 1px solid var(--oc-border, #e4e7ec);
+  border-radius: 14px;
+  padding: var(--oc-space-3, 12px) var(--oc-space-4, 16px);
+}
+
+.cal-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--oc-text-strong, #16202a);
+}
+
+.cal-card__sub,
+.cal-card__empty {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-card__figure {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--oc-text, #344054);
+}
+
+.cal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.cal-list__row,
+.cal-list__button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--oc-text, #344054);
+}
+
+.cal-list__row--past {
+  opacity: 0.55;
+}
+
+.cal-list__button {
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  justify-content: space-between;
+
+  &:hover {
+    background: var(--oc-bg, #f4f5f7);
+  }
+}
+
+.cal-list__time {
+  font-variant-numeric: tabular-nums;
+  color: var(--oc-text-muted, #4a5562);
+  flex: none;
+}
+
+.cal-list__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.cal-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--oc-bg, #f4f5f7);
+  color: var(--oc-text, #344054);
+}
+
+.cal-chip--live {
+  background: var(--cal-available-bg);
+  color: var(--cal-today);
+}
+
+.cal-chip--count,
+.cal-chip--request {
+  background: #fef0c7;
+  color: #93370d;
+}
+
+// Fix 5: a confirmed appointment already over and never started.
+.cal-chip--not-closed {
+  background: #fef0c7;
+  color: #93370d;
+}
+
+.cal-pv__item--not-closed .cal-pv__name,
+.cal-pv__item--not-closed .cal-pv__time {
+  color: #667085;
+}
+
+// ---- legend ----
+.cal-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-legend__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.cal-legend__swatch--available {
+  background: var(--cal-available-bg);
+  border-color: var(--cal-available-border);
+}
+
+.cal-legend__swatch--busy {
+  background: var(--cal-busy-bg);
+  border-color: var(--cal-busy-border);
+}
+
+.cal-legend__swatch--full {
+  background: var(--cal-full-bg);
+  border-color: var(--cal-full-border);
+}
+
+.cal-legend__swatch--closed {
+  background: repeating-linear-gradient(135deg, var(--cal-closed-bg) 0 3px, var(--cal-closed-hatch) 3px 4px);
+  border-color: var(--cal-closed-border);
+}
+
+.cal-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+// ---- grid ----
+.cal-month__grid {
+  display: grid;
+  gap: 6px;
+}
+
+.cal-month__row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cal-month__colhead {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-month__cell {
+  // CAL-FIX-2 (fixes 1 and 2): the cell element itself is never faded. Its level colour is drawn by a
+  // background layer (::before) and only that layer and the day's own content take `--cal-fade`, so the
+  // hover preview and the day menu, which live inside the cell, always stay fully opaque.
+  --cal-cell-bg: var(--oc-surface, #fff);
+  --cal-cell-border: var(--cal-closed-border);
+  --cal-fade: 1;
+  position: relative;
+  isolation: isolate;
+  height: 108px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+
+  &:hover {
+    box-shadow: var(--oc-shadow-md, 0 4px 12px rgba(16, 24, 40, 0.12));
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--cal-ring);
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    box-sizing: border-box;
+    border: 1px solid var(--cal-cell-border);
+    border-radius: inherit;
+    background: var(--cal-cell-bg);
+    opacity: var(--cal-fade);
+    pointer-events: none;
+  }
+}
+
+// The day's own content fades with its colour; the preview, the menu and the « ⋯ » button do not.
+.cal-month__num,
+.cal-month__closed,
+.cal-month__dots,
+.cal-month__bar {
+  opacity: var(--cal-fade);
+}
+
+.cal-month__cell--front {
+  z-index: 5;
+}
+
+.cal-month__cell--available {
+  --cal-cell-bg: var(--cal-available-bg);
+  --cal-cell-border: var(--cal-available-border);
+  --cal-bar: var(--cal-available-bar);
+}
+
+.cal-month__cell--busy {
+  --cal-cell-bg: var(--cal-busy-bg);
+  --cal-cell-border: var(--cal-busy-border);
+  --cal-bar: var(--cal-busy-bar);
+}
+
+.cal-month__cell--full {
+  --cal-cell-bg: var(--cal-full-bg);
+  --cal-cell-border: var(--cal-full-border);
+  --cal-bar: var(--cal-full-bar);
+}
+
+.cal-month__cell--closed {
+  --cal-cell-bg: repeating-linear-gradient(135deg, var(--cal-closed-bg) 0 6px, #eaecf0 6px 7px);
+  --cal-cell-border: var(--cal-closed-border);
+}
+
+// Fix 2: one rule for the whole grid. Out-of-month 50 %, past days of the month 60 %, today and future 100 %.
+.cal-month__cell--past {
+  --cal-fade: 0.6;
+}
+
+.cal-month__cell--outside {
+  --cal-fade: 0.5;
+}
+
+.cal-month__cell--skeleton {
+  cursor: default;
+
+  &::before {
+    display: none;
+  }
+
+  background: linear-gradient(90deg, var(--cal-closed-bg) 25%, #fff 50%, var(--cal-closed-bg) 75%);
+  background-size: 200% 100%;
+  animation: cal-month-shimmer 1.4s linear infinite;
+}
+
+.cal-month__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--oc-text-strong, #16202a);
+}
+
+.cal-month__num--today {
+  background: var(--cal-today);
+  color: #fff;
+}
+
+.cal-month__closed {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-month__dots {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cal-month__more {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-month__bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 8px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(16, 24, 40, 0.08);
+  overflow: hidden;
+}
+
+.cal-month__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--cal-bar, var(--cal-available-bar));
+}
+
+// ---- day menu ----
+.cal-month__menu-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--oc-text-muted, #4a5562);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+
+  &:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--cal-ring);
+  }
+}
+
+.cal-month__cell:hover .cal-month__menu-btn,
+.cal-month__cell:focus-within .cal-month__menu-btn,
+.cal-month__menu-btn[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.cal-month__menu {
+  position: absolute;
+  top: 32px;
+  right: 6px;
+  z-index: 10;
+  min-width: 190px;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--oc-border, #e4e7ec);
+  background: var(--oc-surface, #fff);
+  box-shadow: var(--oc-shadow-md, 0 8px 24px rgba(16, 24, 40, 0.16));
+  cursor: default;
+}
+
+.cal-month__menuitem {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--oc-text, #344054);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--oc-bg, #f4f5f7);
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--cal-ring);
+  }
+}
+
+// ---- preview ----
+.cal-month__preview {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  z-index: 20;
+  width: 304px;
+  padding-left: 8px; // keeps the pointer inside the cell while it travels to the card
+  cursor: default;
+}
+
+.cal-month__preview--left {
+  left: auto;
+  right: 100%;
+  padding-left: 0;
+  padding-right: 8px;
+}
+
+.cal-month__preview--up {
+  top: auto;
+  bottom: 0;
+}
+
+.cal-month__preview-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--oc-border, #e4e7ec);
+  background: var(--oc-surface, #fff);
+  box-shadow: var(--oc-shadow-md, 0 12px 32px rgba(16, 24, 40, 0.18));
+  display: grid;
+  gap: 8px;
+}
+
+.cal-pv__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cal-pv__title {
+  font-size: 14px;
+  color: var(--oc-text-strong, #16202a);
+}
+
+.cal-pv__level {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cal-pv__level--available {
+  background: var(--cal-available-bg);
+  color: var(--cal-available-bar);
+}
+
+.cal-pv__level--busy {
+  background: var(--cal-busy-bg);
+  color: #93370d;
+}
+
+.cal-pv__level--full {
+  background: var(--cal-full-bg);
+  color: #b42318;
+}
+
+.cal-pv__level--closed {
+  background: var(--cal-closed-bg);
+  color: var(--oc-text-muted, #4a5562);
+}
+
+// Fix 6: a past day's chip is neutral grey « Passé ».
+.cal-pv__level--past {
+  background: var(--cal-closed-bg);
+  color: #475467;
+}
+
+.cal-pv__slots,
+.cal-pv__muted,
+.cal-pv__more {
+  margin: 0;
+  font-size: 13px;
+  color: var(--oc-text, #344054);
+}
+
+.cal-pv__muted,
+.cal-pv__more {
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-pv__timeline {
+  display: grid;
+  gap: 2px;
+}
+
+.cal-pv__track {
+  position: relative;
+  height: 10px;
+  border-radius: 4px;
+  background: var(--cal-closed-bg);
+  overflow: hidden;
+
+  > span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+  }
+}
+
+.cal-pv__seg {
+  background: var(--cal-available-border);
+}
+
+.cal-pv__break {
+  background: repeating-linear-gradient(135deg, var(--cal-closed-bg) 0 3px, var(--cal-closed-hatch) 3px 4px);
+}
+
+.cal-pv__extra {
+  background: var(--cal-available-border);
+  outline: 1px dashed var(--cal-available-bar);
+  outline-offset: -1px;
+}
+
+.cal-pv__blocked {
+  background: repeating-linear-gradient(135deg, var(--cal-full-bg) 0 3px, var(--cal-full-border) 3px 4px);
+}
+
+.cal-pv__booked {
+  top: 2px !important;
+  bottom: 2px !important;
+  border-radius: 2px;
+}
+
+// Fix 6: the time before now is grey (the whole span on a past day); only the remaining time keeps its colour.
+.cal-pv__past {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  background: #d0d5dd;
+  pointer-events: none;
+}
+
+.cal-pv__ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--oc-text-muted, #4a5562);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-pv__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.cal-pv__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.cal-pv__time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--oc-text-muted, #4a5562);
+}
+
+.cal-pv__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.cal-pv__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+// ---- states ----
+.cal-month__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--cal-full-bg);
+  border: 1px solid var(--cal-full-border);
+  color: #b42318;
+  font-weight: 600;
+}
+
+@keyframes cal-month-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .cal-month {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-month__cell {
+    transition: none;
+  }
+
+  .cal-month__cell--skeleton {
+    animation: none;
+  }
+}
