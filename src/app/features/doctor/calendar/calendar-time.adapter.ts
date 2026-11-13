@@ -3,6 +3,16 @@ import type {
   AvailabilityRuleDto,
   DayOfWeekDto,
 } from '../appointment-api.models';
+import {
+  formatTunisTime,
+  formatTunisTimeRange,
+  tunisDayKey,
+  tunisFormatter,
+  tunisHourMinute,
+  tunisParts,
+  tunisWeekday,
+  weekdayOfDayKey,
+} from './calendar-time';
 
 export interface CalendarVisibleRange {
   readonly key: string;
@@ -30,13 +40,10 @@ const FULLCALENDAR_WEEKDAY: Readonly<Record<DayOfWeekDto, number>> = {
   SATURDAY: 6,
 };
 
-const EVENT_TIME_FORMATTER = new Intl.DateTimeFormat('fr-FR', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-
-/** Presentation-only conversion boundary. It does not redefine backend timezone semantics. */
+/**
+ * The visible period as the API wants it: appointments as instants (ISO), exceptions as Tunis dates
+ * (`YYYY-MM-DD`, the backend reads them in Africa/Tunis). `start` / `endExclusive` are instants.
+ */
 export function toCalendarVisibleRange(start: Date, endExclusive: Date): CalendarVisibleRange {
   const appointmentFrom = start.toISOString();
   const appointmentTo = endExclusive.toISOString();
@@ -46,8 +53,8 @@ export function toCalendarVisibleRange(start: Date, endExclusive: Date): Calenda
     key: `${appointmentFrom}|${appointmentTo}`,
     appointmentFrom,
     appointmentTo,
-    exceptionFrom: toLocalDateOnly(start),
-    exceptionToInclusive: toLocalDateOnly(inclusiveExceptionEnd),
+    exceptionFrom: tunisDayKey(start),
+    exceptionToInclusive: tunisDayKey(inclusiveExceptionEnd),
     startMs: start.getTime(),
     endMs: endExclusive.getTime(),
   };
@@ -106,6 +113,51 @@ export function projectBusinessHours(
 }
 
 /**
+ * Business hours as DRAWN on the time grid (CAL-FIX fix 2): one segment per active rule, from start to end,
+ * the pause included. The lunch break has its own « Pause déjeuner » block over exactly that time, so the
+ * hatched « hors horaires » background must not show beside it (it left a thin striped sliver next to the
+ * block). Working-time decisions keep using `projectBusinessHours`, which still cuts the pause out.
+ */
+export function projectGridBusinessHours(
+  rules: readonly AvailabilityRuleDto[],
+): CalendarBusinessHoursSegment[] {
+  return rules
+    .filter((rule) => rule.active)
+    .map((rule) => ({
+      daysOfWeek: [toFullCalendarWeekday(rule.dayOfWeek)] as readonly number[],
+      startTime: preserveWallClockTime(rule.startTime),
+      endTime: preserveWallClockTime(rule.endTime),
+    }));
+}
+
+/**
+ * Weekdays (0 = Sunday … 6 = Saturday) the week view hides: those with no active weekly rule AND
+ * no appointment starting inside the visible range. Display logic on already-loaded data only.
+ * Returns an empty list when nothing would be shown, because FullCalendar throws when all seven
+ * days are hidden.
+ */
+export function weekdaysToHide(
+  rules: readonly AvailabilityRuleDto[],
+  appointmentStartMs: readonly number[],
+  range: { readonly startMs: number; readonly endMs: number } | null,
+): number[] {
+  const shown = new Set<number>();
+  for (const rule of rules) {
+    if (rule.active) shown.add(toFullCalendarWeekday(rule.dayOfWeek));
+  }
+  if (range !== null) {
+    for (const startMs of appointmentStartMs) {
+      if (Number.isFinite(startMs) && startMs >= range.startMs && startMs < range.endMs) {
+        const weekday = tunisWeekday(startMs);
+        if (weekday !== null) shown.add(weekday);
+      }
+    }
+  }
+  if (shown.size === 0) return [];
+  return [0, 1, 2, 3, 4, 5, 6].filter((weekday) => !shown.has(weekday));
+}
+
+/**
  * Dates whose BLOCK intervals cover every effective working segment.
  * Pauses are excluded from the working segments, and adjacent BLOCK rows may
  * jointly cover a day. Closed weekdays and partial blocks are not classified
@@ -129,8 +181,8 @@ export function fullyBlockedDateKeys(
 
   const result = new Set<string>();
   for (const [dateKey, blocks] of blocksByDate) {
-    const date = localDateFromKey(dateKey);
-    const rule = date === null ? undefined : activeRulesByWeekday.get(date.getDay());
+    const weekday = weekdayOfDayKey(dateKey);
+    const rule = weekday === null ? undefined : activeRulesByWeekday.get(weekday);
     if (rule === undefined) continue;
 
     const workingSegments = projectBusinessHours([rule]).map((segment) => ({
@@ -166,32 +218,23 @@ export function exceptionWallClockDateTime(date: string, time: string): string {
   return `${date}T${preserveWallClockTime(time)}:00`;
 }
 
+/** « 09:30 » in Tunis, whatever the browser's time zone. */
 export function formatCalendarTime(value: Date | null): string {
-  return value === null || Number.isNaN(value.getTime()) ? '' : EVENT_TIME_FORMATTER.format(value);
+  return formatTunisTime(value);
 }
 
+/** « 09:30–10:00 » in Tunis. */
 export function formatCalendarTimeRange(start: Date | null, end: Date | null): string {
-  const startLabel = formatCalendarTime(start);
-  const endLabel = formatCalendarTime(end);
-  return endLabel ? `${startLabel}–${endLabel}` : startLabel;
+  return formatTunisTimeRange(start, end);
 }
 
-export function toLocalDateOnly(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function localDateFromKey(value: string): Date | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (match === null) return null;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function minutesOfDay(value: string): number | null {
-  const match = /^(\d{2}):(\d{2})$/.exec(value);
+/**
+ * Minutes of a wall-clock time. The API sends `LocalTime` as « HH:mm:ss » (Spring/Jackson) and older
+ * fixtures use « HH:mm »: both are read (CAL-FIX-2 fix 5: « 07:00:00 » used to be dropped, so the grid fell
+ * back to its 08:00 default).
+ */
+function minutesOfDay(value: string | null | undefined): number | null {
+  const match = /^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(value ?? '');
   if (match === null) return null;
   const hour = Number(match[1]);
   const minute = Number(match[2]);
@@ -215,7 +258,7 @@ function intervalIsCovered(
   return false;
 }
 
-function hasValidPause(
+export function hasValidPause(
   rule: AvailabilityRuleDto,
 ): rule is AvailabilityRuleDto & { readonly pauseStart: string; readonly pauseEnd: string } {
   return (
@@ -227,12 +270,25 @@ function hasValidPause(
   );
 }
 
-/** Visible time-grid range: earliest opening − 1 h to latest closing + 1 h (within the day). */
+/**
+ * Visible time-grid range: earliest opening − 1 h to latest closing + 1 h (within the day). The loaded
+ * appointments and requests of the visible period widen it too (CAL-FIX-2 fix 5), so a 07:30 appointment
+ * is always on the grid even when the working hours start later.
+ */
 export function paddedSlotBounds(
   rules: readonly AvailabilityRuleDto[],
   exceptions: readonly AvailabilityExceptionDto[] = [],
+  items: readonly { readonly start: string; readonly end: string }[] = [],
 ): { readonly min: string; readonly max: string } {
-  const windows = [
+  const itemWindows = items.flatMap((item): [number, number][] => {
+    const start = tunisHourMinute(item.start).minutes;
+    const end = tunisHourMinute(item.end).minutes;
+    if (!Number.isFinite(start)) return [];
+    // An item that ends on the next Tunis day (or at midnight) keeps the grid open to the end of the day.
+    const sameDay = tunisDayKey(item.start) === tunisDayKey(item.end) && Number.isFinite(end) && end > start;
+    return [[start, sameDay ? end : 24 * 60]];
+  });
+  const scheduleWindows = [
     ...rules.filter((rule) => rule.active).map((rule) => [rule.startTime, rule.endTime]),
     ...exceptions
       .filter((exception) => exception.type === 'EXTRA')
@@ -240,7 +296,9 @@ export function paddedSlotBounds(
   ]
     .map(([start, end]) => [minutesOfDay(start), minutesOfDay(end)])
     .filter((pair): pair is [number, number] => pair[0] !== null && pair[1] !== null);
-  if (windows.length === 0) return { min: '08:00:00', max: '18:00:00' };
+  if (scheduleWindows.length === 0 && itemWindows.length === 0) return { min: '08:00:00', max: '18:00:00' };
+  // Items only widen the grid: without a schedule, the 08:00 – 18:00 default (09:00 – 17:00 padded) stays.
+  const windows = [...(scheduleWindows.length === 0 ? [[9 * 60, 17 * 60] as [number, number]] : scheduleWindows), ...itemWindows];
   const earliest = Math.min(...windows.map(([start]) => start));
   const latest = Math.max(...windows.map(([, end]) => end));
   return {
@@ -262,16 +320,16 @@ export function minutesToDuration(minutes: number): string {
 }
 
 /**
- * True when the local wall-clock instant falls inside the doctor's working hours for that
- * date: weekly rules (pauses excluded), minus BLOCK exceptions, plus EXTRA openings.
+ * True when the instant, read as a Tunis wall clock, falls inside the doctor's working hours for
+ * that Tunis date: weekly rules (pauses excluded), minus BLOCK exceptions, plus EXTRA openings.
  */
 export function isWorkingTime(
   instant: Date,
   rules: readonly AvailabilityRuleDto[],
   exceptions: readonly AvailabilityExceptionDto[],
 ): boolean {
-  const dateKey = toLocalDateOnly(instant);
-  const minute = instant.getHours() * 60 + instant.getMinutes();
+  const dateKey = tunisDayKey(instant);
+  const minute = tunisHourMinute(instant).minutes;
   const inside = (start: string, end: string): boolean => {
     const from = minutesOfDay(start);
     const to = minutesOfDay(end);
@@ -284,15 +342,16 @@ export function isWorkingTime(
   if (sameDay.some((exception) => exception.type === 'EXTRA' && inside(exception.startTime, exception.endTime))) {
     return true;
   }
-  const weekday = instant.getDay();
+  const weekday = tunisWeekday(instant);
+  if (weekday === null) return false;
   return projectBusinessHours(rules).some(
     (segment) => segment.daysOfWeek.includes(weekday) && inside(segment.startTime, segment.endTime),
   );
 }
 
-const DAY = new Intl.DateTimeFormat('fr-FR', { day: 'numeric' });
-const MONTH_SHORT = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
-const YEAR = new Intl.DateTimeFormat('fr-FR', { year: 'numeric' });
+const DAY = tunisFormatter({ day: 'numeric' });
+const MONTH_SHORT = tunisFormatter({ month: 'short' });
+const YEAR = tunisFormatter({ year: 'numeric' });
 
 /** French period title: « 9 – 15 nov. 2026 », « novembre 2026 », « lundi 9 novembre 2026 ». */
 export function calendarPeriodTitle(
@@ -302,7 +361,7 @@ export function calendarPeriodTitle(
 ): string {
   if (mode === 'day') {
     return capitalizeFirst(
-      new Intl.DateTimeFormat('fr-FR', {
+      tunisFormatter({
         weekday: 'long',
         day: 'numeric',
         month: 'long',
@@ -314,12 +373,14 @@ export function calendarPeriodTitle(
     // The month grid starts in the previous month; title the month in the middle.
     const middle = new Date((start.getTime() + endExclusive.getTime()) / 2);
     return capitalizeFirst(
-      new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(middle),
+      tunisFormatter({ month: 'long', year: 'numeric' }).format(middle),
     );
   }
   const end = new Date(endExclusive.getTime() - 1);
-  const sameYear = start.getFullYear() === end.getFullYear();
-  const sameMonth = sameYear && start.getMonth() === end.getMonth();
+  const startParts = tunisParts(start);
+  const endParts = tunisParts(end);
+  const sameYear = startParts?.year === endParts?.year;
+  const sameMonth = sameYear && startParts?.month === endParts?.month;
   if (sameMonth) {
     return `${DAY.format(start)} – ${DAY.format(end)} ${MONTH_SHORT.format(end)} ${YEAR.format(end)}`;
   }

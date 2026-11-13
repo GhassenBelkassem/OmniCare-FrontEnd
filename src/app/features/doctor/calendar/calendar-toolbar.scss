@@ -1,0 +1,398 @@
+// Toolbar of the doctor calendar (CAL-4). Component-scoped. The status chips reuse the CAL-1 tokens
+// (`oc-cal-state--*`), which apply under `.doctor-calendar-demo`, the calendar root.
+$focus: #0f826d;
+$border: #e4e7ec;
+$muted: #667085;
+
+:host {
+  display: block;
+}
+
+.cal-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.cal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-block-end: var(--oc-space-4, 16px);
+}
+
+.cal-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cal-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.cal-toolbar__anchor {
+  position: relative;
+}
+
+// ---- period button ----
+.cal-period {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #101828;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cal-period:hover {
+  background: #f9fafb;
+}
+
+// ---- search ----
+.cal-search {
+  display: inline-flex;
+  min-width: 260px;
+  align-items: center;
+}
+
+.cal-search__icon {
+  position: absolute;
+  inset-inline-start: 10px;
+  color: $muted;
+  pointer-events: none;
+}
+
+.cal-search__input {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 34px 0 32px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.cal-search__input:focus-visible {
+  outline: 2px solid $focus;
+  outline-offset: 2px;
+}
+
+.cal-search .cal-kbd {
+  position: absolute;
+  inset-inline-end: 8px;
+}
+
+// ---- generic button, badge, kbd ----
+.cal-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344054;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cal-button:hover {
+  background: #f9fafb;
+}
+
+.cal-button:focus-visible,
+.cal-period:focus-visible,
+.cal-switch:focus-visible,
+.cal-result:focus-visible {
+  outline: 2px solid $focus;
+  outline-offset: 2px;
+}
+
+.cal-badge {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: $focus;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.cal-kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border: 1px solid #d0d5dd;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #f9fafb;
+  color: #475467;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.cal-kbd--on-primary {
+  margin-inline-start: 6px;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+// ---- switch ----
+.cal-switch {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: #344054;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cal-switch__track {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: #d0d5dd;
+  transition: background-color 150ms ease-out;
+}
+
+.cal-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.2);
+  transition: transform 150ms ease-out;
+}
+
+.cal-switch[aria-checked='true'] .cal-switch__track {
+  background: $focus;
+}
+
+.cal-switch[aria-checked='true'] .cal-switch__thumb {
+  transform: translateX(14px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-switch__track,
+  .cal-switch__thumb {
+    transition: none;
+  }
+}
+
+// ---- popovers ----
+.cal-popover {
+  position: absolute;
+  z-index: 30;
+  inset-block-start: calc(100% + 6px);
+  inset-inline-start: 0;
+  min-width: 220px;
+  padding: 10px;
+  border: 1px solid $border;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.14);
+}
+
+.cal-popover--results {
+  inset-inline-end: 0;
+  inset-inline-start: auto;
+  width: 360px;
+  max-width: 90vw;
+  padding: 4px;
+}
+
+.cal-popover--filters {
+  inset-inline-end: 0;
+  inset-inline-start: auto;
+  display: grid;
+  gap: 6px;
+}
+
+.cal-popover__title {
+  margin: 0 0 2px;
+  color: $muted;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cal-popover__empty {
+  margin: 0;
+  padding: 12px;
+  color: $muted;
+  font-size: 13px;
+}
+
+.cal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cal-results {
+  display: grid;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.cal-result {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.cal-result:hover {
+  background: #f9fafb;
+}
+
+.cal-result__when {
+  color: $muted;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cal-result__name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--oc-cal-chip, #f2f4f7);
+  color: var(--oc-cal-fg, #475467);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+// ---- shortcuts window ----
+.cal-dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.45);
+}
+
+.cal-dialog {
+  position: fixed;
+  z-index: 1001;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  display: grid;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  gap: 12px;
+  padding: 20px;
+  overflow-y: auto;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 24px 48px rgba(16, 24, 40, 0.24);
+  transform: translate(-50%, -50%);
+}
+
+.cal-dialog:focus {
+  outline: none;
+}
+
+.cal-dialog__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.cal-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.cal-shortcuts__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cal-shortcuts__row dt {
+  display: flex;
+  min-width: 64px;
+  gap: 4px;
+}
+
+.cal-shortcuts__row dd {
+  margin: 0;
+  font-size: 13px;
+}
+
+.cal-dialog__note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #475467;
+  font-size: 12px;
+}
+
+.cal-dialog__switch {
+  justify-self: start;
+  padding-inline-start: 0;
+}
+
+.cal-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+// Month view: the search is off and says why (CAL-5).
+.cal-search__input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

@@ -1,0 +1,388 @@
+// CAL-2 — week view restyle (also applies to the day and month views where cards are shared).
+//
+// Loaded last in CalendarView's styleUrls (ViewEncapsulation.None), so equal-specificity rules here win
+// over `calendar-page.static-demo.scss` and `calendar-view.states.scss`. Those files are not edited; every
+// rule below that overrides an older one is listed in docs/reports/G3/G3-CAL-2-week.md.
+//
+// FullCalendar 7 emits short generated class names (`.fc-0`, `.fc-1v`, …), so this file only targets the
+// custom hook classes set through the calendar options (`demo-calendar-*`) and our own markup (`oc-*`).
+@use './calendar-status-tokens';
+
+$oc-focus: #0f826d;
+$oc-grid-line: #f2f4f7;
+$oc-border: #e4e7ec;
+$oc-today-tint: #edfbf6;
+$oc-now: #d92d20;
+$oc-stripe-a: #f2f4f7;
+$oc-stripe-b: #e4e7ec;
+
+// ---- Grid polish -------------------------------------------------------------------------------------------
+// The monarch variables are defined on `.doctor-calendar-demo` (calendar-page.static-demo.scss).
+.doctor-calendar-demo {
+  --fc-monarch-border: #{$oc-grid-line};
+  --fc-monarch-now: #{$oc-now};
+}
+
+.doctor-calendar-demo__calendar {
+  // Hour lines.
+  .demo-calendar-slot--major {
+    border-block-start-color: $oc-grid-line;
+  }
+
+  // Today column.
+  .demo-calendar-day-lane--today:not(.demo-calendar-day-lane--exception),
+  .demo-calendar-day-header--today {
+    background: $oc-today-tint;
+  }
+
+  // Now line + dot.
+  .demo-calendar-now-line {
+    border-color: $oc-now;
+    border-width: 2px 0 0;
+  }
+
+  .demo-calendar-now-dot {
+    border-color: $oc-now;
+    background: $oc-now;
+  }
+}
+
+// ---- Appointment cards --------------------------------------------------------------------------------------
+.doctor-calendar-demo__calendar {
+  // The wrapper must not clip the lift/shadow of the inner card.
+  .demo-calendar-appointment {
+    overflow: visible;
+    border-radius: 8px;
+  }
+
+  .demo-calendar-appointment:focus-visible {
+    outline: 2px solid $oc-focus;
+    outline-offset: 2px;
+  }
+
+  .oc-event:not(.oc-event--month) {
+    border: var(--oc-cal-border, 1px solid #{$oc-border});
+    border-left: 3px solid var(--oc-cal-bar, #98a2b3);
+    border-radius: 8px;
+    background: var(--oc-cal-bg, #f9fafb);
+    color: var(--oc-cal-fg, #475467);
+    gap: 3px;
+    padding: 4px 8px 4px 7px;
+    font-size: 12px;
+    line-height: 1.3;
+    cursor: pointer;
+    transition:
+      transform 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+
+  // Shared « muted » (completed) from the workspace status mapping must not grey the CAL-1 states.
+  .oc-event--muted {
+    background: var(--oc-cal-bg, #f9fafb);
+    color: var(--oc-cal-fg, #475467);
+  }
+
+  .oc-event__time,
+  .oc-event--muted .oc-event__time {
+    color: inherit;
+    font-weight: 600;
+  }
+
+  .oc-event__name {
+    font-weight: 600;
+  }
+
+  .oc-event__line {
+    align-items: center;
+  }
+
+  .oc-event__type-icon {
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+    font-size: 13px;
+    opacity: 0.8;
+  }
+
+  // Status chip (only rendered when the card is tall enough).
+  .oc-event__chip {
+    display: inline-block;
+    justify-self: start;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--oc-cal-chip, #f2f4f7);
+    color: var(--oc-cal-fg, #475467);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // Hover = slight lift, pressed = scale, selected = ring in the state colour.
+  .demo-calendar-appointment:hover .oc-event:not(.oc-event--month) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 24, 40, 0.12);
+  }
+
+  .demo-calendar-appointment:active .oc-event:not(.oc-event--month) {
+    transform: scale(0.99);
+    box-shadow: none;
+  }
+
+  .oc-event--selected:not(.oc-event--month) {
+    outline: 2px solid var(--oc-cal-bar, #{$oc-focus});
+    outline-offset: 1px;
+    box-shadow: 0 2px 8px rgba(16, 24, 40, 0.1);
+  }
+
+  // Month pills share the state colours (full month redesign is a later task).
+  .oc-event--month {
+    border: var(--oc-cal-border, 1px solid #{$oc-border});
+    background: var(--oc-cal-bg, #f9fafb);
+    color: var(--oc-cal-fg, #475467);
+  }
+
+  .oc-event--month .oc-event__dot {
+    background: var(--oc-cal-bar, #98a2b3);
+  }
+
+  .oc-event--month .oc-event__time {
+    color: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doctor-calendar-demo__calendar {
+    .oc-event:not(.oc-event--month),
+    .oc-cal-reopen {
+      transition: none;
+    }
+
+    .demo-calendar-appointment:hover .oc-event:not(.oc-event--month),
+    .demo-calendar-appointment:active .oc-event:not(.oc-event--month) {
+      transform: none;
+    }
+  }
+}
+
+// ---- Search: cards that do not match are dimmed ----
+.doctor-calendar-demo__calendar .oc-event--dim:not(.oc-event--selected) {
+  opacity: 0.35;
+}
+
+// ---- Lunch break --------------------------------------------------------------------------------------------
+.doctor-calendar-demo__calendar {
+  // Not clickable: clicks fall through to the slot lane, which keeps the « hors horaires » hint.
+  .oc-cal-break {
+    border: var(--oc-cal-border, 1px solid #{$oc-border});
+    border-radius: 8px;
+    background: var(--oc-cal-bg, #f2f4f7);
+    color: var(--oc-cal-icon, #475467);
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .oc-cal-break__content {
+    display: flex;
+    height: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    padding-inline: 8px;
+    color: #475467;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .oc-cal-break__icon {
+    display: inline-grid;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--oc-cal-icon, #475467);
+    font-size: 13px;
+  }
+
+  .oc-cal-break__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// ---- Closed slots (BLOCK exceptions) -------------------------------------------------------------------------
+.doctor-calendar-demo__calendar {
+  // Overrides the red/grey hatch in calendar-view.states.scss (both rules use !important).
+  .omnicare-exception-background--block {
+    background: repeating-linear-gradient(
+      135deg,
+      $oc-stripe-a 0 6px,
+      $oc-stripe-b 6px 12px
+    ) !important;
+  }
+
+  .demo-calendar-state--unavailable {
+    border: 1px solid $oc-border;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #475467;
+  }
+
+  .demo-state {
+    min-height: 0;
+    gap: 2px;
+    padding: 6px 8px;
+  }
+
+  .oc-cal-reopen {
+    margin-top: 4px;
+    padding: 2px 12px;
+    border: 1px solid #d0d5dd;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #344054;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    cursor: pointer;
+    transition:
+      background-color 150ms ease-out,
+      border-color 150ms ease-out;
+  }
+
+  .oc-cal-reopen:hover {
+    border-color: #98a2b3;
+    background: #f9fafb;
+  }
+
+  .oc-cal-reopen:focus-visible {
+    outline: 2px solid $oc-focus;
+    outline-offset: 2px;
+  }
+}
+
+// ---- « Rouvrir ce créneau ? » confirmation ---------------------------------------------------------------------
+// styles/vendor/ng-zorro-theme.less does not import the popconfirm/popover stylesheets: adding them globally
+// (CAL-FIX fix 12) pushed the initial bundle 39 bytes over the 1 MB error budget, and only the calendar uses
+// them, so the CTO chose to keep this card styled locally, scoped to this overlay class.
+.oc-cal-reopen-popconfirm {
+  .ant-popover-arrow {
+    display: none;
+  }
+
+  .ant-popover-inner {
+    min-width: 240px;
+    max-width: 300px;
+    padding: 12px 14px;
+    border: 1px solid $oc-border;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 12px 24px rgba(16, 24, 40, 0.14);
+  }
+
+  .ant-popover-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: #101828;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .ant-popover-message-icon {
+    margin-top: 2px;
+    color: #f79009;
+    font-size: 16px;
+  }
+
+  .ant-popover-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+  }
+}
+
+// ---- Fix 7: one scroll area ----------------------------------------------------------------------------------
+// The time grid now has its natural height (`height: 'auto'`) and the page scrolls. `clip` keeps the rounded
+// corners without making the host a scroll container, so FullCalendar's sticky day header follows the page.
+.doctor-calendar-demo__calendar-host {
+  overflow: clip;
+}
+
+// ---- Fix 8: focus ring for the keyboard only -----------------------------------------------------------------
+// Every focus style of the calendar uses :focus-visible; this guard removes any ring a component or the browser
+// would still draw on a plain (mouse) :focus.
+.doctor-calendar-demo :focus:not(:focus-visible) {
+  outline: none;
+}
+
+// ---- Fix 4: every card uses the full column width ------------------------------------------------------------
+// FullCalendar 7's monarch theme lays a SHORT event's inner box out as a row (`flex-direction: row;
+// align-items: center`), so our card, a flex item of that box, shrank to its text: a narrow pill about a third of
+// the column. Taller events are laid out as a column and stretched. The card now grows and stretches in both
+// cases; only two events that really overlap share the column (FullCalendar's own placement).
+.doctor-calendar-demo__calendar .oc-event:not(.oc-event--month) {
+  flex: 1 1 auto;
+  align-self: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+// ---- CAL-FIX-2 fix 3: Jour / Semaine / Mois -------------------------------------------------------------------
+// The segmented control focuses a hidden radio. The ring is drawn on the option only for the keyboard
+// (:focus-visible); after a mouse click the view gives the focus back (CalendarView.releasePointerFocus).
+.doctor-calendar-demo .cal-toolbar__views {
+  .ant-segmented,
+  .ant-segmented-item,
+  .ant-segmented-item-input {
+    outline: none;
+  }
+
+  .ant-segmented-item:has(.ant-segmented-item-input:focus-visible) {
+    outline: 2px solid #0f826d;
+    outline-offset: 2px;
+  }
+}
+
+// ---- CAL-FIX-2 fix 9: lunch block at canvas size ---------------------------------------------------------------
+// Its content is a flex item of the theme's event box, like the cards (fix 4), so it shrank the same way. It
+// now fills the block. Canvas values: #F2F4F7 block, 1 px #E4E7EC, a 24 px white circle with a soft shadow,
+// icon and label #475467, label 13 px.
+.doctor-calendar-demo__calendar {
+  .oc-cal-break {
+    background: #f2f4f7;
+    border: 1px solid #e4e7ec;
+  }
+
+  .oc-cal-break__content {
+    flex: 1 1 auto;
+    align-self: stretch;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    color: #475467;
+    font-size: 13px;
+  }
+
+  .oc-cal-break__icon {
+    width: 24px;
+    height: 24px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12);
+    color: #475467;
+  }
+
+  .oc-cal-break__text {
+    color: #475467;
+  }
+}

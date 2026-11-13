@@ -1,0 +1,115 @@
+// Calendar-only status tokens (CAL-1). Values decided by the CTO.
+// Scoped under the calendar; deliberately NOT in :root and NOT in styles/tokens.scss.
+// CAL-2: imported by `calendar-week.scss`. Hook names come from `presentCalendarItem().cssClass`.
+//
+// Scope note (CAL-2): `.omnicare-calendar` is not applied to any element in the production
+// calendar (it only exists in styles/vendor/_fullcalendar.scss, where it also remaps every
+// `--fc-monarch-*` colour). `.doctor-calendar-demo`, the real root of `CalendarView`, is therefore
+// accepted as a second scope so the tokens actually match, without switching the vendor remap on.
+//
+//   --oc-cal-bg      card background
+//   --oc-cal-border  full border shorthand (width style colour)
+//   --oc-cal-bar     left accent bar
+//   --oc-cal-fg      text colour
+//   --oc-cal-chip    chip / tag background
+
+.omnicare-calendar,
+.doctor-calendar-demo {
+  .oc-cal-state--upcoming {
+    --oc-cal-bg: #eff6ff;
+    --oc-cal-border: 1px solid #bfdbfe;
+    --oc-cal-bar: #2563eb;
+    --oc-cal-fg: #1d4ed8;
+    --oc-cal-chip: #dbeafe;
+  }
+
+  .oc-cal-state--followUpUpcoming {
+    --oc-cal-bg: #f4f3ff;
+    --oc-cal-border: 1px solid #d9d6fe;
+    --oc-cal-bar: #6941c6;
+    --oc-cal-fg: #5925dc;
+    --oc-cal-chip: #ebe9fe;
+  }
+
+  .oc-cal-state--inProgress {
+    --oc-cal-bg: #0f826d;
+    --oc-cal-border: none;
+    --oc-cal-bar: #0d473d;
+    --oc-cal-fg: #ffffff;
+    --oc-cal-chip: #0d473d;
+  }
+
+  .oc-cal-state--done {
+    --oc-cal-bg: #edfbf6;
+    --oc-cal-border: 1px solid #c7f0e2;
+    --oc-cal-bar: #1fbf9a;
+    --oc-cal-fg: #0d473d;
+    --oc-cal-chip: #c7f0e2;
+  }
+
+  .oc-cal-state--followUpDone {
+    --oc-cal-bg: #f9f8ff;
+    --oc-cal-border: 1px solid #e4e0fd;
+    --oc-cal-bar: #bdb4fe;
+    --oc-cal-fg: #6941c6;
+    --oc-cal-chip: #e4e0fd;
+  }
+
+  .oc-cal-state--request {
+    --oc-cal-bg: #fffaeb;
+    --oc-cal-border: 1.5px dashed #f5c26b;
+    --oc-cal-bar: #f79009;
+    --oc-cal-fg: #b54708;
+    --oc-cal-chip: #fef0c7;
+  }
+
+  .oc-cal-state--waitingPatient {
+    --oc-cal-bg: #f5f9ff;
+    --oc-cal-border: 1.5px dashed #bfdbfe;
+    --oc-cal-bar: #93c5fd;
+    --oc-cal-fg: #1d4ed8;
+    --oc-cal-chip: #dbeafe;
+  }
+
+  .oc-cal-state--absent {
+    --oc-cal-bg: #fef3f2;
+    --oc-cal-border: 1px solid #fecdca;
+    --oc-cal-bar: #d92d20;
+    --oc-cal-fg: #b42318;
+    --oc-cal-chip: #fee4e2;
+  }
+
+  .oc-cal-state--cancelled {
+    --oc-cal-bg: #f9fafb;
+    --oc-cal-border: 1px solid #e4e7ec;
+    --oc-cal-bar: #d0d5dd;
+    --oc-cal-fg: #98a2b3;
+    --oc-cal-chip: #f2f4f7;
+    text-decoration: line-through;
+  }
+
+  .oc-cal-state--neutral {
+    --oc-cal-bg: #f9fafb;
+    --oc-cal-border: 1px solid #e4e7ec;
+    --oc-cal-bar: #98a2b3;
+    --oc-cal-fg: #475467;
+    --oc-cal-chip: #f2f4f7;
+  }
+
+  // Fix 5: a confirmed appointment already over and never started. Muted card, amber chip, same family
+  // as « Consultation non clôturée ». Declared after the states so it wins over `upcoming`.
+  .oc-cal-state--not-closed {
+    --oc-cal-bg: #f9fafb;
+    --oc-cal-border: 1px solid #e4e7ec;
+    --oc-cal-bar: #f79009;
+    --oc-cal-fg: #475467;
+    --oc-cal-chip: #fef0c7;
+  }
+
+  // Lunch / break block (no appointment state).
+  .oc-cal-break {
+    --oc-cal-bg: #f2f4f7;
+    --oc-cal-border: 1px solid #e4e7ec;
+    --oc-cal-icon: #475467;
+  }
+}

@@ -2,13 +2,11 @@
   #calendarView
   [model]="viewModel()"
   [presentation]="presentation()"
+  [month]="monthInput()"
+  [day]="dayInput()"
   (action)="handleViewAction($event)"
 >
-  <app-scheduled-appointment-detail-panel
-    #appointmentPanel
-    calendarDetail
-    presentation="drawer"
-  />
+  <app-calendar-detail-panel #detailPanel calendarDetail />
 </app-calendar-view>
 
 <app-quick-booking-drawer

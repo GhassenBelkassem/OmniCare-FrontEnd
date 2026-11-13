@@ -1,0 +1,236 @@
+<div class="cal-month">
+  <aside class="cal-month__aside" aria-label="Résumé du jour et demandes">
+    @if (todayCell(); as today) {
+      <section class="cal-card" aria-labelledby="cal-month-today-title">
+        <h2 id="cal-month-today-title" class="cal-card__title">Aujourd'hui</h2>
+        <p class="cal-card__sub">{{ todayTitle() }}</p>
+        @if (today.day; as day) {
+          <p class="cal-card__figure">
+            @if (day.level === 'CLOSED') {
+              {{ today.closedText }}
+            } @else {
+              <strong>{{ day.takenSlots }} / {{ day.bookableSlots }}</strong> créneaux réservés
+            }
+          </p>
+        }
+        @if (todayRows().length === 0) {
+          <p class="cal-card__empty">Aucun rendez-vous aujourd'hui</p>
+        } @else {
+          <ul class="cal-list">
+            @for (row of todayRows(); track row.id) {
+              <li class="cal-list__row" [class.cal-list__row--past]="row.past">
+                <span class="cal-list__time">{{ row.timeLabel }}</span>
+                <span class="cal-list__name">{{ name(row.rawName) }}</span>
+                @if (row.inProgress) {
+                  <span class="cal-chip cal-chip--live">En cours</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    <section class="cal-card" aria-labelledby="cal-month-requests-title">
+      <h2 id="cal-month-requests-title" class="cal-card__title">
+        Demandes en attente
+        <span class="cal-chip cal-chip--count" [attr.aria-label]="pendingRows().length + ' en attente'">{{ pendingRows().length }}</span>
+      </h2>
+      @if (pendingRows().length === 0) {
+        <p class="cal-card__empty">Aucune demande en attente</p>
+      } @else {
+        <ul class="cal-list">
+          @for (row of pendingRows(); track row.id) {
+            <li>
+              <button type="button" class="cal-list__button" (click)="action.emit({ kind: 'OPEN_ITEM', resource: 'request', id: row.id })">
+                <span class="cal-list__name">{{ name(row.rawName) }}</span>
+                <span class="cal-list__time">{{ row.whenLabel }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="cal-card" aria-labelledby="cal-month-shortcuts-title">
+      <h2 id="cal-month-shortcuts-title" class="cal-card__title">Raccourcis clavier</h2>
+      <p class="cal-card__sub">Naviguez dans le mois sans la souris.</p>
+      <oc-button variant="secondary" size="small" (click)="action.emit({ kind: 'SHOW_SHORTCUTS' })">Voir les raccourcis</oc-button>
+    </section>
+  </aside>
+
+  <section class="cal-month__main">
+    <ul class="cal-legend" aria-label="Légende">
+      @for (item of legendLevels(); track item.level) {
+        <li class="cal-legend__item"><span class="cal-legend__swatch" [class]="'cal-legend__swatch--' + item.level.toLowerCase()" aria-hidden="true"></span>{{ item.label }}</li>
+      }
+      @for (item of legendDots(); track item.kind) {
+        <li class="cal-legend__item"><span class="cal-dot" [style.background]="dotColor(item.kind)" aria-hidden="true"></span>{{ item.label }}</li>
+      }
+    </ul>
+
+    @if (data().status === 'error') {
+      <div class="cal-month__error" role="alert">
+        <span>{{ data().error ?? 'Impossible de charger le mois.' }}</span>
+        <oc-button variant="secondary" size="small" (click)="action.emit({ kind: 'RETRY_SUMMARY' })">Réessayer</oc-button>
+      </div>
+    } @else {
+      <div class="cal-month__grid" role="grid" aria-label="Calendrier du mois" [attr.aria-busy]="data().status === 'loading'">
+        <div class="cal-month__row cal-month__row--head" role="row">
+          @for (weekday of weekdays; track weekday.short) {
+            <div class="cal-month__colhead" role="columnheader" [attr.aria-label]="weekday.long">{{ weekday.short }}</div>
+          }
+        </div>
+
+        @if (data().status === 'loading') {
+          @for (row of [0, 1, 2, 3, 4, 5]; track row) {
+            <div class="cal-month__row" role="row">
+              @for (column of [0, 1, 2, 3, 4, 5, 6]; track column) {
+                <div class="cal-month__cell cal-month__cell--skeleton" role="gridcell" aria-label="Chargement"></div>
+              }
+            </div>
+          }
+        } @else {
+          @for (row of rows(); track row[0].key) {
+            <div class="cal-month__row" role="row">
+              @for (cell of row; track cell.key) {
+                <div
+                  role="gridcell"
+                  [class]="cell.cssClass"
+                  [class.cal-month__cell--front]="previewKey() === cell.key || menuKey() === cell.key"
+                  [attr.data-day]="cell.key"
+                  [attr.aria-label]="cell.aria"
+                  [attr.aria-current]="cell.today ? 'date' : null"
+                  [attr.tabindex]="tabStopKey() === cell.key ? 0 : -1"
+                  (click)="onCellClick($event, cell)"
+                  (mouseenter)="onCellEnter(cell.key)"
+                  (mouseleave)="onCellLeave(cell.key)"
+                  (focusin)="onCellFocusIn(cell.key)"
+                  (focusout)="onCellFocusOut($event, cell.key)"
+                >
+                  <span class="cal-month__num" [class.cal-month__num--today]="cell.today">{{ cell.number }}</span>
+                  @if (cell.closedText) {
+                    <span class="cal-month__closed">{{ cell.closedText }}</span>
+                  }
+                  @if (cell.dots.dots.length > 0) {
+                    <span class="cal-month__dots" aria-hidden="true">
+                      @for (dot of cell.dots.dots; track $index) {
+                        <span class="cal-dot" [style.background]="dot.color"></span>
+                      }
+                      @if (cell.dots.overflow > 0) {
+                        <span class="cal-month__more">+{{ cell.dots.overflow }}</span>
+                      }
+                    </span>
+                  }
+                  @if (cell.level && cell.level !== 'CLOSED') {
+                    <span class="cal-month__bar" aria-hidden="true"><span class="cal-month__fill" [style.width.%]="cell.bar"></span></span>
+                  }
+
+                  <button
+                    type="button"
+                    class="cal-month__menu-btn"
+                    aria-haspopup="menu"
+                    [attr.aria-expanded]="menuKey() === cell.key"
+                    [attr.aria-label]="'Actions pour le ' + cell.aria.split(',')[0].toLowerCase()"
+                    (click)="toggleMenu(cell.key, $event)"
+                    (keydown)="onMenuButtonKeydown($event, cell.key)"
+                  >⋯</button>
+
+                  @if (menuKey() === cell.key) {
+                    <div class="cal-month__menu" role="menu" aria-label="Actions de la journée" (keydown)="onMenuKeydown($event, cell.key)">
+                      @for (entry of menuEntries(cell); track entry.command) {
+                        <button type="button" role="menuitem" class="cal-month__menuitem" (click)="runMenuCommand(cell.key, entry.command, $event)">{{ entry.label }}</button>
+                      }
+                    </div>
+                  }
+
+                  @if (preview(); as view) {
+                    @if (view.key === cell.key) {
+                      <div
+                        class="cal-month__preview"
+                        [class.cal-month__preview--left]="view.alignLeft"
+                        [class.cal-month__preview--up]="view.alignUp"
+                        role="dialog"
+                        [attr.aria-label]="'Aperçu du ' + view.title"
+                      >
+                        <div class="cal-month__preview-card">
+                          <header class="cal-pv__head">
+                            <strong class="cal-pv__title">{{ view.title }}</strong>
+                            <span [class]="view.levelClass">{{ view.levelLabel }}</span>
+                          </header>
+
+                          @if (view.closed) {
+                            <p class="cal-pv__muted">Aucun créneau ce jour (fermé)</p>
+                          } @else {
+                            <p class="cal-pv__slots">{{ view.slots }}</p>
+                            @if (view.timeline; as timeline) {
+                              <div class="cal-pv__timeline" aria-hidden="true">
+                                <div class="cal-pv__track">
+                                  @for (bar of timeline.segments; track $index) {
+                                    <span class="cal-pv__seg" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent"></span>
+                                  }
+                                  @if (timeline.breakBar; as bar) {
+                                    <span class="cal-pv__break" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent"></span>
+                                  }
+                                  @for (bar of timeline.extras; track $index) {
+                                    <span class="cal-pv__extra" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent"></span>
+                                  }
+                                  @for (bar of timeline.blocked; track $index) {
+                                    <span class="cal-pv__blocked" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent"></span>
+                                  }
+                                  @for (bar of view.booked; track $index) {
+                                    <span class="cal-pv__booked" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent" [style.background]="bar.color"></span>
+                                  }
+                                  @if (view.pastPercent > 0) {
+                                    <span class="cal-pv__past" [style.width.%]="view.pastPercent"></span>
+                                  }
+                                </div>
+                                <div class="cal-pv__ticks"><span>{{ timeline.startLabel }}</span><span>{{ timeline.endLabel }}</span></div>
+                              </div>
+                            }
+                            @if (view.status === 'loading') {
+                              <p class="cal-pv__muted" role="status">Chargement…</p>
+                            } @else if (view.status === 'error') {
+                              <p class="cal-pv__muted" role="alert">{{ errorText() }}</p>
+                            } @else if (view.empty) {
+                              <p class="cal-pv__muted">Aucun rendez-vous</p>
+                            } @else {
+                              <ul class="cal-pv__list">
+                                @for (item of view.shown; track item.id) {
+                                  <li class="cal-pv__item" [class.cal-pv__item--not-closed]="item.notClosed">
+                                    <span class="cal-pv__time">{{ item.timeLabel }}</span>
+                                    <span class="cal-dot" [style.background]="item.color" aria-hidden="true"></span>
+                                    <span class="cal-pv__name">{{ name(item.rawName) }}</span>
+                                    @if (item.resource === 'request') {
+                                      <span class="cal-chip cal-chip--request">Demande</span>
+                                    } @else if (item.notClosed) {
+                                      <span class="cal-chip cal-chip--not-closed">Non clôturé</span>
+                                    }
+                                  </li>
+                                }
+                              </ul>
+                              @if (view.more > 0) {
+                                <p class="cal-pv__more">+ {{ view.more }} {{ view.more === 1 ? 'autre' : 'autres' }}</p>
+                              }
+                            }
+                          }
+
+                          <footer class="cal-pv__actions">
+                            <oc-button variant="secondary" size="small" (click)="openDay(view.key)">Ouvrir la journée</oc-button>
+                            @if (!view.past) {
+                              <oc-button variant="primary" size="small" (click)="newAppointment(view.key)">+ Rendez-vous</oc-button>
+                            }
+                          </footer>
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+  </section>
+</div>

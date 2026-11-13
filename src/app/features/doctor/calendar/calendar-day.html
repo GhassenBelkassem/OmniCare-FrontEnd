@@ -1,0 +1,238 @@
+<div class="cal-day">
+  <section class="cal-day__main" aria-label="Journée">
+    <!-- Header line: « 8 / 16 créneaux réservés » + level chip + pending requests chip (calendar-summary, as received) -->
+    <div class="cal-day__header" [attr.aria-busy]="data().summary.status === 'loading'">
+      <h2 class="cal-day__date">{{ dateTitle() }}</h2>
+      @if (data().summary.status === 'loading') {
+        <span class="cal-day__skeleton cal-day__skeleton--header" aria-label="Chargement du résumé de la journée" role="status"></span>
+      } @else if (data().summary.status === 'error') {
+        <span class="cal-day__inline-error" role="alert">
+          <span>{{ summaryError() }}</span>
+          <button type="button" class="cal-day__btn" (click)="action.emit({ kind: 'RETRY_DAY_SUMMARY' })">Réessayer</button>
+        </span>
+      } @else if (summaryDay()) {
+        @if (!closedDay()) {
+          <span class="cal-day__slots">{{ slotsText() }}</span>
+        }
+        <span class="cal-day__level" [class]="levelClass()">{{ levelLabel() }}</span>
+        @if (pendingText()) {
+          <span class="cal-day__chip cal-day__chip--request">{{ pendingText() }}</span>
+        }
+      }
+    </div>
+
+    @if (timeline(); as line) {
+      <div class="cal-day__timeline" role="img" [attr.aria-label]="line.ariaLabel">
+        <div class="cal-day__track" aria-hidden="true">
+          @for (bar of line.segments; track $index) {
+            <span class="cal-day__seg" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent"></span>
+          }
+          @if (line.breakBar; as bar) {
+            <span class="cal-day__break-bar" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent"></span>
+          }
+          @for (bar of line.blocked; track $index) {
+            <span class="cal-day__blocked-bar" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent"></span>
+          }
+          @for (bar of line.booked; track bar.id) {
+            <span class="cal-day__booked" [class]="bar.cssClass" [style.left.%]="bar.leftPercent" [style.width.%]="bar.widthPercent"></span>
+          }
+          @if (line.pastPercent > 0) {
+            <span class="cal-day__past" [style.width.%]="line.pastPercent"></span>
+          }
+          @if (line.nowPercent !== null) {
+            <span class="cal-day__now-marker" [style.left.%]="line.nowPercent"></span>
+          }
+        </div>
+        <div class="cal-day__ticks" aria-hidden="true">
+          @for (tick of line.ticks; track tick.label) {
+            <span class="cal-day__tick" [style.left.%]="tick.leftPercent">{{ tick.label }}</span>
+          }
+        </div>
+      </div>
+    }
+
+    @if (data().commandError; as error) {
+      <p class="cal-day__banner" role="alert">{{ error }}</p>
+    }
+
+    @if (data().items.status === 'error') {
+      <div class="cal-day__banner" role="alert">
+        <span>{{ itemsError() }}</span>
+        <button type="button" class="cal-day__btn" (click)="action.emit({ kind: 'RETRY_APPOINTMENTS' })">Réessayer</button>
+      </div>
+    }
+
+    @if (data().items.status === 'loading') {
+      <ul class="cal-day__list" aria-busy="true" aria-label="Chargement des rendez-vous">
+        @for (index of [0, 1, 2, 3]; track index) {
+          <li class="cal-day__row"><span class="cal-day__time"></span><span class="cal-day__skeleton cal-day__skeleton--row"></span></li>
+        }
+      </ul>
+    } @else {
+      @if (closedDay()) {
+        <div class="cal-day__closed-day" role="status">
+          <strong>Journée fermée</strong>
+          <button type="button" class="cal-day__btn cal-day__btn--primary" (click)="action.emit({ kind: 'DAY_EXTEND', date: data().dayKey })">Prolonger la journée</button>
+        </div>
+      }
+      @if (empty() && !closedDay()) {
+        <p class="cal-day__empty" role="status">{{ emptyText() }}</p>
+      }
+      @if (data().slots.status === 'error') {
+        <div class="cal-day__banner cal-day__banner--slots" role="alert">
+          <span>{{ data().slots.error }}</span>
+          <button type="button" class="cal-day__btn" (click)="action.emit({ kind: 'RETRY_DAY_SLOTS' })">Réessayer</button>
+        </div>
+      } @else if (data().slots.status === 'loading' && !closedDay()) {
+        <p class="cal-day__muted" role="status">Chargement des créneaux libres…</p>
+      }
+
+      <ul class="cal-day__list" aria-label="Rendez-vous et créneaux de la journée">
+        @for (row of rows(); track row.key) {
+          <li class="cal-day__row" [class]="'cal-day__row cal-day__row--' + row.kind">
+            @if (row.kind === 'item') {
+              <span class="cal-day__time">{{ row.timeLabel }}</span>
+              <div
+                class="cal-day__item"
+                [class]="'cal-day__item ' + row.cssClass"
+                [class.cal-day__item--dim]="isDimmed(row)"
+                [class.cal-day__item--selected]="isSelected(row)"
+                [class.cal-day__item--struck]="row.struck"
+                [class.cal-day__item--dashed]="row.dashed"
+              >
+                <button
+                  type="button"
+                  class="cal-day__open"
+                  [attr.data-cal-id]="row.id"
+                  [attr.data-cal-kind]="row.resource"
+                  [attr.aria-label]="itemAria(row)"
+                  (click)="open(row)"
+                >
+                  <oc-avatar [name]="name(row.rawName)" size="small" />
+                  <span class="cal-day__who">
+                    <strong class="cal-day__name">{{ name(row.rawName) }}</strong>
+                    <span class="cal-day__meta">
+                      <nz-icon [nzType]="typeIconName(row)" aria-hidden="true" />
+                      <span>{{ typeLabel(row) }} · {{ row.cabinetLabel }}</span>
+                    </span>
+                  </span>
+                  <span class="cal-day__chip cal-day__chip--state">{{ row.stateLabel }}</span>
+                </button>
+                <span class="cal-day__actions">
+                  @if (row.canStart) {
+                    <button
+                      type="button"
+                      class="cal-day__btn cal-day__btn--primary"
+                      [disabled]="data().commandBusy || data().startingId !== null"
+                      (click)="start(row)"
+                    >Démarrer</button>
+                  }
+                  @if (row.canAccept) {
+                    <button
+                      type="button"
+                      class="cal-day__btn cal-day__btn--primary"
+                      [disabled]="data().commandBusy || data().acceptingId !== null"
+                      (click)="accept(row)"
+                    >Accepter</button>
+                  }
+                  @if (row.canDecline) {
+                    <button
+                      type="button"
+                      class="cal-day__btn"
+                      [disabled]="data().commandBusy"
+                      (click)="decline(row)"
+                    >Refuser</button>
+                  }
+                  <button
+                    type="button"
+                    class="cal-day__btn cal-day__btn--icon"
+                    aria-label="Plus d’actions"
+                    (click)="open(row)"
+                  >⋯</button>
+                </span>
+              </div>
+            } @else if (row.kind === 'free') {
+              <span class="cal-day__time">{{ row.timeLabel }}</span>
+              <div class="cal-day__free">
+                <span class="cal-day__free-label">{{ row.label }}</span>
+                <button type="button" class="cal-day__btn" [attr.aria-label]="freeAria(row)" (click)="addOnSlot(row)">+ Ajouter</button>
+              </div>
+            } @else if (row.kind === 'break') {
+              <span class="cal-day__time">{{ row.timeLabel }}</span>
+              <div class="cal-day__break">
+                <nz-icon nzType="coffee" aria-hidden="true" />
+                <strong>{{ row.title }}</strong>
+                <span class="cal-day__break-range">{{ row.rangeLabel }}</span>
+                <button type="button" class="cal-day__btn" (click)="action.emit({ kind: 'CONFIGURE_SCHEDULE' })">Modifier</button>
+              </div>
+            } @else if (row.kind === 'closed') {
+              <span class="cal-day__time">{{ row.timeLabel }}</span>
+              <div class="cal-day__closed">
+                <span>{{ row.label }}</span>
+                @if (row.exceptionId; as exceptionId) {
+                  <button
+                    type="button"
+                    class="cal-day__btn oc-cal-reopen"
+                    nz-popconfirm
+                    nzPopconfirmTitle="Rouvrir ce créneau ? Il redeviendra réservable par les patients."
+                    nzOkText="Rouvrir"
+                    nzCancelText="Annuler"
+                    nzIcon="warning"
+                    nzPopconfirmPlacement="top"
+                    nzPopconfirmOverlayClassName="oc-cal-reopen-popconfirm"
+                    (nzOnConfirm)="reopen(exceptionId)"
+                  >Rouvrir</button>
+                }
+              </div>
+            } @else {
+              <span class="cal-day__time cal-day__time--now">{{ row.timeLabel }}</span>
+              <div class="cal-day__now" role="separator" [attr.aria-label]="row.ariaLabel">
+                <span class="cal-day__now-dot" aria-hidden="true"></span>
+                <span class="cal-day__now-line" aria-hidden="true"></span>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <aside class="cal-day__aside" aria-label="Patient suivant et résumé">
+    @if (today()) {
+      <section class="cal-day__next" aria-labelledby="cal-day-next-title">
+        @if (nextUp(); as next) {
+          <h2 id="cal-day-next-title" class="cal-day__next-title">Patient suivant · {{ untilText(next.minutesUntil) }}</h2>
+          <p class="cal-day__next-name">{{ name(next.rawName) }}</p>
+          <p class="cal-day__next-time">{{ next.timeLabel }}</p>
+          @if (next.isPracticePatient) {
+            <button type="button" class="cal-day__btn cal-day__btn--light" (click)="action.emit({ kind: 'DAY_OPEN_PATIENT_FILE', id: next.id })">Voir le dossier</button>
+          }
+        } @else {
+          <h2 id="cal-day-next-title" class="cal-day__next-title">Patient suivant</h2>
+          <p class="cal-day__next-time">Aucun patient à venir</p>
+        }
+      </section>
+    }
+
+    @if (firstFree(); as slot) {
+      <section class="cal-day__new" aria-labelledby="cal-day-new-title">
+        <h2 id="cal-day-new-title" class="cal-day__new-title">Nouveau rendez-vous</h2>
+        <p class="cal-day__new-slot">Premier créneau libre : <strong>{{ slot.start }}</strong></p>
+        <button type="button" class="cal-day__btn cal-day__btn--primary cal-day__new-btn" (click)="bookFirstFree()">Choisir le patient</button>
+      </section>
+    }
+
+    <section class="cal-day__card" aria-labelledby="cal-day-summary-title">
+      <h2 id="cal-day-summary-title" class="cal-day__card-title">Résumé</h2>
+      @if (lines().length === 0) {
+        <p class="cal-day__muted">Résumé indisponible.</p>
+      } @else {
+        <dl class="cal-day__summary">
+          @for (line of lines(); track line.key) {
+            <div class="cal-day__summary-line"><dt>{{ line.label }}</dt><dd>{{ line.value }}</dd></div>
+          }
+        </dl>
+      }
+    </section>
+  </aside>
+</div>

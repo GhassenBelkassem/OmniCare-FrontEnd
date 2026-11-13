@@ -1,0 +1,22 @@
+{
+  "timeZone": "Africa/Tunis",
+  "date": "2026-11-16",
+  "generatedAt": "2026-11-16T09:20:05Z",
+  "slots": [
+    { "start": "08:00", "end": "08:30", "state": "PAST" },
+    { "start": "08:30", "end": "09:00", "state": "TAKEN" },
+    { "start": "09:00", "end": "09:30", "state": "TAKEN" },
+    { "start": "09:30", "end": "10:00", "state": "PAST" },
+    { "start": "10:00", "end": "10:30", "state": "PAST" },
+    { "start": "10:30", "end": "11:00", "state": "TAKEN" },
+    { "start": "11:00", "end": "11:30", "state": "FREE" },
+    { "start": "11:30", "end": "12:00", "state": "FREE" },
+    { "start": "12:00", "end": "12:30", "state": "FREE" },
+    { "start": "14:00", "end": "14:30", "state": "TAKEN" },
+    { "start": "14:30", "end": "15:00", "state": "FREE" },
+    { "start": "15:00", "end": "15:30", "state": "FREE" },
+    { "start": "15:30", "end": "16:00", "state": "FREE" },
+    { "start": "17:00", "end": "17:30", "state": "FREE" },
+    { "start": "17:30", "end": "18:00", "state": "TAKEN" }
+  ]
+}

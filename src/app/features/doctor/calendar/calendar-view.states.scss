@@ -199,33 +199,6 @@
 }
 
 // Today's date as a primary pill in the column header.
-.oc-day-header {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--oc-space-2);
-  color: var(--oc-color-text-secondary);
-  font-size: var(--oc-text-small-size);
-  font-weight: var(--oc-font-weight-semibold);
-  text-transform: capitalize;
-}
-
-.oc-day-header__date {
-  display: inline-grid;
-  min-width: 28px;
-  height: 28px;
-  place-items: center;
-  padding: 0 var(--oc-space-1);
-  border-radius: var(--oc-radius-pill);
-  color: var(--oc-color-text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.oc-day-header__date--today {
-  background: var(--oc-primary);
-  color: var(--oc-text-strong);
-  font-weight: var(--oc-font-weight-strong);
-}
-
 // Event cards: tint + left rule from the shared status colour.
 .doctor-calendar-demo__calendar .demo-calendar-appointment {
   border: 0;
@@ -343,4 +316,44 @@
   display: grid;
   gap: 2px;
   font-size: var(--oc-text-caption-size);
+}
+
+// Month view (CAL-5): the FullCalendar grid stays mounted to drive navigation, but is not shown.
+.doctor-calendar-demo__calendar-host--hidden {
+  display: none;
+}
+
+// ── Fix 6: slot hint as a toast (out of the layout flow, disappears after 4 s) ──
+.doctor-calendar-demo__toast-region {
+  position: fixed;
+  z-index: 1010;
+  inset-block-end: var(--oc-space-6);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.doctor-calendar-demo__toast {
+  margin: 0;
+  padding: var(--oc-space-2) var(--oc-space-4);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-grey-900, #101828);
+  box-shadow: var(--oc-shadow-md, 0 4px 12px rgba(16, 24, 40, 0.16));
+  color: #ffffff;
+  font-size: var(--oc-font-size-sm);
+  white-space: nowrap;
+  animation: oc-cal-toast-in 150ms ease-out;
+}
+
+@keyframes oc-cal-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doctor-calendar-demo__toast {
+    animation: none;
+  }
 }
