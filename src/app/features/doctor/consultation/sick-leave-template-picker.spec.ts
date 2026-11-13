@@ -218,6 +218,7 @@ describe('« Terminer » with a sick-leave template', () => {
   it.each([
     ['UNPRINTABLE_TEXT', 'Le texte du document contient des caractères que l’impression ne prend pas encore en charge'],
     ['TEMPLATE_TEXT_OVERFLOW', 'Un texte est trop long pour sa zone sur votre modèle d’arrêt de travail.'],
+    ['TEXT_TOO_LONG', 'Le texte du document est trop long pour être imprimé.'],
   ])('%s at signature (G-1 D5 guard): French message, nothing signed, consultation left open', async (code, message) => {
     const { fakes, flow } = await setup({ templates: [sickLeaveTemplate({ id: 'template-1' })] });
     fakes.artifacts.finalize.mockReturnValueOnce(throwError(() => new HttpErrorResponse({

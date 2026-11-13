@@ -203,6 +203,7 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   INVALID_TEMPLATE_STATE: 'Ce modèle n’est plus disponible. Choisissez-en un autre.',
   UNPRINTABLE_TEXT: 'Le texte du document contient des caractères que l’impression ne prend pas encore en charge (par exemple des lettres arabes). Rien n’a été signé. Remplacez-les par des lettres latines, puis réessayez.',
   TEMPLATE_UNPRINTABLE_TEXT: 'Le document contient des caractères que l’impression ne prend pas encore en charge (par exemple des lettres arabes dans le nom du patient ou du cabinet). Rien n’a été signé. Remplacez-les par des lettres latines, ou choisissez « Modèle standard » dans la liste.',
+  TEXT_TOO_LONG: 'Le texte du document est trop long pour être imprimé. Rien n’a été signé. Raccourcissez-le, puis réessayez.',
   TEMPLATE_TEXT_OVERFLOW: 'Un texte est trop long pour sa zone sur votre modèle d’arrêt de travail. Rien n’a été signé. Raccourcissez le texte ou agrandissez la zone dans vos modèles.',
   ARTIFACT_SOURCE_NOT_FINALIZED: 'Ce document dépend d’un élément qui n’est pas encore signé.',
   CLINICAL_ACCESS_REQUIRED: 'Vous n’avez pas accès au dossier médical de ce patient.',
