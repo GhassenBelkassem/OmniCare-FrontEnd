@@ -230,7 +230,7 @@ export class ConsultationPage implements UnsavedChangesAware {
     this.consultationsApi
       .saveFollowUpSlot(consultation.consultationId, {
         start: choice.start, end: choice.end, practiceLocationId: choice.practiceLocationId,
-      })
+      }, consultation.followUpSlot?.version ?? 0, `follow-up-slot:${globalThis.crypto.randomUUID()}`)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (slot) => {
@@ -257,7 +257,8 @@ export class ConsultationPage implements UnsavedChangesAware {
     if (!consultation) return;
     this.followUpSlotError.set(null);
     this.consultationsApi
-      .clearFollowUpSlot(consultation.consultationId)
+      .clearFollowUpSlot(consultation.consultationId, consultation.followUpSlot?.version ?? 0,
+        `follow-up-slot-clear:${globalThis.crypto.randomUUID()}`)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => this.session.consultation.update((current) => (current ? { ...current, followUpSlot: null } : current)),

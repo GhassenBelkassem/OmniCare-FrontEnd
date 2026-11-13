@@ -62,6 +62,10 @@ export function followUpSlotSaveError(error: unknown): string {
       const message = SLOT_FIELD_MESSAGES[path];
       if (message) return message;
     }
+    const code = (error.error as { errorCode?: string } | null)?.errorCode;
+    if (code === 'FOLLOW_UP_SLOT_VERSION_CONFLICT') {
+      return 'Le créneau de suivi a été modifié entre-temps. Rechargez la consultation puis réessayez.';
+    }
     if (error.status === 409) return 'La consultation n’est plus modifiable : le créneau n’a pas été enregistré.';
   }
   return 'Le créneau n’a pas pu être enregistré. Réessayez.';

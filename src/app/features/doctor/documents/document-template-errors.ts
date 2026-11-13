@@ -22,6 +22,7 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   INVALID_TEMPLATE_STATE:
     'Cette action n’est pas possible pour ce modèle dans son état actuel. Actualisez la page.',
   RESOURCE_STATE_CONFLICT: 'Ce modèle a été modifié entre-temps. Actualisez la page puis réessayez.',
+  IDEMPOTENCY_KEY_REUSED: 'Cette demande a déjà été envoyée avec d’autres informations. Actualisez la page puis réessayez.',
   VALIDATION_FAILED: 'Certaines informations sont incorrectes. Vérifiez-les puis réessayez.',
   PREVIEW_FAILED: 'L’aperçu de ce document n’a pas pu être généré.',
   OBJECT_STORAGE_UNAVAILABLE:

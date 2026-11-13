@@ -332,7 +332,7 @@ export class DocumentTemplatesSection {
     this.busyTemplateId.set(template.id);
     this.actionError.set(null);
     this.api
-      .createVersion(template.id, file)
+      .createVersion(template.id, file, template.revision)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {

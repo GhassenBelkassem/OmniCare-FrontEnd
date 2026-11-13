@@ -10,6 +10,14 @@ import {
   SaveDocumentTemplateDraftRequest,
 } from './document-template-api.models';
 
+/**
+ * G-1 pass 2: every template write carries an Idempotency-Key (one per user action) and, on an
+ * existing template, the expected revision.
+ */
+function idempotencyHeaders(action: string): Record<string, string> {
+  return { 'Idempotency-Key': `document-template-${action}:${globalThis.crypto.randomUUID()}` };
+}
+
 @Injectable({ providedIn: 'root' })
 export class DocumentTemplateApiService {
   private readonly http = inject(HttpClient);
@@ -31,7 +39,7 @@ export class DocumentTemplateApiService {
   create(file: File, name: string): Observable<DocumentTemplate> {
     const body = new FormData();
     body.append('file', file);
-    return this.http.post<DocumentTemplate>(this.baseUrl, body, { params: { name } });
+    return this.http.post<DocumentTemplate>(this.baseUrl, body, { params: { name }, headers: idempotencyHeaders('create') });
   }
 
   saveDraft(
@@ -40,14 +48,16 @@ export class DocumentTemplateApiService {
     expectedRevision: number,
   ): Observable<DocumentTemplate> {
     return this.http.put<DocumentTemplate>(`${this.baseUrl}/${templateId}/draft`, input, {
-      params: { expectedRevision },
+      params: { expectedRevision }, headers: idempotencyHeaders('draft'),
     });
   }
 
-  createVersion(templateId: string, file: File): Observable<DocumentTemplate> {
+  createVersion(templateId: string, file: File, expectedRevision: number): Observable<DocumentTemplate> {
     const body = new FormData();
     body.append('file', file);
-    return this.http.post<DocumentTemplate>(`${this.baseUrl}/${templateId}/versions`, body);
+    return this.http.post<DocumentTemplate>(`${this.baseUrl}/${templateId}/versions`, body, {
+      params: { expectedRevision }, headers: idempotencyHeaders('version'),
+    });
   }
 
   activate(
@@ -56,25 +66,25 @@ export class DocumentTemplateApiService {
     expectedRevision: number,
   ): Observable<DocumentTemplate> {
     return this.http.post<DocumentTemplate>(`${this.baseUrl}/${templateId}/activate`, null, {
-      params: { makeDefault, expectedRevision },
+      params: { makeDefault, expectedRevision }, headers: idempotencyHeaders('activate'),
     });
   }
 
   setDefault(templateId: string, expectedRevision: number): Observable<DocumentTemplate> {
     return this.http.post<DocumentTemplate>(`${this.baseUrl}/${templateId}/default`, null, {
-      params: { expectedRevision },
+      params: { expectedRevision }, headers: idempotencyHeaders('default'),
     });
   }
 
   deactivate(templateId: string, expectedRevision: number): Observable<DocumentTemplate> {
     return this.http.post<DocumentTemplate>(`${this.baseUrl}/${templateId}/deactivate`, null, {
-      params: { expectedRevision },
+      params: { expectedRevision }, headers: idempotencyHeaders('deactivate'),
     });
   }
 
   delete(templateId: string, expectedRevision: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${templateId}`, {
-      params: { expectedRevision },
+      params: { expectedRevision }, headers: idempotencyHeaders('delete'),
     });
   }
 

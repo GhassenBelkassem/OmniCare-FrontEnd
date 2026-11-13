@@ -30,6 +30,8 @@ const D5_CODES = [
   'TOO_MANY_PAGES',
   'PAGE_ROTATED',
   'FILE_TOO_LARGE',
+  // G-1 pass 2 item 5
+  'IDEMPOTENCY_KEY_REUSED',
 ];
 const ENGLISH = /(?<!\p{L})(the|template|file|error|invalid|failed|not found|unavailable|request|please|try)(?!\p{L})/iu;
 const RAW_CODE = /\b[A-Z]{2,}(?:_[A-Z]{2,})+\b/;

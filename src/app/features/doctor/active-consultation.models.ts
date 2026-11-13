@@ -79,6 +79,8 @@ export interface ConsultationFollowUpSlot {
   readonly end: string;
   readonly practiceLocationId: string;
   readonly locationName: string | null;
+  /** G-1 pass 2: sent back as expectedVersion on the next change (0 when there is no slot). */
+  readonly version?: number;
 }
 
 /**

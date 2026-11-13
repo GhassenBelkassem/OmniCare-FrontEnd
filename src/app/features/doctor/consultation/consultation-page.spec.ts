@@ -783,9 +783,10 @@ describe('ConsultationPage (single page)', () => {
       pageButton('Choisir ce créneau').click();
       await stable(fixture);
 
+      // G-1 pass 2: no slot yet → expectedVersion 0, with a fresh Idempotency-Key.
       expect(fakes.consultations.saveFollowUpSlot).toHaveBeenCalledWith(CONSULTATION_ID, {
         start: '2026-11-13T09:20:00Z', end: '2026-11-13T09:40:00Z', practiceLocationId: 'cabinet-1',
-      });
+      }, 0, expect.stringMatching(/^follow-up-slot:/));
       expect(document.querySelector('[data-testid="follow-up-slot-text"]')?.textContent).toBe('ven. 13 nov. à 10:20 · Cabinet El Menzah');
       expect(session.note().followUpDate).toBe('2026-11-13');
       expect(text()).toContain('Réservé à la fin de la consultation.');
@@ -801,7 +802,7 @@ describe('ConsultationPage (single page)', () => {
     });
 
     it('another follow-up choice drops the chosen slot', async () => {
-      const slot = { start: '2026-11-13T09:20:00Z', end: '2026-11-13T09:40:00Z', practiceLocationId: 'cabinet-1', locationName: 'Cabinet El Menzah' };
+      const slot = { start: '2026-11-13T09:20:00Z', end: '2026-11-13T09:40:00Z', practiceLocationId: 'cabinet-1', locationName: 'Cabinet El Menzah', version: 2 };
       const { fixture, fakes } = await renderAt({
         consultation: consultation({ followUpSlot: slot }),
         record: record({ followUp: { required: true, recommendedAt: '2026-11-13', decision: 'FOLLOW_UP_IN_PERIOD' } }),
@@ -809,7 +810,7 @@ describe('ConsultationPage (single page)', () => {
       expect(document.querySelector('[data-testid="follow-up-slot-text"]')?.textContent).toContain('13 nov. à 10:20');
       segment(fixture.nativeElement, 'Aucun suivi').click();
       await stable(fixture);
-      expect(fakes.consultations.clearFollowUpSlot).toHaveBeenCalledWith(CONSULTATION_ID);
+      expect(fakes.consultations.clearFollowUpSlot).toHaveBeenCalledWith(CONSULTATION_ID, 2, expect.stringMatching(/^follow-up-slot-clear:/));
       expect(document.querySelector('[data-testid="follow-up-slot"]')).toBeNull();
     });
 
