@@ -29,7 +29,14 @@ export interface PatientChartAccessDto {
   readonly editable: boolean;
   readonly grantExpiresAt: string | null;
   readonly verificationUnavailable: boolean;
+  /**
+   * G-1 D5: the clinical sections this doctor may read (ESSENTIAL_INFORMATION, CURRENT_MEDICATIONS,
+   * CONSULTATION_SUMMARIES, DOCUMENTS). Absent from an older server: then every section is tried.
+   */
+  readonly sections?: readonly PatientChartSection[];
 }
+
+export type PatientChartSection = 'ESSENTIAL_INFORMATION' | 'CURRENT_MEDICATIONS' | 'CONSULTATION_SUMMARIES' | 'DOCUMENTS';
 
 export interface PatientChartAppointmentRefDto {
   readonly id: string;

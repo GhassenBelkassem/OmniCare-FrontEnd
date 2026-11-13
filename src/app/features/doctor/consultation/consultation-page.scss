@@ -108,3 +108,12 @@
     position: static;
   }
 }
+
+// G-1 D5: the signed documents shown right after « Terminer ».
+.consultation-documents {
+  width: 100%;
+  margin-top: var(--oc-space-4);
+  text-align: left;
+
+  h3 { margin: 0 0 var(--oc-space-2); }
+}

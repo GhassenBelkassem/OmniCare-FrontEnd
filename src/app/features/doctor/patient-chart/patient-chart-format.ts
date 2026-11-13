@@ -7,6 +7,7 @@ import type {
   PatientChartDocumentType,
   PatientChartHistoryKind,
   PatientChartIdentityDto,
+  PatientChartSection,
 } from './patient-chart-api.models';
 
 const ZONE = 'Africa/Tunis';
@@ -163,6 +164,16 @@ export const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as
  * Clinical endpoints are called only when the server granted clinical access: the mode must be
  * EXTERNAL_OWNER or OMNICARE_GRANTED (and the actor flag must agree).
  */
+/**
+ * G-1 D5: whether this section was granted. A section the patient did not share is shown as
+ * « Accès requis » without asking the server (no 403 in the console).
+ */
+export function sectionGranted(access: Pick<PatientChartAccessDto, 'mode' | 'clinical' | 'sections'>,
+                               section: PatientChartSection): boolean {
+  if (!mayLoadClinical(access)) return false;
+  return access.sections === undefined || access.sections.includes(section);
+}
+
 export function mayLoadClinical(access: Pick<PatientChartAccessDto, 'mode' | 'clinical'>): boolean {
   return (access.mode === 'EXTERNAL_OWNER' || access.mode === 'OMNICARE_GRANTED') && access.clinical;
 }

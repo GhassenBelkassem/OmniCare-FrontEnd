@@ -47,6 +47,7 @@ import {
   type OrderRowForm,
 } from './model/consultation-form';
 import { CONSULTATION_RULES, type OrderCategory } from './model/consultation-rules';
+import { retryWhileContextPending } from './model/context-pending-retry';
 
 export interface OrderRow {
   readonly key: string;
@@ -365,11 +366,13 @@ export class ConsultationSessionStore {
     this.actionError.set(null);
     this.resetQueues();
     try {
+      // G-1 D5: right after « Démarrer » MRS may still be receiving the care context (503
+      // MRS_CONTEXT_PENDING): keep loading and re-read before showing « indisponible ».
       const [record, prescription, orders, artifacts] = await Promise.all([
-        firstValueFrom(this.clinicalApi.read(id)),
-        firstValueFrom(this.prescriptionApi.read(id)),
-        firstValueFrom(this.orderApi.list(id)),
-        firstValueFrom(this.artifactApi.list(id)),
+        firstValueFrom(this.clinicalApi.read(id).pipe(retryWhileContextPending())),
+        firstValueFrom(this.prescriptionApi.read(id).pipe(retryWhileContextPending())),
+        firstValueFrom(this.orderApi.list(id).pipe(retryWhileContextPending())),
+        firstValueFrom(this.artifactApi.list(id).pipe(retryWhileContextPending())),
       ]);
       if (generation !== this.generation) return;
       this.noteBase = record.clinicalRecord;

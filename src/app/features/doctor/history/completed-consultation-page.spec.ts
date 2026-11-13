@@ -1,6 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { provideNzIcons } from 'ng-zorro-antd/icon';
+import { Subject, of } from 'rxjs';
+import { vi } from 'vitest';
+
+import { OMNICARE_ICONS } from '../../../app.icons';
+import type { ScheduledCareEvent } from '../../../core/realtime/live-event.models';
+import { RealtimeService } from '../../../core/realtime/realtime.service';
+import { ArtifactApiService } from '../artifact-api.service';
+import { PatientChartApiService } from '../patient-chart/patient-chart-api.service';
 
 import { ActiveConsultationApiService } from '../active-consultation-api.service';
 import type { CompletedConsultationDetail } from '../completed-consultation.models';
@@ -39,7 +47,11 @@ describe('CompletedConsultationPage', () => {
       providers: [
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => ID } } } },
+        provideNzIcons(OMNICARE_ICONS),
         { provide: ActiveConsultationApiService, useValue: { getCompleted: () => of(DETAIL) } },
+        { provide: ArtifactApiService, useValue: { download: vi.fn(() => of(new Blob(['pdf']))) } },
+        { provide: PatientChartApiService, useValue: { downloadArtifact: vi.fn() } },
+        { provide: RealtimeService, useValue: { scheduledCareEvents$: new Subject<ScheduledCareEvent>() } },
       ],
     });
 
@@ -51,7 +63,9 @@ describe('CompletedConsultationPage', () => {
     expect(text).toContain('Expiré');
     expect(text).toContain('Dossier médical historique non autorisé');
     expect(text).toContain('Ordonnance');
-    expect(text).toContain('Prêt');
+    // G-1 D5: each signed document has « Télécharger » (shared component).
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="official-document-33333333-3333-4333-8333-333333333333"]'))
+      .not.toBeNull();
     expect(text).not.toContain('Enregistrer');
     expect(text).not.toContain('Finaliser');
     expect(text).not.toContain('Terminer la consultation');

@@ -4,7 +4,7 @@ import type { Observable } from 'rxjs';
 
 import type { PatientChartDto, PatientChartMedicalSummaryDto } from '../patient-chart-api.models';
 import { PatientChartApiService } from '../patient-chart-api.service';
-import { isAccessRequiredError, mayLoadClinical } from '../patient-chart-format';
+import { isAccessRequiredError, mayLoadClinical, sectionGranted } from '../patient-chart-format';
 import type {
   RecordConsultationDetail,
   RecordConsultationItem,
@@ -72,6 +72,11 @@ export class PatientRecordStore {
 
   loadMedications(state: 'current' | 'past', force = false): void {
     if (!this.clinical() || (!force && this.medications()[state].state !== 'idle')) return;
+    if (!sectionGranted(this.chart()!.access, 'CURRENT_MEDICATIONS')) {
+      // G-1 D5: not shared by the patient: « Accès requis » without a refused call.
+      this.medications.update((value) => ({ ...value, [state]: { state: 'denied', data: null } }));
+      return;
+    }
     this.medications.update((value) => ({ ...value, [state]: { state: 'loading', data: null } }));
     this.run(this.api.getMedications(this.chartId(), state),
       (data) => this.medications.update((value) => ({ ...value, [state]: { state: 'ready', data } })),
@@ -108,10 +113,22 @@ export class PatientRecordStore {
     if (!this.clinical() || this.historyView() !== 'CLINICAL') return;
     const current = this.details().get(consultationId);
     if (current !== undefined && current.state !== 'error') return;
+    if (!sectionGranted(this.chart()!.access, 'CONSULTATION_SUMMARIES')) {
+      this.setDetail(consultationId, { state: 'denied', data: null });
+      return;
+    }
     this.setDetail(consultationId, { state: 'loading', data: null });
     this.run(this.api.getConsultationDetail(this.chartId(), consultationId),
       (data) => this.setDetail(consultationId, { state: 'ready', data }),
       (state) => this.setDetail(consultationId, { state, data: null }));
+  }
+
+  /** G-1 D5: silent re-read of a shown detail (a document became ready): the card stays on screen. */
+  refreshDetail(consultationId: string): void {
+    if (!this.clinical() || this.historyView() !== 'CLINICAL'
+      || !sectionGranted(this.chart()!.access, 'CONSULTATION_SUMMARIES')) return;
+    this.api.getConsultationDetail(this.chartId(), consultationId).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: (data) => this.setDetail(consultationId, { state: 'ready', data }), error: () => undefined });
   }
 
   private setDetail(id: string, value: Loadable<RecordConsultationDetail>): void {

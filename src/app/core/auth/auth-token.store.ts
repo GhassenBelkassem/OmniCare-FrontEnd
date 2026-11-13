@@ -19,6 +19,8 @@ export class AuthTokenStore {
   private readonly state = signal<AuthState>('BOOTSTRAPPING');
 
   readonly accessToken = this.accessTokenState.asReadonly();
+  /** G-1 D5: when the access token expires (ISO-8601), to refresh it shortly before. */
+  readonly expiresAt = this.expiresAtState.asReadonly();
   readonly refreshToken = this.refreshTokenState.asReadonly();
   readonly user = this.userState.asReadonly();
   readonly otpChallenge = this.otpChallengeState.asReadonly();

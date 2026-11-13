@@ -30,6 +30,7 @@ import {
   documentTypeLabel,
   isAccessRequiredError,
   mayLoadClinical,
+  sectionGranted,
 } from './patient-chart-format';
 
 @Component({
@@ -162,8 +163,11 @@ export class ChartDocumentsTab {
       const id = this.patientId();
       this.reloadToken();
       const allowed = mayLoadClinical(this.access()) && this.recordStatus() === 'READY';
+      // G-1 D5: documents not shared by the patient: « Accès requis » without a refused call.
+      const granted = sectionGranted(this.access(), 'DOCUMENTS');
       untracked(() => {
-        if (allowed && id) this.load();
+        if (allowed && !granted) this.state.set('denied');
+        else if (allowed && id) this.load();
         else this.state.set('idle');
       });
     });

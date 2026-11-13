@@ -115,6 +115,7 @@ export interface Fakes {
     followUpAvailability: ReturnType<typeof vi.fn>; saveFollowUpSlot: ReturnType<typeof vi.fn>;
     clearFollowUpSlot: ReturnType<typeof vi.fn>; rebookFollowUp: ReturnType<typeof vi.fn>;
     requestAccess: ReturnType<typeof vi.fn>; cancelAccessRequest: ReturnType<typeof vi.fn>;
+    getCompleted: ReturnType<typeof vi.fn>;
   };
   /** The doctor's cabinets (follow-up slot picker). */
   readonly locations: { list: ReturnType<typeof vi.fn> };
@@ -123,7 +124,7 @@ export interface Fakes {
   readonly clinical: { read: ReturnType<typeof vi.fn>; save: ReturnType<typeof vi.fn> };
   readonly prescriptions: { read: ReturnType<typeof vi.fn>; save: ReturnType<typeof vi.fn>; finalize: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn> };
   readonly orders: { list: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; finalize: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn> };
-  readonly artifacts: { list: ReturnType<typeof vi.fn>; createCertificate: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; finalize: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn> };
+  readonly artifacts: { list: ReturnType<typeof vi.fn>; createCertificate: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; finalize: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn>; download: ReturnType<typeof vi.fn> };
   readonly appointments: { getAppointment: ReturnType<typeof vi.fn> };
   /** The doctor's document templates (G-1 D5 sick-leave « Modèle » picker). */
   readonly templates: { list: ReturnType<typeof vi.fn> };
@@ -175,6 +176,13 @@ export function createFakes(options: FakeOptions = {}): Fakes {
         prescriptionReady: true, ordersReady: true, artifactsReady: true, missing: [],
       })),
       abort: logged('consultation.abort', () => of({ ...current, status: 'ABORTED', version: current.version + 1 })),
+      // G-1 D5: the documents shown right after « Terminer » (none rendered yet in these tests).
+      getCompleted: vi.fn(() => of({
+        consultation: { consultationId: current.consultationId, patient: { displayName: 'Patient', relationship: null },
+          sourceType: current.sourceType, sourceId: current.sourceId, status: 'COMPLETED', medicalAccessStatus: 'EXPIRED',
+          startedAt: '2026-11-11T08:00:00Z', completedAt: '2026-11-11T09:00:00Z', chartId: null },
+        historicalMedicalAccessStatus: 'NOT_AUTHORIZED', artifactStatusAvailable: true, artifacts: [],
+      })),
       followUpAvailability: logged('followUp.availability', () => of({
         doctorId: 'doctor-1', practiceLocationId: 'cabinet-1', timezone: 'Africa/Tunis', generatedAt: '2026-11-11T08:00:00Z',
         slots: [FOLLOW_UP_SLOT],
@@ -239,6 +247,7 @@ export function createFakes(options: FakeOptions = {}): Fakes {
         return of({ ...value, status: 'FINALIZED' as const });
       }),
       discard: logged('artifact.discard', () => of(undefined)),
+      download: vi.fn(() => of(new Blob(['pdf']))),
     },
     appointments: { getAppointment: vi.fn(() => of({ startTime: '2026-11-10T09:00:00Z' })) },
     templates: {

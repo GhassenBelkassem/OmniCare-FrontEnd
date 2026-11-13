@@ -3,7 +3,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { fr_FR, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { provideNzIcons } from 'ng-zorro-antd/icon';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { OMNICARE_ICONS } from '../../../../app.icons';
@@ -11,6 +11,9 @@ import type { PatientChartAccessDto, PatientChartDto, PatientChartMedicalSummary
 import { PatientChartApiService } from '../patient-chart-api.service';
 import { PatientRecordView } from './patient-record-view';
 import type { RecordConsultationDetail, RecordConsultationItem, RecordConsultationPage } from './patient-record.models';
+import type { ScheduledCareEvent } from '../../../../core/realtime/live-event.models';
+import { RealtimeService } from '../../../../core/realtime/realtime.service';
+import { ArtifactApiService } from '../../artifact-api.service';
 
 const CHART_ID = 'c0000000-0000-4000-8000-000000000001';
 const CURRENT_ID = 'cur00000-0000-4000-8000-000000000002';
@@ -69,6 +72,7 @@ function page(items: RecordConsultationItem[], nextCursor: string | null = null,
 
 interface Setup {
   readonly fixture: ComponentFixture<PatientRecordView>;
+  readonly artifacts: { readonly download: ReturnType<typeof vi.fn> };
   readonly api: Readonly<Record<
     'getMedicalSummary' | 'getMedications' | 'getConsultationPage' | 'getConsultationDetail' | 'getDocuments' | 'getHistory' | 'downloadArtifact',
     ReturnType<typeof vi.fn>
@@ -91,17 +95,21 @@ async function setup(options: { access?: PatientChartAccessDto; summary?: Patien
     getHistory: vi.fn(() => of({ clinicalIncluded: true, clinicalUnavailable: false, items: [] })),
     downloadArtifact: vi.fn(() => of(new Blob(['pdf']))),
   };
+  // G-1 D5: the shared « Télécharger » uses the doctor's route first and listens for DOCUMENT_READY.
+  const artifacts = { download: vi.fn(() => of(new Blob(['pdf']))) };
   TestBed.configureTestingModule({
     imports: [PatientRecordView],
     providers: [provideNoopAnimations(), provideRouter([]), provideNzIcons(OMNICARE_ICONS), provideNzI18n(fr_FR),
-      { provide: PatientChartApiService, useValue: api }],
+      { provide: PatientChartApiService, useValue: api },
+      { provide: ArtifactApiService, useValue: artifacts },
+      { provide: RealtimeService, useValue: { scheduledCareEvents$: new Subject<ScheduledCareEvent>() } }],
   });
   const fixture = TestBed.createComponent(PatientRecordView);
   fixture.componentRef.setInput('chart', chart(access));
   fixture.componentRef.setInput('currentConsultationId', options.current ?? null);
   if (options.initialTab) fixture.componentRef.setInput('initialTab', options.initialTab);
   await stable(fixture);
-  return { fixture, api, text: () => fixture.nativeElement.textContent ?? '' };
+  return { fixture, api, artifacts, text: () => fixture.nativeElement.textContent ?? '' };
 }
 
 async function stable(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -379,7 +387,7 @@ describe('PatientRecordView (« Dossier patient »)', () => {
   });
 
   it('shows the generated documents as distinct file cards with their subtitles', async () => {
-    const { fixture, api } = await setup({ current: CURRENT_ID });
+    const { fixture, api, artifacts } = await setup({ current: CURRENT_ID });
     tab(fixture, 'Historique').click();
     await stable(fixture);
     (card(fixture, DONE_ID).querySelector('button') as HTMLElement).click();
@@ -400,7 +408,18 @@ describe('PatientRecordView (« Dossier patient »)', () => {
     expect(button.getAttribute('aria-label')).toBe('Télécharger : Arrêt de travail, 10 → 12 nov. 2026 · 3 jours');
     button.click();
     await stable(fixture);
-    expect(api.downloadArtifact).toHaveBeenCalledWith(CHART_ID, DONE_ID, 'a2');
+    // G-1 D5: the doctor's own-consultation route first; the chart route only if refused.
+    expect(artifacts.download).toHaveBeenCalledWith(DONE_ID, 'a2');
+    expect(api.downloadArtifact).not.toHaveBeenCalled();
+  });
+
+  it('a section the patient did not share is « Accès requis » without asking the server (G-1 D5)', async () => {
+    const granted: PatientChartAccessDto = { mode: 'OMNICARE_GRANTED', clinical: true, editable: false,
+      grantExpiresAt: '2026-11-20T10:00:00Z', verificationUnavailable: false,
+      sections: ['ESSENTIAL_INFORMATION', 'CONSULTATION_SUMMARIES'] };
+    const { api, text } = await setup({ access: granted });
+    expect(api.getMedications).not.toHaveBeenCalled();
+    expect(text()).toContain('Accès requis');
   });
 
   it('gives the most recent consultation the primary date block, older ones the neutral one', async () => {

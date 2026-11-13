@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   computed,
   effect,
   inject,
@@ -10,26 +9,23 @@ import {
   untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
 
-import { OcButton, OcDateBlock, OcFileCard, OcTag } from '../../../../shared/ui';
+import { OcButton, OcDateBlock, OcTag } from '../../../../shared/ui';
+import { OfficialDocument } from '../../documents/official-document';
 import { ChartAccessRequired } from '../chart-access-required';
-import { PatientChartApiService } from '../patient-chart-api.service';
 import { consultationStatusLabel } from '../patient-chart-format';
-import type { RecordConsultationDetail, RecordConsultationDocument, RecordConsultationItem } from './patient-record.models';
+import type { RecordConsultationDetail, RecordConsultationItem } from './patient-record.models';
 import { PatientRecordStore } from './patient-record.store';
 import {
   currentConsultationLine,
   diagnosisStatusLabel,
   documentCards,
-  templateFallbackNotice,
   followUpLabel,
   medicationTags,
   orderCategoryLabel,
-  saveBlob,
   searchKey,
   tunisTime,
   type DocumentCard,
@@ -42,7 +38,7 @@ import {
  */
 @Component({
   selector: 'app-record-history-tab',
-  imports: [NgTemplateOutlet, NzIconModule, NzInputModule, NzSkeletonModule, OcButton, OcDateBlock, OcFileCard, OcTag, ChartAccessRequired],
+  imports: [NgTemplateOutlet, NzIconModule, NzInputModule, NzSkeletonModule, OcButton, OcDateBlock, OcTag, ChartAccessRequired, OfficialDocument],
   template: `
     <section class="r-card" aria-labelledby="history-title">
       <div class="h-head">
@@ -137,7 +133,6 @@ import {
           @if (store.nextCursor()) {
             <oc-button size="small" variant="outline" [loading]="store.loadingMore()" (click)="store.loadMore()">Afficher plus</oc-button>
           }
-          @if (downloadError(); as message) { <p class="r-error" role="alert">{{ message }}</p> }
         }
         @case ('error') {
           <p class="r-error" role="alert">L’historique n’a pas pu être chargé.
@@ -211,21 +206,19 @@ import {
           <p class="r-label">Documents générés</p>
           <div class="h-docs" data-testid="generated-documents">
             @for (card of docCards(data); track card.document.id) {
-              <oc-file-card
+              <app-official-document
+                [consultationId]="data.id"
+                [artifactId]="card.document.id"
                 [title]="card.title"
                 [subtitle]="card.subtitle"
                 [tone]="card.tone"
-                [disabled]="!card.document.downloadable"
-                [loading]="downloading() === card.document.id"
-                (activate)="download(data, card.document, card.title)"
+                [ready]="card.document.downloadable"
+                [templateFallback]="card.document.templateFallback === true"
+                [chartId]="store.chart()?.id ?? null"
+                (becameReady)="store.refreshDetail(data.id)"
               />
             }
           </div>
-          @for (card of docCards(data); track card.document.id) {
-            @if (fallbackNotice(card.document); as notice) {
-              <p class="r-state" data-testid="template-fallback-notice">{{ card.title }} : {{ notice }}</p>
-            }
-          }
         </div>
       }
 
@@ -301,8 +294,6 @@ import {
 })
 export class RecordHistoryTab {
   readonly store = inject(PatientRecordStore);
-  private readonly api = inject(PatientChartApiService);
-  private readonly destroyRef = inject(DestroyRef);
 
   /** The consultation the view was opened from: pinned first, never expandable. */
   readonly currentConsultationId = input<string | null>(null);
@@ -312,8 +303,6 @@ export class RecordHistoryTab {
   readonly query = signal('');
   readonly open = signal<ReadonlySet<string>>(new Set());
   readonly notesOpen = signal<ReadonlySet<string>>(new Set());
-  readonly downloading = signal<string | null>(null);
-  readonly downloadError = signal<string | null>(null);
 
   readonly clinicalView = computed(() => this.store.historyView() === 'CLINICAL' && this.store.clinical());
 
@@ -386,23 +375,6 @@ export class RecordHistoryTab {
     this.notesOpen.set(next);
   }
 
-  download(detail: RecordConsultationDetail, document: RecordConsultationDocument, label: string): void {
-    const chart = this.store.chart();
-    if (chart === null || this.downloading() !== null || !document.downloadable) return;
-    this.downloading.set(document.id);
-    this.downloadError.set(null);
-    this.api.downloadArtifact(chart.id, detail.id, document.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (blob) => {
-        this.downloading.set(null);
-        saveBlob(blob, `${searchKey(label).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.pdf`);
-      },
-      error: () => {
-        this.downloading.set(null);
-        this.downloadError.set('Le document n’a pas pu être téléchargé. Réessayez.');
-      },
-    });
-  }
-
   /** Card title: the motif (clinical view), « Consultation » otherwise. */
   title(item: RecordConsultationItem): string {
     if (!this.clinicalView()) return 'Consultation';
@@ -432,10 +404,6 @@ export class RecordHistoryTab {
 
   followUp(detail: RecordConsultationDetail): string {
     return followUpLabel(detail.followUp);
-  }
-
-  fallbackNotice(document: RecordConsultationDocument): string | null {
-    return templateFallbackNotice(document);
   }
 
   docCards(detail: RecordConsultationDetail): readonly DocumentCard[] {
