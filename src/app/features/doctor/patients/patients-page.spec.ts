@@ -147,9 +147,9 @@ describe('PatientsPage', () => {
 
     const request = http.expectOne(
       (candidate) =>
-        candidate.url === '/api/v1/patients' &&
-        candidate.params.get('query') === 'Trabelsi' &&
-        candidate.params.get('filter') === 'ALL',
+        candidate.url === '/api/v1/patients/search' &&
+        candidate.body?.query === 'Trabelsi' &&
+        candidate.body?.filter === 'ALL',
     );
     request.flush(pageResponse([]));
     expect(component.componentInstance.searchTerm()).toBe('Trabelsi');
