@@ -43,6 +43,7 @@ import {
   followUpSlotSaveError,
   followUpSlotTakenMessage,
 } from './model/follow-up';
+import { ConsultationDocuments } from '../documents/consultation-documents';
 
 /** While « Terminer » has not scheduled the follow-up yet: re-read every 2 s, 15 times at most. */
 const FOLLOW_UP_POLL_MS = 2_000;
@@ -78,6 +79,7 @@ const FOLLOW_UPS = [
     OcConfirmDialog,
     OcEmptyState,
     ConsultationHeader,
+    ConsultationDocuments,
     ConsultationSectionDirective,
     DocumentsSection,
     FinishCard,

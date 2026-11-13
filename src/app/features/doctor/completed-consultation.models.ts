@@ -17,6 +17,8 @@ export interface CompletedConsultationListItem {
   readonly medicalAccessStatus: MedicalAccessStatus;
   readonly startedAt: string;
   readonly completedAt: string;
+  /** G-1 D5: the doctor's chart of this patient (document download fallback). */
+  readonly chartId?: string | null;
 }
 
 export interface CompletedConsultationPage {
@@ -37,6 +39,8 @@ export interface CompletedArtifactMetadata {
   readonly renderVersion: number;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /** G-1 D5: printed on the standard layout although the doctor chose a template. */
+  readonly templateFallback?: boolean;
 }
 
 export interface CompletedConsultationDetail {

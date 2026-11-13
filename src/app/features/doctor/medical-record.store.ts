@@ -11,6 +11,7 @@ import type {
   DoctorMedicalRecordWorkspace,
   MedicalRecordFailureCode,
 } from './medical-record.models';
+import { retryWhileContextPending } from './consultation/model/context-pending-retry';
 
 @Injectable({ providedIn: 'root' })
 export class MedicalRecordStore {
@@ -74,7 +75,8 @@ export class MedicalRecordStore {
     const generation = this.generation;
     this.loading.set(true);
     this.failure.set(null);
-    const request = firstValueFrom(this.api.getWorkspace(consultationId))
+    // G-1 D5: same wait as the consultation reads while MRS receives the care context.
+    const request = firstValueFrom(this.api.getWorkspace(consultationId).pipe(retryWhileContextPending()))
       .then((workspace) => {
         if (generation !== this.generation || this.consultationId !== consultationId) return;
         this.valueState.set(workspace);

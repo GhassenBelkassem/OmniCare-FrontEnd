@@ -20,6 +20,13 @@
               <oc-button variant="primary" size="small" leadingIcon="calendar" (click)="openFollowUpRebooking()">Choisir un autre créneau</oc-button>
             </div>
           }
+          @if (consultation.status === 'COMPLETED') {
+            <!-- G-1 D5: the signed documents, « En préparation… » then « Télécharger » on their own. -->
+            <section class="consultation-documents" aria-label="Documents officiels" data-testid="finished-documents">
+              <h3>Documents officiels</h3>
+              <app-consultation-documents [consultationId]="consultation.consultationId" />
+            </section>
+          }
           <div class="consultation-state__actions">
             <a class="consultation-link" routerLink="/doctor/command">Retour à l’accueil</a>
             @if (consultation.patient?.chartId; as chartId) {

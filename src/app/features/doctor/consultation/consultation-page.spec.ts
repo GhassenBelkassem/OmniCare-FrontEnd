@@ -288,6 +288,9 @@ describe('ConsultationPage (single page)', () => {
     expect(fakes.consultations.finish).toHaveBeenCalled();
     expect(text()).toContain('Consultation terminée');
     expect(text()).toContain('Retour à l’accueil');
+    // G-1 D5: the signed documents are listed right away (« En préparation… » until rendered).
+    expect(document.querySelector('[data-testid="finished-documents"]')).not.toBeNull();
+    expect(fakes.consultations.getCompleted).toHaveBeenCalled();
   });
 
   it('renders no raw code, English word or jargon with every section open', async () => {

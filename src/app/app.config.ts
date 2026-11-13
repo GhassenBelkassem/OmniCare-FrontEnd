@@ -18,6 +18,7 @@ import { OMNICARE_ICONS } from './app.icons';
 import { routes } from './app.routes';
 import { AuthBootstrapService } from './core/auth/auth-bootstrap.service';
 import { APPLICATION_HTTP_INTERCEPTORS } from './core/http/application-http-interceptors';
+import { TokenRefreshScheduler } from './core/auth/token-refresh.scheduler';
 
 registerLocaleData(fr);
 
@@ -28,6 +29,8 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withFetch(), withInterceptors([...APPLICATION_HTTP_INTERCEPTORS])),
     provideAppInitializer(() => inject(AuthBootstrapService).initialize()),
+    // G-1 D5: refresh the access token about a minute before it expires.
+    provideAppInitializer(() => inject(TokenRefreshScheduler).start()),
     provideClientHydration(withEventReplay()),
     provideNzI18n(fr_FR),
     provideNzIcons(OMNICARE_ICONS),
