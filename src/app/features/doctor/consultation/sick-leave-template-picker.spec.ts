@@ -196,6 +196,21 @@ describe('« Terminer » with a sick-leave template', () => {
     },
   );
 
+  it.each([
+    ['VERSION_NOT_FOUND', 404, 'Cette version du modèle n’est plus disponible. Rien n’a été signé. Choisissez un modèle dans la liste.'],
+    ['INVALID_DOCUMENT_TYPE', 400, 'Un modèle ne peut être utilisé que pour un arrêt de travail. Rien n’a été signé. Choisissez « Modèle standard » pour ce document.'],
+  ] as const)('%s at signature (G-1 pass 2): French message, list reloaded, consultation left open', async (code, status, message) => {
+    const { fakes, flow } = await setup({ templates: [sickLeaveTemplate({ id: 'template-1' })] });
+    fakes.artifacts.finalize.mockReturnValueOnce(throwError(() => new HttpErrorResponse({
+      status, error: { code, detail: 'Version not found (English)' },
+    })));
+    await flow.confirmFinish();
+    expect(flow.error()).toBe(message);
+    expect(flow.phase()).toBe('idle');
+    expect(fakes.templates.list).toHaveBeenCalledTimes(2);
+    expect(fakes.consultations.finish).not.toHaveBeenCalled();
+  });
+
   it('« Modèle standard » chosen: « Terminer » sends no template', async () => {
     const { fakes, flow, templates } = await setup({ templates: [sickLeaveTemplate({ id: 'template-1', isDefault: true })] });
     templates.select(STANDARD_TEMPLATE_ID);

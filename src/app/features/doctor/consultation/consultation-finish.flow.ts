@@ -41,7 +41,8 @@ export const FINISH_POLL_TIMEOUT_MS = 120_000;
 const POLLED_CODES = new Set(['FINISH_IN_PROGRESS', 'MRS_CONTEXT_PENDING', 'FINISH_RECONCILIATION_REQUIRED']);
 const CERTIFICATES: readonly CertificateType[] = ['SICK_LEAVE_CERTIFICATE', 'MEDICAL_CERTIFICATE'];
 /** The chosen sick-leave template was deactivated or deleted meanwhile (G-1 D5). */
-const TEMPLATE_CODES = new Set(['TEMPLATE_NOT_FOUND', 'INVALID_TEMPLATE_STATE']);
+// G-1 pass 2 item 8: a template version that disappeared or a template on the wrong document type.
+const TEMPLATE_CODES = new Set(['TEMPLATE_NOT_FOUND', 'INVALID_TEMPLATE_STATE', 'VERSION_NOT_FOUND', 'INVALID_DOCUMENT_TYPE']);
 /** G-1 D5: a text the document cannot print (Arabic letters, a text longer than its template zone); nothing was signed. */
 const PRINT_CODES: ReadonlySet<string> = new Set(['UNPRINTABLE_TEXT', 'TEMPLATE_UNPRINTABLE_TEXT', 'TEMPLATE_TEXT_OVERFLOW', 'TEXT_TOO_LONG']);
 

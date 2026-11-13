@@ -201,6 +201,8 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   ARTIFACT_SIGNING_UNAVAILABLE: 'La signature des documents est momentanément indisponible. Réessayez dans un instant.',
   TEMPLATE_NOT_FOUND: 'Ce modèle n’est plus disponible. Choisissez-en un autre.',
   INVALID_TEMPLATE_STATE: 'Ce modèle n’est plus disponible. Choisissez-en un autre.',
+  VERSION_NOT_FOUND: 'Cette version du modèle n’est plus disponible. Rien n’a été signé. Choisissez un modèle dans la liste.',
+  INVALID_DOCUMENT_TYPE: 'Un modèle ne peut être utilisé que pour un arrêt de travail. Rien n’a été signé. Choisissez « Modèle standard » pour ce document.',
   UNPRINTABLE_TEXT: 'Le texte du document contient des caractères que l’impression ne prend pas encore en charge (par exemple des lettres arabes). Rien n’a été signé. Remplacez-les par des lettres latines, puis réessayez.',
   TEMPLATE_UNPRINTABLE_TEXT: 'Le document contient des caractères que l’impression ne prend pas encore en charge (par exemple des lettres arabes dans le nom du patient ou du cabinet). Rien n’a été signé. Remplacez-les par des lettres latines, ou choisissez « Modèle standard » dans la liste.',
   TEXT_TOO_LONG: 'Le texte du document est trop long pour être imprimé. Rien n’a été signé. Raccourcissez-le, puis réessayez.',
