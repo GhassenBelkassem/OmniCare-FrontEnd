@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -6,11 +7,11 @@ import { AUTH_MODE } from '../../core/auth/auth-mode';
 import type { DashboardRole, LoginOutcome } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthTokenStore } from '../../core/auth/auth-token.store';
-import { OcButton } from '../../shared/ui';
+import { OcButton, OcIcon } from '../../shared/ui';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, RouterLink, OcButton],
+  imports: [ReactiveFormsModule, RouterLink, NgOptimizedImage, OcButton, OcIcon],
   templateUrl: './login-page.html',
   styleUrl: './login-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,6 +22,7 @@ export class LoginPage {
   private readonly tokens = inject(AuthTokenStore);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly passwordVisible = signal(false);
   readonly staticDemoMode = AUTH_MODE.staticDemo;
   readonly demoWorkspaces = AUTH_MODE.workspaces;
   readonly otpRequired = () => this.tokens.authState() === 'OTP_REQUIRED';
@@ -35,6 +37,20 @@ export class LoginPage {
     nonNullable: true,
     validators: [Validators.required, Validators.pattern(/^\d{6}$/)],
   });
+
+  emailInvalid(): boolean {
+    const control = this.form.controls.email;
+    return control.touched && control.invalid;
+  }
+
+  passwordInvalid(): boolean {
+    const control = this.form.controls.password;
+    return control.touched && control.invalid;
+  }
+
+  togglePasswordVisibility(): void {
+    this.passwordVisible.update((visible) => !visible);
+  }
 
   submit(): void {
     if (this.form.invalid || this.submitting()) {
