@@ -1,83 +1,214 @@
 <main class="login-page">
-  <section class="login-card" aria-labelledby="login-title">
-    <a class="login-brand" routerLink="/login" aria-label="OmniCare sign in"
-      >O<span>+</span> OmniCare</a
-    >
-    <p class="login-eyebrow">
-      {{ staticDemoMode ? 'Standalone product demo' : 'Secure clinical operations' }}
-    </p>
-    <h1 id="login-title">
-      {{ staticDemoMode ? 'Choose a demo workspace' : 'Sign in to your workspace' }}
-    </h1>
-    <p class="login-intro">
-      @if (staticDemoMode) {
-        Explore fictional OmniCare workflows locally. No account, backend, or network connection is
-        required.
-      } @else {
-        One secure entry for platform administrators, doctors, and clinic administrators.
-      }
-    </p>
-    @if (errorMessage()) {
-      <div class="login-error" role="alert">{{ errorMessage() }}</div>
-    }
-    @if (staticDemoMode) {
-      <div class="demo-workspaces" aria-label="Demo workspaces">
-        @for (workspace of demoWorkspaces; track workspace.role) {
-          <button
-            class="demo-workspace"
-            type="button"
-            [disabled]="submitting()"
-            (click)="continueAs(workspace.role)"
-          >
-            <span class="demo-workspace__group">{{ workspace.group }}</span>
-            <strong>{{ workspace.label }}</strong>
-            <span class="demo-workspace__description">{{ workspace.description }}</span>
-            <span class="demo-workspace__action" aria-hidden="true">Open workspace →</span>
-          </button>
-        }
+  <div class="login-shell" [class.login-shell--demo]="staticDemoMode">
+    <aside class="login-showcase">
+      <img
+        class="login-showcase__watermark"
+        ngSrc="assets/brand/omnicare-mark-white.svg"
+        width="285"
+        height="300"
+        alt=""
+        aria-hidden="true"
+      />
+      <div class="login-showcase__brand">
+        <img
+          ngSrc="assets/brand/omnicare-mark-white.svg"
+          width="38"
+          height="40"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>OmniCare</span>
       </div>
-      <p class="demo-disclaimer">
-        All people, clinics, and clinical records in this demo are fictional.
+      <div class="login-showcase__body">
+        <h2>Vos opérations cliniques, réunies dans un espace sécurisé.</h2>
+        <p>
+          Rendez-vous, dossiers patients et coordination des soins pour les cliniques et les
+          médecins qui les font vivre.
+        </p>
+      </div>
+      <ul class="login-showcase__roles" aria-label="Espaces accessibles depuis cette connexion">
+        <li>
+          <span class="login-showcase__role-icon"><oc-icon name="settings" /></span>
+          Administration de la plateforme
+        </li>
+        <li>
+          <span class="login-showcase__role-icon"><oc-icon name="building" /></span>
+          Administration de clinique
+        </li>
+        <li>
+          <span class="login-showcase__role-icon"><oc-icon name="clinical" /></span>
+          Espace médecin
+        </li>
+      </ul>
+    </aside>
+
+    <section class="login-panel" aria-labelledby="login-title">
+      <a class="login-brand" routerLink="/login" aria-label="Connexion OmniCare">
+        <img
+          ngSrc="assets/brand/omnicare-mark.svg"
+          width="34"
+          height="36"
+          alt=""
+          aria-hidden="true"
+          priority
+        />
+        <span>OmniCare</span>
+      </a>
+
+      <p class="login-eyebrow">
+        <oc-icon name="lock" />
+        {{ staticDemoMode ? 'Démonstration autonome' : 'Opérations cliniques sécurisées' }}
       </p>
-    } @else if (otpRequired()) {
-      <form (ngSubmit)="verifyOtp()" novalidate>
-        <p>Enter the six-digit code sent to the phone registered for this account.</p>
-        <label for="otp">Verification code</label>
-        <input
-          id="otp"
-          type="text"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          maxlength="6"
-          [formControl]="otp"
-        />
-        @if (otp.touched && otp.invalid) {
-          <p class="field-error">Enter the six-digit verification code.</p>
+      <h1 id="login-title">
+        @if (staticDemoMode) {
+          Choisissez un espace de démonstration
+        } @else if (otpRequired()) {
+          Confirmez votre identité
+        } @else {
+          Connectez-vous à votre espace
         }
-        <oc-button variant="primary" type="submit" [loading]="submitting()">Verify code</oc-button>
-        <button class="back-link" type="button" [disabled]="submitting()" (click)="resendOtp()">
-          Send a new code
-        </button>
-      </form>
-    } @else {
-      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <label for="email">Email address</label>
-        <input id="email" type="email" formControlName="email" autocomplete="username" />
-        @if (form.controls.email.touched && form.controls.email.invalid) {
-          <p class="field-error">Enter a valid email address.</p>
+      </h1>
+      <p class="login-intro">
+        @if (staticDemoMode) {
+          Découvrez des parcours OmniCare fictifs en local. Aucun compte, serveur ni connexion réseau
+          n’est nécessaire.
+        } @else if (otpRequired()) {
+          Saisissez le code à six chiffres envoyé au téléphone associé à ce compte.
+        } @else {
+          Un accès unique et sécurisé pour les administrateurs de la plateforme, les médecins et les
+          administrateurs de clinique.
         }
-        <label for="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          formControlName="password"
-          autocomplete="current-password"
-        />
-        @if (form.controls.password.touched && form.controls.password.invalid) {
-          <p class="field-error">Enter your password.</p>
-        }
-        <oc-button variant="primary" type="submit" [loading]="submitting()">Sign in</oc-button>
-      </form>
-    }
-  </section>
+      </p>
+
+      @if (errorMessage()) {
+        <div class="login-error" role="alert">
+          <oc-icon name="warning" />
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      @if (staticDemoMode) {
+        <div class="demo-workspaces" aria-label="Espaces de démonstration">
+          @for (workspace of demoWorkspaces; track workspace.role) {
+            <button
+              class="demo-workspace"
+              type="button"
+              [disabled]="submitting()"
+              (click)="continueAs(workspace.role)"
+            >
+              <span class="demo-workspace__group">{{ workspace.group }}</span>
+              <strong>{{ workspace.label }}</strong>
+              <span class="demo-workspace__description">{{ workspace.description }}</span>
+              <span class="demo-workspace__action" aria-hidden="true">Ouvrir l’espace →</span>
+            </button>
+          }
+        </div>
+        <p class="demo-disclaimer">
+          Les personnes, cliniques et dossiers médicaux de cette démonstration sont fictifs.
+        </p>
+      } @else if (otpRequired()) {
+        <form class="login-form" (ngSubmit)="verifyOtp()" novalidate>
+          <div class="field">
+            <label for="otp">Code de vérification</label>
+            <div class="field__control" [class.field__control--invalid]="otp.touched && otp.invalid">
+              <oc-icon class="field__icon" name="phone" />
+              <input
+                id="otp"
+                class="field__input field__input--code"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="000000"
+                [formControl]="otp"
+                [attr.aria-invalid]="otp.touched && otp.invalid"
+                [attr.aria-describedby]="otp.touched && otp.invalid ? 'otp-error' : null"
+              />
+            </div>
+            @if (otp.touched && otp.invalid) {
+              <p class="field-error" id="otp-error">Saisissez le code à six chiffres.</p>
+            }
+          </div>
+          <oc-button
+            variant="primary"
+            size="large"
+            type="submit"
+            [fullWidth]="true"
+            [loading]="submitting()"
+            >Vérifier le code</oc-button
+          >
+          <button class="text-link" type="button" [disabled]="submitting()" (click)="resendOtp()">
+            Code non reçu ? Envoyer un nouveau code
+          </button>
+        </form>
+      } @else {
+        <form class="login-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="field">
+            <label for="email">Adresse e-mail</label>
+            <div class="field__control" [class.field__control--invalid]="emailInvalid()">
+              <oc-icon class="field__icon" name="mail" />
+              <input
+                id="email"
+                class="field__input"
+                type="email"
+                formControlName="email"
+                autocomplete="username"
+                placeholder="vous@exemple.com"
+                [attr.aria-invalid]="emailInvalid()"
+                [attr.aria-describedby]="emailInvalid() ? 'email-error' : null"
+              />
+            </div>
+            @if (emailInvalid()) {
+              <p class="field-error" id="email-error">Saisissez une adresse e-mail valide.</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="password">Mot de passe</label>
+            <div class="field__control" [class.field__control--invalid]="passwordInvalid()">
+              <oc-icon class="field__icon" name="lock" />
+              <input
+                id="password"
+                class="field__input"
+                [type]="passwordVisible() ? 'text' : 'password'"
+                formControlName="password"
+                autocomplete="current-password"
+                placeholder="Votre mot de passe"
+                [attr.aria-invalid]="passwordInvalid()"
+                [attr.aria-describedby]="passwordInvalid() ? 'password-error' : null"
+              />
+              <button
+                class="field__toggle"
+                type="button"
+                aria-controls="password"
+                [attr.aria-label]="
+                  passwordVisible() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+                "
+                [attr.aria-pressed]="passwordVisible()"
+                (click)="togglePasswordVisibility()"
+              >
+                <oc-icon name="eye" />
+                <span aria-hidden="true">{{ passwordVisible() ? 'Masquer' : 'Afficher' }}</span>
+              </button>
+            </div>
+            @if (passwordInvalid()) {
+              <p class="field-error" id="password-error">Saisissez votre mot de passe.</p>
+            }
+          </div>
+
+          <oc-button
+            variant="primary"
+            size="large"
+            type="submit"
+            [fullWidth]="true"
+            [loading]="submitting()"
+            >Se connecter</oc-button
+          >
+        </form>
+        <p class="login-help">
+          Pas encore d’accès ? Demandez une invitation à l’administrateur de votre clinique.
+        </p>
+      }
+    </section>
+  </div>
 </main>
